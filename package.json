@@ -1,0 +1,32 @@
+{
+  "name": "fsv-mainz-05-app",
+  "version": "2.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=@fsv/api",
+    "dev:web": "turbo run dev --filter=@fsv/web",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:migrate": "tsx database/migrations/run.ts",
+    "db:seed": "tsx database/seed/run.ts",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "prettier": "^3.1.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
