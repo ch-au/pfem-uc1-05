@@ -1,0 +1,53 @@
+.container {
+  background: #F5F5F5;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #374151;
+  margin: 0 0 1rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #FFFFFF;
+  border-radius: 0.5rem;
+}
+
+.item--first {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  font-weight: 600;
+}
+
+.rank {
+  font-weight: 600;
+  color: #374151;
+  min-width: 32px;
+}
+
+.name {
+  flex: 1;
+  margin-left: 0.75rem;
+  color: #374151;
+}
+
+.score {
+  font-weight: 600;
+  color: #C8191E;
+}
+
+
+

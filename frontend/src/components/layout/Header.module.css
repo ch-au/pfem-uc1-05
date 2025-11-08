@@ -1,0 +1,81 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+}
+
+.utilityBar {
+  background: #E5E5E5;
+  padding: 0.5rem 1.25rem;
+}
+
+.utilityContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.utilityItem {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: color 0.2s ease-in-out;
+}
+
+.utilityItem:hover {
+  color: #C8191E;
+}
+
+.mainNav {
+  background: #C8191E;
+  color: #FFFFFF;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.navContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logoSection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logo {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.appTitle {
+  font-size: 1rem;
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+@media (min-width: 768px) {
+  .mainNav {
+    padding: 1.25rem 2rem;
+  }
+
+  .logo {
+    font-size: 3rem;
+  }
+
+  .appTitle {
+    font-size: 1.125rem;
+  }
+}
+
+
+

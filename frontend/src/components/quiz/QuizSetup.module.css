@@ -1,0 +1,49 @@
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #374151;
+  margin: 0 0 1.5rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid #E5E7EB;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  transition: all 0.2s ease-in-out;
+  background: #FFFFFF;
+  color: #374151;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #C8191E;
+  box-shadow: 0 0 0 3px rgba(200, 25, 30, 0.1);
+}
+
+.submitButton {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+}

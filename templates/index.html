@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dein 05 Fan-Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mainz-red: #C8191E;
+      --mainz-red-dark: #A01418;
+      --mainz-red-light: #E53E3E;
+      --mainz-white: #FFFFFF;
+      --mainz-gray-light: #F5F5F5;
+      --mainz-gray: #6B7280;
+      --mainz-gray-dark: #374151;
+      --mainz-success: #10B981;
+      --mainz-error: #EF4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--mainz-gray-light);
+      color: var(--mainz-gray-dark);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Header */
+    .app-header {
+      background: var(--mainz-red);
+      color: var(--mainz-white);
+      padding: 1rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo-large {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    .app-title {
+      font-size: 1rem;
+      font-weight: 500;
+      opacity: 0.95;
+    }
+
+    .profile-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .profile-icon:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Navigation */
+    .nav-bar {
+      background: var(--mainz-red);
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-around;
+      padding: 0.75rem 0;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      transition: all 0.2s;
+      cursor: pointer;
+      flex: 1;
+      max-width: 120px;
+    }
+
+    .nav-item.active {
+      color: var(--mainz-white);
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Main Content */
+    .main-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 5rem;
+      min-height: calc(100vh - 140px);
+    }
+
+    /* Mode Selector */
+    .mode-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: var(--mainz-white);
+      padding: 0.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--mainz-gray);
+    }
+
+    .mode-btn.active {
+      background: var(--mainz-red);
+      color: var(--mainz-white);
+      box-shadow: 0 2px 4px rgba(200, 25, 30, 0.3);
+    }
+
+    /* Cards */
+    .card {
+      background: var(--mainz-white);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--mainz-gray-dark);
+      margin-bottom: 1rem;
+    }
+
+    /* Chatbot Mode */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 280px);
+      min-height: 500px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      background: linear-gradient(to bottom, #F9FAFB, #F3F4F6);
+      border-radius: 1rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: rgba(200, 25, 30, 0.3);
+      border-radius: 4px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+      background: rgba(200, 25, 30, 0.5);
+    }
+
+    .chat-messages.empty {
+      justify-content: center;
+      align-items: center;
+      color: var(--mainz-gray);
+      font-size: 0.9375rem;
+      font-weight: 500;
+    }
+
+    .message {
+      display: flex;
+      gap: 0.75rem;
+      animation: slideIn 0.3s ease-out;
+      align-items: flex-start;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+    }
+
+    .message.error {
+      align-self: flex-start;
+    }
+
+    .message.system {
+      align-self: center;
+    }
+
+    .message-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .message.user .message-avatar {
+      background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
+      color: var(--mainz-white);
+    }
+
+    .message.assistant .message-avatar {
+      background: linear-gradient(135deg, #4B5563 0%, #1F2937 100%);
+      color: var(--mainz-white);
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-width: 75%;
+    }
+
+    .message-bubble {
+      padding: 1rem 1.25rem;
+      border-radius: 1.25rem;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+      word-wrap: break-word;
+      position: relative;
+    }
+
+    .message.user .message-bubble {
+      background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
+      color: var(--mainz-white);
+      border-bottom-right-radius: 0.375rem;
+      box-shadow: 0 4px 12px rgba(200, 25, 30, 0.25);
+    }
+
+    .message.assistant .message-bubble {
+      background: var(--mainz-white);
+      color: var(--mainz-gray-dark);
+      border: 1px solid #E5E7EB;
+      border-bottom-left-radius: 0.375rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .message.error .message-bubble {
+      background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+      color: var(--mainz-error);
+      border: 1px solid #FECACA;
+      border-bottom-left-radius: 0.375rem;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+    }
+
+    .message.system .message-bubble {
+      background: #F3F4F6;
+      color: var(--mainz-gray);
+      border: 1px solid #E5E7EB;
+      padding: 0.75rem 1rem;
+      font-size: 0.8125rem;
+      font-family: 'Monaco', 'Courier New', monospace;
+      border-radius: 0.5rem;
+      max-width: 90%;
+    }
+
+    .message-timestamp {
+      font-size: 0.6875rem;
+      color: var(--mainz-gray);
+      opacity: 0.7;
+      padding: 0 0.5rem;
+    }
+
+    .message.user .message-timestamp {
+      text-align: right;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      background: var(--mainz-white);
+      border-radius: 1.25rem;
+      border-bottom-left-radius: 0.375rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      max-width: 75%;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 0.375rem;
+    }
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--mainz-gray);
+      opacity: 0.4;
+      animation: typingBounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    .chat-input-container {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+      background: var(--mainz-white);
+      padding: 1rem;
+      border-radius: 1rem;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 0.875rem 1rem;
+      border: 2px solid #E5E7EB;
+      border-radius: 0.75rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      transition: all 0.2s;
+      background: var(--mainz-white);
+      resize: none;
+      max-height: 120px;
+      min-height: 44px;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--mainz-red);
+      box-shadow: 0 0 0 3px rgba(200, 25, 30, 0.1);
+    }
+
+    .chat-input::placeholder {
+      color: #9CA3AF;
+    }
+
+    .btn-primary {
+      background: var(--mainz-red);
+      color: var(--mainz-white);
+      border: none;
+      padding: 0.875rem 1.5rem;
+      border-radius: 0.75rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover {
+      background: var(--mainz-red-dark);
+      box-shadow: 0 4px 6px rgba(200, 25, 30, 0.3);
+    }
+
+    .btn-primary:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .loading-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--mainz-gray);
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      padding-left: 0.5rem;
+    }
+
+    .loading-dots {
+      display: inline-block;
+    }
+
+    .loading-dots::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    /* Quiz Mode */
+    .quiz-section {
+      display: none;
+    }
+
+    .quiz-section.active {
+      display: block;
+    }
+
+    .section-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--mainz-gray-dark);
+      margin-bottom: 1rem;
+      margin-top: 0;
+    }
+
+    /* Personalized Recommendation Card */
+    .recommendation-card {
+      background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
+      color: var(--mainz-white);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .recommendation-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .recommendation-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .recommendation-subtitle {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .recommendation-card-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      position: relative;
+      z-index: 1;
+    }
+
+    .recommendation-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .recommendation-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      opacity: 0.85;
+    }
+
+    .recommendation-meta svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-play-large {
+      background: var(--mainz-white);
+      color: var(--mainz-red);
+      border: none;
+      padding: 0.875rem 1.5rem;
+      border-radius: 0.75rem;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-play-large:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Quiz Pack Cards */
+    .quiz-packs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .pack-card {
+      background: var(--mainz-white);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .pack-card:hover {
+      border-color: var(--mainz-red);
+      box-shadow: 0 4px 8px rgba(200, 25, 30, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .pack-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--mainz-red);
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.75rem;
+      color: var(--mainz-white);
+    }
+
+    .pack-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .pack-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--mainz-gray-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .pack-count {
+      font-size: 0.75rem;
+      color: var(--mainz-gray);
+    }
+
+    /* Challenge Cards */
+    .challenge-card {
+      background: var(--mainz-white);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 4px solid var(--mainz-red);
+      margin-bottom: 0.75rem;
+    }
+
+    .challenge-card:hover {
+      box-shadow: 0 4px 8px rgba(200, 25, 30, 0.15);
+      transform: translateX(4px);
+    }
+
+    .challenge-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .challenge-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--mainz-red);
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--mainz-white);
+    }
+
+    .challenge-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .challenge-title {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--mainz-gray-dark);
+      flex: 1;
+    }
+
+    .challenge-count {
+      font-size: 0.75rem;
+      color: var(--mainz-gray);
+    }
+
+    /* Quiz Setup Form */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--mainz-gray-dark);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #E5E7EB;
+      border-radius: 0.75rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      transition: all 0.2s;
+      background: var(--mainz-white);
+      color: var(--mainz-gray-dark);
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: var(--mainz-red);
+      box-shadow: 0 0 0 3px rgba(200, 25, 30, 0.1);
+    }
+
+    /* Quiz Game */
+    .quiz-game-header {
+      background: var(--mainz-gray-light);
+      padding: 1rem;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .quiz-game-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .quiz-round-info {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--mainz-gray-dark);
+    }
+
+    .quiz-player-info {
+      font-size: 0.75rem;
+      color: var(--mainz-gray);
+    }
+
+    .quiz-question {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--mainz-gray-dark);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .quiz-option-btn {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      background: var(--mainz-white);
+      border: 2px solid #E5E7EB;
+      border-radius: 0.75rem;
+      font-size: 0.9375rem;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--mainz-gray-dark);
+      font-weight: 500;
+    }
+
+    .quiz-option-btn:hover:not(:disabled) {
+      border-color: var(--mainz-red);
+      background: rgba(200, 25, 30, 0.05);
+      transform: translateX(4px);
+    }
+
+    .quiz-option-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .quiz-option-btn.selected {
+      border-color: var(--mainz-red);
+      background: rgba(200, 25, 30, 0.1);
+    }
+
+    .quiz-option-btn.correct {
+      border-color: var(--mainz-success);
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--mainz-success);
+    }
+
+    .quiz-option-btn.incorrect {
+      border-color: var(--mainz-error);
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--mainz-error);
+    }
+
+    .quiz-answer-result {
+      padding: 1rem;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .quiz-answer-result.correct {
+      background: rgba(16, 185, 129, 0.1);
+      border: 2px solid var(--mainz-success);
+    }
+
+    .quiz-answer-result.incorrect {
+      background: rgba(239, 68, 68, 0.1);
+      border: 2px solid var(--mainz-error);
+    }
+
+    .answer-result-text {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .answer-result-text.correct {
+      color: var(--mainz-success);
+    }
+
+    .answer-result-text.incorrect {
+      color: var(--mainz-error);
+    }
+
+    .answer-explanation {
+      font-size: 0.875rem;
+      color: var(--mainz-gray);
+    }
+
+    .quiz-leaderboard {
+      background: var(--mainz-gray-light);
+      padding: 1rem;
+      border-radius: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .leaderboard-title {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--mainz-gray-dark);
+      margin-bottom: 1rem;
+    }
+
+    .leaderboard-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background: var(--mainz-white);
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .leaderboard-item:first-child {
+      background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+      font-weight: 600;
+    }
+
+    .leaderboard-rank {
+      font-weight: 600;
+      color: var(--mainz-gray-dark);
+    }
+
+    .leaderboard-name {
+      flex: 1;
+      margin-left: 0.75rem;
+      color: var(--mainz-gray-dark);
+    }
+
+    .leaderboard-score {
+      font-weight: 600;
+      color: var(--mainz-red);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 1rem;
+      color: var(--mainz-gray);
+      font-size: 0.75rem;
+      margin-top: 2rem;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(15px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes typingBounce {
+      0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+      }
+      30% {
+        transform: translateY(-10px);
+        opacity: 1;
+      }
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+
+    /* Responsive */
+    @media (min-width: 768px) {
+      .app-header {
+        padding: 1.25rem 2rem;
+      }
+
+      .main-content {
+        padding: 2rem 2rem 2rem;
+      }
+
+      .nav-bar {
+        display: none;
+      }
+
+      .logo-large {
+        font-size: 3rem;
+      }
+
+      .app-title {
+        font-size: 1.125rem;
+      }
+
+      .chat-container {
+        height: calc(100vh - 200px);
+      }
+
+      .quiz-packs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      }
+
+      .recommendation-card {
+        padding: 2rem;
+      }
+
+      .recommendation-title {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .main-content {
+        padding: 2.5rem;
+      }
+
+      .quiz-packs-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .quiz-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .quiz-question {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="logo-section">
+        <div class="logo-large">05</div>
+        <div class="app-title">Dein 05 Fan-Quiz</div>
+      </div>
+      <div class="profile-icon" onclick="showProfile()">
+        <svg viewBox="0 0 24 24">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+      <!-- Mode Selector -->
+    <div class="mode-selector">
+      <button class="mode-btn active" id="chatModeBtn" onclick="setMode('chat')">
+          💬 Chatbot
+        </button>
+      <button class="mode-btn" id="quizModeBtn" onclick="setMode('quiz')">
+          🎯 Quiz
+        </button>
+      </div>
+      
+      <!-- Chatbot Mode -->
+    <div id="chatMode" class="quiz-section active">
+      <div class="card">
+        <div class="chat-container">
+          <div id="chatMessages" class="chat-messages empty">
+              Stelle eine Frage zur Geschichte von Mainz 05...
+            </div>
+          <div class="chat-input-container">
+            <textarea 
+              id="chatInput" 
+              class="chat-input"
+              placeholder="Stelle eine Frage zu Mainz 05..."
+              rows="1"
+              onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }"
+              oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'"
+            ></textarea>
+            <button class="btn-primary" onclick="sendChatMessage()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quiz Mode -->
+    <div id="quizMode" class="quiz-section">
+      <!-- Quiz Start Screen -->
+      <div id="quizStartScreen">
+        <!-- Personalized Recommendation -->
+        <div class="recommendation-card">
+          <div class="recommendation-title">Top-Scorer der Hinrunde - für Mainz 05 in Saison Bundesliga?</div>
+          <div class="recommendation-subtitle">Personalisierte Empfehlung basierend auf deinen Interessen</div>
+          <div class="recommendation-card-content">
+            <div class="recommendation-info">
+              <div class="recommendation-meta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Historische Statistiken</span>
+              </div>
+              <div class="recommendation-meta">
+                <span>50 Fragen</span>
+              </div>
+            </div>
+            <button class="btn-play-large" onclick="showQuizSetup()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Jetzt spielen
+            </button>
+          </div>
+        </div>
+
+        <!-- Precomputed Packs -->
+        <div class="card">
+          <div class="card-title">Precomputed Packs</div>
+          <div class="quiz-packs-grid">
+            <div class="pack-card" onclick="startPrecomputedQuiz('historische-momente')">
+              <div class="pack-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                  <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                  <path d="M4 22h16"></path>
+                  <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                  <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                </svg>
+              </div>
+              <div class="pack-title">Historische Momente</div>
+              <div class="pack-count">50 Fragen</div>
+            </div>
+            <div class="pack-card" onclick="startPrecomputedQuiz('spieler-statistiken')">
+              <div class="pack-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <div class="pack-title">Spieler-Statistiken</div>
+              <div class="pack-count">50 Fragen</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Challenges & Wettbewerbe -->
+        <div class="card">
+          <div class="card-title">Challenges & Wettbewerbe</div>
+          <div class="challenge-card" onclick="startChallenge('weekly-leaderboard')">
+            <div class="challenge-header">
+              <div class="challenge-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                  <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                  <path d="M4 22h16"></path>
+                  <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                  <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                </svg>
+              </div>
+              <div class="challenge-title">Wöchentliches Leaderboard</div>
+              <div class="challenge-count">50 Fragen</div>
+            </div>
+          </div>
+          <div class="challenge-card" onclick="startChallenge('stadionwissen')">
+            <div class="challenge-header">
+              <div class="challenge-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+              <div class="challenge-title">Stadionwissen</div>
+              <div class="challenge-count">50 Fragen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+          <!-- Quiz Setup -->
+      <div id="quizSetupScreen" class="hidden">
+        <div class="card">
+          <div class="card-title">Neues Quiz erstellen</div>
+          <div class="form-group">
+            <label class="form-label">Thema (optional)</label>
+            <input id="quizTopic" type="text" class="form-input" placeholder="z.B. Spieler, Spiele, Tore">
+              </div>
+          <div class="form-group">
+            <label class="form-label">Schwierigkeit</label>
+            <select id="quizDifficulty" class="form-select">
+                  <option value="easy">Einfach</option>
+                  <option value="medium" selected>Mittel</option>
+                  <option value="hard">Schwer</option>
+                </select>
+              </div>
+          <div class="form-group">
+            <label class="form-label">Anzahl Runden</label>
+            <input id="quizRounds" type="number" class="form-input" value="5" min="1" max="20">
+              </div>
+          <div class="form-group">
+            <label class="form-label">Spieler (kommagetrennt)</label>
+            <input id="quizPlayers" type="text" class="form-input" placeholder="Alice, Bob">
+              </div>
+          <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="createQuiz()">
+                Quiz starten
+              </button>
+            </div>
+          </div>
+
+          <!-- Quiz Game -->
+      <div id="quizGameScreen" class="hidden">
+        <div class="card">
+          <div class="quiz-game-header">
+            <div class="quiz-game-info">
+              <div class="quiz-round-info">Runde <span id="currentRound">1</span> von <span id="totalRounds">5</span></div>
+              <div class="quiz-player-info">Spieler: <span id="currentPlayer">-</span></div>
+                </div>
+            <button class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="showLeaderboard()">
+                  Bestenliste
+                </button>
+            </div>
+
+          <div class="quiz-question" id="questionText">Frage wird geladen...</div>
+
+          <div class="quiz-options" id="quizOptions">
+                <!-- Options will be populated here -->
+            </div>
+
+          <div class="quiz-answer-result hidden" id="quizAnswer">
+            <div class="answer-result-text" id="answerResult"></div>
+            <div class="answer-explanation" id="answerExplanation"></div>
+            </div>
+
+          <div id="quizActions">
+            <button id="nextRoundBtn" class="btn-primary hidden" style="width: 100%; justify-content: center;" onclick="nextRound()">
+                Nächste Runde
+              </button>
+            </div>
+
+          <div class="quiz-leaderboard hidden" id="quizLeaderboard">
+            <div class="leaderboard-title">Bestenliste</div>
+              <div id="leaderboardContent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+  </main>
+
+  <!-- Mobile Navigation -->
+  <nav class="nav-bar">
+    <div class="nav-item active" onclick="setNavTab('quiz')">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span>Quiz</span>
+    </div>
+    <div class="nav-item" onclick="setNavTab('leaderboard')">
+      <svg viewBox="0 0 24 24">
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+        <path d="M4 22h16"></path>
+        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+      </svg>
+      <span>Leaderboard</span>
+    </div>
+    <div class="nav-item" onclick="setNavTab('profile')">
+      <svg viewBox="0 0 24 24">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span>Profile</span>
+    </div>
+  </nav>
+
+  <!-- Footer -->
+  <div class="footer">
+    Powered by AI
+  </div>
+
+  <script>
+    let currentMode = 'chat';
+    let chatSessionId = null;
+    let currentGameId = null;
+    let currentQuestion = null;
+    let currentPlayerIndex = 0;
+    let quizPlayers = [];
+    let currentChatRequest = null; // For request deduplication
+
+    // Mode switching
+    function setMode(mode) {
+      currentMode = mode;
+      
+      // Update mode buttons
+      document.getElementById('chatModeBtn').classList.toggle('active', mode === 'chat');
+      document.getElementById('quizModeBtn').classList.toggle('active', mode === 'quiz');
+      
+      // Update content sections
+      document.getElementById('chatMode').classList.toggle('active', mode === 'chat');
+      document.getElementById('quizMode').classList.toggle('active', mode === 'quiz');
+      
+      if (mode === 'chat' && !chatSessionId) {
+        createChatSession();
+      }
+    }
+
+    // Navigation tabs (mobile)
+    function setNavTab(tab) {
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => item.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      
+      // Navigate based on tab
+      if (tab === 'quiz') {
+        setMode('quiz');
+      } else if (tab === 'leaderboard') {
+        if (currentGameId) {
+          showLeaderboard();
+        } else {
+          console.log('Leaderboard clicked - no active game');
+        }
+      } else if (tab === 'profile') {
+        showProfile();
+      }
+    }
+
+    function showProfile() {
+      alert('Profil-Funktion wird später implementiert');
+    }
+
+    // Chatbot Functions
+    async function createChatSession() {
+      try {
+        const res = await fetch('/chat/session', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({metadata: {}})
+        });
+        const data = await res.json();
+        chatSessionId = data.session_id;
+        console.log('Chat session created:', chatSessionId);
+      } catch (e) {
+        console.error('Failed to create session:', e);
+        showError('Konnte keine Chat-Sitzung erstellen');
+      }
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if (!message) return;
+      
+      // Prevent duplicate requests
+      if (currentChatRequest) {
+        console.log('Request already in progress, skipping...');
+        return;
+      }
+      
+      if (!chatSessionId) await createChatSession();
+      
+      // Add user message
+      addMessage('user', message);
+      input.value = '';
+      input.style.height = 'auto';  // Reset textarea height
+      
+      // Show typing indicator
+      showTypingIndicator();
+
+      try {
+        currentChatRequest = fetch('/chat/message', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            session_id: chatSessionId,
+            message: message
+          })
+        });
+        
+        const res = await currentChatRequest;
+
+        if (!res.ok) {
+          hideTypingIndicator();
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        
+        // Hide typing indicator
+        hideTypingIndicator();
+        
+        // Add assistant response
+        addMessage('assistant', data.answer);
+        
+        if (data.sources && data.sources.length > 0) {
+          const sourceInfo = data.sources[0];
+          if (sourceInfo.sql) {
+            addMessage('system', `SQL: ${sourceInfo.sql.substring(0, 80)}...`);
+          }
+        }
+      } catch (e) {
+        hideTypingIndicator();
+        addMessage('error', `Fehler: ${e.message}`);
+        console.error('Chat error:', e);
+      } finally {
+        currentChatRequest = null;
+      }
+    }
+
+    function addMessage(role, content) {
+      const messagesEl = document.getElementById('chatMessages');
+      
+      // Clear placeholder if exists
+      if (messagesEl.classList.contains('empty')) {
+        messagesEl.innerHTML = '';
+        messagesEl.classList.remove('empty');
+      }
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${role}`;
+      
+      // Create avatar
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      
+      if (role === 'user') {
+        avatar.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+      } else if (role === 'assistant') {
+        avatar.textContent = '05';
+      } else if (role === 'system') {
+        // No avatar for system messages
+      }
+      
+      // Create message content wrapper
+      const contentWrapper = document.createElement('div');
+      contentWrapper.className = 'message-content';
+      
+      // Create bubble
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble';
+      bubble.textContent = content;
+      
+      // Create timestamp
+      const timestamp = document.createElement('div');
+      timestamp.className = 'message-timestamp';
+      const now = new Date();
+      timestamp.textContent = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      
+      contentWrapper.appendChild(bubble);
+      if (role !== 'system') {
+        contentWrapper.appendChild(timestamp);
+      }
+      
+      if (role !== 'system') {
+        messageDiv.appendChild(avatar);
+      }
+      messageDiv.appendChild(contentWrapper);
+      
+      messagesEl.appendChild(messageDiv);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+      const messagesEl = document.getElementById('chatMessages');
+      
+      const typingDiv = document.createElement('div');
+      typingDiv.id = 'typingIndicator';
+      typingDiv.className = 'message assistant';
+      
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.textContent = '05';
+      
+      const contentWrapper = document.createElement('div');
+      contentWrapper.className = 'message-content';
+      
+      const indicator = document.createElement('div');
+      indicator.className = 'typing-indicator';
+      indicator.innerHTML = `
+        <div class="typing-dots">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+        <span style="font-size: 0.875rem; color: var(--mainz-gray);">tippt...</span>
+      `;
+      
+      contentWrapper.appendChild(indicator);
+      typingDiv.appendChild(avatar);
+      typingDiv.appendChild(contentWrapper);
+      
+      messagesEl.appendChild(typingDiv);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+      const indicator = document.getElementById('typingIndicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    function showError(msg) {
+      addMessage('error', msg);
+    }
+
+    // Quiz Functions
+    function showQuizSetup() {
+      document.getElementById('quizStartScreen').classList.add('hidden');
+      document.getElementById('quizSetupScreen').classList.remove('hidden');
+      document.getElementById('quizGameScreen').classList.add('hidden');
+    }
+
+    function startPrecomputedQuiz(packType) {
+      // Set topic based on pack type
+      const topicMap = {
+        'historische-momente': 'Historische Momente',
+        'spieler-statistiken': 'Spieler Statistiken'
+      };
+      document.getElementById('quizTopic').value = topicMap[packType] || '';
+      showQuizSetup();
+    }
+
+    function startChallenge(challengeType) {
+      // Set topic based on challenge type
+      const topicMap = {
+        'weekly-leaderboard': 'Wöchentliches Leaderboard',
+        'stadionwissen': 'Stadionwissen'
+      };
+      document.getElementById('quizTopic').value = topicMap[challengeType] || '';
+      showQuizSetup();
+    }
+
+    async function createQuiz() {
+      const topic = document.getElementById('quizTopic').value.trim() || null;
+      const difficulty = document.getElementById('quizDifficulty').value;
+      const rounds = parseInt(document.getElementById('quizRounds').value);
+      const playersInput = document.getElementById('quizPlayers').value.trim();
+      
+      if (!playersInput) {
+        alert('Bitte gib mindestens einen Spieler ein');
+        return;
+      }
+
+      quizPlayers = playersInput.split(',').map(p => p.trim()).filter(p => p);
+      currentPlayerIndex = 0;
+      
+      const btn = event.target;
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Wird erstellt...';
+
+      try {
+        const res = await fetch('/quiz/game', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            topic: topic,
+            difficulty: difficulty,
+            num_rounds: rounds,
+            player_names: quizPlayers
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        currentGameId = data.game_id;
+        console.log('Quiz created:', currentGameId);
+
+        // Start the game
+        await startQuiz();
+        
+        // Show game UI
+        document.getElementById('quizStartScreen').classList.add('hidden');
+        document.getElementById('quizSetupScreen').classList.add('hidden');
+        document.getElementById('quizGameScreen').classList.remove('hidden');
+        
+      } catch (e) {
+        console.error('Quiz creation error:', e);
+        alert(`Fehler beim Erstellen des Quiz: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+
+    async function startQuiz() {
+      try {
+        const res = await fetch(`/quiz/game/${currentGameId}/start`, {
+          method: 'POST'
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await loadQuestion();
+      } catch (e) {
+        console.error('Start quiz error:', e);
+        alert(`Fehler: ${e.message}`);
+      }
+    }
+
+    async function loadQuestion() {
+      try {
+        const res = await fetch(`/quiz/game/${currentGameId}/question`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        
+        const data = await res.json();
+        currentQuestion = data;
+        
+        document.getElementById('questionText').textContent = data.question_text;
+        document.getElementById('currentRound').textContent = data.round_number;
+        document.getElementById('currentPlayer').textContent = quizPlayers[currentPlayerIndex] || quizPlayers[0];
+        
+        // Update total rounds
+        const gameRes = await fetch(`/quiz/game/${currentGameId}`);
+        const gameData = await gameRes.json();
+        document.getElementById('totalRounds').textContent = gameData.num_rounds;
+        
+        // Render options
+        const optionsEl = document.getElementById('quizOptions');
+        optionsEl.innerHTML = '';
+        data.options.forEach((option, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'quiz-option-btn';
+          btn.textContent = `${String.fromCharCode(65 + idx)}) ${option}`;
+          btn.onclick = () => selectAnswer(option, data.round_id);
+          optionsEl.appendChild(btn);
+        });
+        
+        document.getElementById('quizAnswer').classList.add('hidden');
+        document.getElementById('nextRoundBtn').classList.add('hidden');
+        document.getElementById('quizLeaderboard').classList.add('hidden');
+        
+      } catch (e) {
+        console.error('Load question error:', e);
+        alert(`Fehler beim Laden der Frage: ${e.message}`);
+      }
+    }
+
+    async function selectAnswer(answer, roundId) {
+      const startTime = Date.now();
+      
+      // Disable all options
+      document.querySelectorAll('.quiz-option-btn').forEach(btn => {
+        btn.disabled = true;
+        if (btn.textContent.includes(answer)) {
+          btn.classList.add('selected');
+        }
+      });
+      
+      try {
+        const res = await fetch(`/quiz/game/${currentGameId}/answer`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            round_id: roundId,
+            answer: {
+              player_name: quizPlayers[currentPlayerIndex] || quizPlayers[0],
+              answer: answer,
+              time_taken: ((Date.now() - startTime) / 1000).toFixed(1)
+            }
+          })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        const answerEl = document.getElementById('quizAnswer');
+        const resultEl = document.getElementById('answerResult');
+        const explanationEl = document.getElementById('answerExplanation');
+        
+        // Mark correct/incorrect options
+        document.querySelectorAll('.quiz-option-btn').forEach(btn => {
+          const optionText = btn.textContent.replace(/^[A-D]\)\s*/, '');
+          if (optionText === data.correct_answer) {
+            btn.classList.add('correct');
+          } else if (btn.classList.contains('selected') && !data.correct) {
+            btn.classList.add('incorrect');
+          }
+        });
+        
+        if (data.correct) {
+          answerEl.className = 'quiz-answer-result correct';
+          resultEl.className = 'answer-result-text correct';
+          resultEl.textContent = `✓ Richtig! (+${data.points_earned} Punkte)`;
+          explanationEl.textContent = `Richtige Antwort: ${data.correct_answer}`;
+        } else {
+          answerEl.className = 'quiz-answer-result incorrect';
+          resultEl.className = 'answer-result-text incorrect';
+          resultEl.textContent = `✗ Falsch`;
+          explanationEl.textContent = `Richtige Antwort: ${data.correct_answer}`;
+        }
+        
+        answerEl.classList.remove('hidden');
+        
+        // Move to next player or show next round button
+        currentPlayerIndex++;
+        if (currentPlayerIndex >= quizPlayers.length) {
+          currentPlayerIndex = 0;
+          document.getElementById('nextRoundBtn').classList.remove('hidden');
+        } else {
+          setTimeout(() => {
+            answerEl.classList.add('hidden');
+            document.getElementById('currentPlayer').textContent = quizPlayers[currentPlayerIndex];
+            // Re-enable options for next player
+            document.querySelectorAll('.quiz-option-btn').forEach(btn => {
+              btn.disabled = false;
+              btn.classList.remove('selected', 'correct', 'incorrect');
+            });
+          }, 2000);
+        }
+        
+      } catch (e) {
+        console.error('Submit answer error:', e);
+        alert(`Fehler: ${e.message}`);
+      }
+    }
+
+    async function nextRound() {
+      try {
+        const res = await fetch(`/quiz/game/${currentGameId}/next`, {
+          method: 'POST'
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        
+        const data = await res.json();
+        if (data.status === 'completed') {
+          alert('Quiz abgeschlossen!');
+          showLeaderboard();
+        } else {
+          await loadQuestion();
+        }
+      } catch (e) {
+        console.error('Next round error:', e);
+        alert(`Fehler: ${e.message}`);
+      }
+    }
+
+    async function showLeaderboard() {
+      try {
+        const res = await fetch(`/quiz/game/${currentGameId}/leaderboard`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        
+        const data = await res.json();
+        const leaderboardEl = document.getElementById('leaderboardContent');
+        
+        leaderboardEl.innerHTML = data.leaderboard.map((entry, idx) => `
+          <div class="leaderboard-item">
+            <span class="leaderboard-rank">${idx + 1}.</span>
+            <span class="leaderboard-name">${entry.player_name}</span>
+            <span class="leaderboard-score">${entry.total_points} Punkte (${entry.correct_answers} richtig)</span>
+          </div>
+        `).join('');
+        
+        document.getElementById('quizLeaderboard').classList.remove('hidden');
+      } catch (e) {
+        console.error('Leaderboard error:', e);
+        alert(`Fehler beim Laden der Bestenliste: ${e.message}`);
+      }
+    }
+
+    // Initialize
+    createChatSession();
+  </script>
+</body>
+</html>

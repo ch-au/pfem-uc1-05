@@ -1,0 +1,96 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap;
+  position: relative;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button--primary {
+  background: linear-gradient(135deg, #C8191E 0%, #A01418 100%);
+  color: #FFFFFF;
+  box-shadow: 0 2px 4px rgba(200, 25, 30, 0.3);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #A01418 0%, #8B1115 100%);
+  box-shadow: 0 4px 6px rgba(200, 25, 30, 0.4);
+  transform: translateY(-1px);
+}
+
+.button--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(200, 25, 30, 0.3);
+}
+
+.button--secondary {
+  background: #FFFFFF;
+  color: #C8191E;
+  border: 2px solid #C8191E;
+}
+
+.button--secondary:hover:not(:disabled) {
+  background: rgba(200, 25, 30, 0.05);
+  transform: translateY(-1px);
+}
+
+.button--ghost {
+  background: transparent;
+  color: #374151;
+}
+
+.button--ghost:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.button--sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.button--md {
+  padding: 0.875rem 1.5rem;
+  font-size: 0.9375rem;
+}
+
+.button--lg {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+}
+
+.button--loading {
+  pointer-events: none;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+

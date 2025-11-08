@@ -1,0 +1,431 @@
+{
+  "total_errors": 1056,
+  "by_category": {
+    "invalid_pattern": 232,
+    "contains_comma": 385,
+    "goal_text": 299,
+    "trainer_name": 93,
+    "referee_name": 41,
+    "error_text": 5,
+    "too_long": 1
+  },
+  "by_entity_type": {
+    "player": 1024,
+    "referee": 3,
+    "team": 24,
+    "coach": 5
+  },
+  "by_parsing_method": {
+    "parse_team_block": 579,
+    "parse_goal_table": 395,
+    "extract_match_details": 3
+  },
+  "parser_improvements": [
+    {
+      "priority": "high",
+      "method": "get_or_create_player",
+      "issue": "Trainer-Namen werden als Spieler erkannt",
+      "count": 93,
+      "fix": "Add validation: Check if name contains \"Trainer:\", \"FSV-Trainer\", \"Coach\" before creating player",
+      "code_location": "comprehensive_fsv_parser.py:579 (get_or_create_player)",
+      "example_errors": [
+        "FSV-Trainer: Baas Schiedsrichter: Schmitt (Landau) Borussia-Trainer: Oles",
+        "FSV-Trainer: Baas",
+        "Borussia-Trainer: Oles",
+        "FSV-Trainer: Baas Schiedsrichter: Deuschel (Mundenheim) FCK-Trainer: Schneider",
+        "FCK-Trainer: Schneider"
+      ]
+    },
+    {
+      "priority": "high",
+      "method": "get_or_create_player",
+      "issue": "Schiedsrichter-Namen werden als Spieler erkannt",
+      "count": 41,
+      "fix": "Add validation: Check if name contains \"Schiedsrichter:\", \"Schiedsrichterin:\" before creating player",
+      "code_location": "comprehensive_fsv_parser.py:579 (get_or_create_player)",
+      "example_errors": [
+        "Schiedsrichter: Schmitt (Landau)",
+        "Schiedsrichter: Deuschel (Mundenheim)",
+        "Schiedsrichter: Siebert (Mannheim)",
+        "Schiedsrichter: Bicha (Zweibrücken)",
+        "Schiedsrichter: Sparing (Kassel)"
+      ]
+    },
+    {
+      "priority": "high",
+      "method": "parse_goal_table",
+      "issue": "Vollständiger Tor-Text wird als Spielername erkannt",
+      "count": 299,
+      "fix": "Improve parse_goal_table: Extract only player name from goal text, not full \"Tore 11. 0:1 ...\" text",
+      "code_location": "comprehensive_fsv_parser.py:2104 (parse_goal_table)",
+      "example_errors": [
+        "Tore 5. 1:0 Schneider 42. 2:0 Kasperski 69. 2:1 Reichert (FE, Mangold) 73. 3:1 Sommer (ET)",
+        "5. 1:0 Schneider",
+        "42. 2:0 Kasperski",
+        "69. 2:1 Reichert (FE, Mangold)",
+        "73. 3:1 Sommer (ET)"
+      ]
+    },
+    {
+      "priority": "medium",
+      "method": "parse_substitution_entry",
+      "issue": "Fehlertext (\"FE,\", \"ET,\", \"HE,\") wird als Spielername erkannt",
+      "count": 5,
+      "fix": "Improve parse_substitution_entry: Filter prefixes \"FE,\", \"ET,\", \"HE,\" before extracting player names",
+      "code_location": "comprehensive_fsv_parser.py:2049 (parse_substitution_entry)",
+      "example_errors": [
+        "FE, Liebers an Klopp",
+        "FE, Klopp an Antwerpen",
+        "FE, Klopp an Rus",
+        "ET, Latza",
+        "HE, Hazard"
+      ]
+    },
+    {
+      "priority": "medium",
+      "method": "get_or_create_player",
+      "issue": "Namen enthalten Kommas (oft Parsing-Fehler)",
+      "count": 385,
+      "fix": "Add validation: Warn or reject player names containing commas (unless it's a known pattern)",
+      "code_location": "comprehensive_fsv_parser.py:579 (get_or_create_player)",
+      "example_errors": [
+        "ET, Schmitt",
+        "wdh. FE, Lipponer",
+        "FE, Janowski an Dr. Brandel",
+        "FE, Rauch an Bickerle",
+        "ET, Becker"
+      ]
+    },
+    {
+      "priority": "medium",
+      "method": "get_or_create_player",
+      "issue": "Namen beginnen mit ungültigen Zeichen oder sind zu kurz",
+      "count": 232,
+      "fix": "Add validation: Reject names starting with non-letters, single characters, or only numbers",
+      "code_location": "comprehensive_fsv_parser.py:579 (get_or_create_player)",
+      "example_errors": [
+        "? BAPTISTELLA",
+        "ET",
+        "-",
+        "? SCHULZ",
+        "? VEITH"
+      ]
+    },
+    {
+      "priority": "high",
+      "method": "parse_team_block",
+      "issue": "Trainer-Namen werden aus Team-Block als Spieler extrahiert",
+      "count": 579,
+      "fix": "Improve parse_team_block: Filter out cells containing \"Trainer:\", \"FSV-Trainer\" before processing",
+      "code_location": "comprehensive_fsv_parser.py:2004 (parse_team_block)",
+      "example_errors": [
+        "? BAPTISTELLA",
+        "? SCHULZ",
+        "? VEITH",
+        "? SANDER",
+        "HE",
+        "? NEISCHE",
+        "? LORENZ",
+        "? ENDERS",
+        "? BRANDNER",
+        "? GRASS"
+      ]
+    }
+  ],
+  "examples": {
+    "invalid_pattern": [
+      {
+        "incorrect_name": "? BAPTISTELLA",
+        "correct_name": "? BAPTISTELLA",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "ET",
+        "correct_name": "KARL-HEINZ WETTIG",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "-",
+        "correct_name": "MANFRED KIPP",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "? SCHULZ",
+        "correct_name": "? SCHULZ",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "? VEITH",
+        "correct_name": "? VEITH",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "? SANDER",
+        "correct_name": "? SANDER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "HE",
+        "correct_name": "HEINZ MÖRSCHEL",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "? NEISCHE",
+        "correct_name": "? NEISCHE",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "? LORENZ",
+        "correct_name": "? LORENZ",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "? ENDERS",
+        "correct_name": "? ENDERS",
+        "parsing_method": "parse_team_block"
+      }
+    ],
+    "contains_comma": [
+      {
+        "incorrect_name": "ET, Schmitt",
+        "correct_name": "FRANK SCHMITT",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "wdh. FE, Lipponer",
+        "correct_name": "PAUL LIPPONER sen.",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "FE, Janowski an Dr. Brandel",
+        "correct_name": "FELIX BRAND",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "FE, Rauch an Bickerle",
+        "correct_name": "HORST-DIETER RAUCH",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "ET, Becker",
+        "correct_name": "TIMOTHY BECK",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "FE, Laumann an Bickerle",
+        "correct_name": "FRANZ BICKERLE",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "FE, Löblein",
+        "correct_name": null,
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "HE, Zintel",
+        "correct_name": null,
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "ET, Posselmann",
+        "correct_name": "KARL POSSELMANN",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "ET, Gegenheimer",
+        "correct_name": "JOSEF GEGENHEIMER",
+        "parsing_method": "parse_goal_table"
+      }
+    ],
+    "goal_text": [
+      {
+        "incorrect_name": "Tore 5. 1:0 Schneider 42. 2:0 Kasperski 69. 2:1 Reichert (FE, Mangold) 73. 3:1 Sommer (ET)",
+        "correct_name": "ROMAN SCHNEIDER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "5. 1:0 Schneider",
+        "correct_name": "ROMAN SCHNEIDER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "42. 2:0 Kasperski",
+        "correct_name": null,
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "69. 2:1 Reichert (FE, Mangold)",
+        "correct_name": "WILLI REICHERT",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "73. 3:1 Sommer (ET)",
+        "correct_name": "WERNER SOMMER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "3. 0:1 Ringel",
+        "correct_name": null,
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "50. 0:1 Richter",
+        "correct_name": "HANS-JÜRGEN RICHTER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Tore 29. 1:0 Schaum 32. 1:1 May ( - ) 44. 2:1 Müllges 82. 3:1 Schaum",
+        "correct_name": "? ULLGES",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "29. 1:0 Schaum",
+        "correct_name": "CHA DU-RI",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "32. 1:1 May ( - )",
+        "correct_name": null,
+        "parsing_method": "parse_team_block"
+      }
+    ],
+    "trainer_name": [
+      {
+        "incorrect_name": "FSV-Trainer: Baas Schiedsrichter: Schmitt (Landau) Borussia-Trainer: Oles",
+        "correct_name": "MANFRED RUSS",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "FSV-Trainer: Baas",
+        "correct_name": null,
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Borussia-Trainer: Oles",
+        "correct_name": "MANFRED RUSS",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "FSV-Trainer: Baas Schiedsrichter: Deuschel (Mundenheim) FCK-Trainer: Schneider",
+        "correct_name": "ROMAN SCHNEIDER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "FCK-Trainer: Schneider",
+        "correct_name": "ROMAN SCHNEIDER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "FSV-Trainer: Baas Schiedsrichter: Siebert (Mannheim) SVE-Trainer: Heinz",
+        "correct_name": "? SIEBERT",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "SVE-Trainer: Heinz",
+        "correct_name": "MARVIN HEINZ",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "FSV-Trainer: Baas Schiedsrichter: Bicha (Zweibrücken) Wormatia-Trainer: Winkler",
+        "correct_name": "CHA DU-RI",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Wormatia-Trainer: Winkler",
+        "correct_name": "FRANZ WINKLER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "FSV-Trainer: Baas Schiedsrichter: Sparing (Kassel)",
+        "correct_name": "HARALD KASSEL",
+        "parsing_method": "parse_team_block"
+      }
+    ],
+    "referee_name": [
+      {
+        "incorrect_name": "Schiedsrichter: Schmitt (Landau)",
+        "correct_name": "FRANK SCHMITT",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Deuschel (Mundenheim)",
+        "correct_name": "HANS-JÜRGEN RICHTER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Siebert (Mannheim)",
+        "correct_name": "? SIEBERT",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Bicha (Zweibrücken)",
+        "correct_name": "CHA DU-RI",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Sparing (Kassel)",
+        "correct_name": "HARALD KASSEL",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Wagner (Welschbach)",
+        "correct_name": "MARTIN WAGNER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Tremel (Germersheim)",
+        "correct_name": "HANS-JÜRGEN RICHTER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Ommerborn (Saarbrücken)",
+        "correct_name": "HANS-JÜRGEN RICHTER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Bersch (Worms)",
+        "correct_name": "HANS-JÜRGEN RICHTER",
+        "parsing_method": "parse_team_block"
+      },
+      {
+        "incorrect_name": "Schiedsrichter: Seiler (Stuttgart)",
+        "correct_name": "HANS-JÜRGEN RICHTER",
+        "parsing_method": "parse_team_block"
+      }
+    ],
+    "error_text": [
+      {
+        "incorrect_name": "FE, Liebers an Klopp",
+        "correct_name": "FOLKER LIEBE",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "FE, Klopp an Antwerpen",
+        "correct_name": "JÜRGEN KLOPP",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "FE, Klopp an Rus",
+        "correct_name": "JÜRGEN KLOPP",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "ET, Latza",
+        "correct_name": "DANNY LATZA",
+        "parsing_method": "parse_goal_table"
+      },
+      {
+        "incorrect_name": "HE, Hazard",
+        "correct_name": null,
+        "parsing_method": "parse_goal_table"
+      }
+    ],
+    "too_long": [
+      {
+        "incorrect_name": "Hälfte: 22 Stöger 36 D. Schmidt 26 Nebel 23 Lucoqui 38 Fi. Müller 24 Papela 3 Aarón 43 Wilhelm 16 Bell 34 Nemeth 32 Rieß 80. 44 Roos",
+        "correct_name": "LARS SCHMIDT",
+        "parsing_method": "parse_team_block"
+      }
+    ]
+  }
+}

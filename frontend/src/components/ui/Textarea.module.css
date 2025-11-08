@@ -1,0 +1,49 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.textarea {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 2px solid #E5E7EB;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  transition: all 0.2s ease-in-out;
+  background: #FFFFFF;
+  color: #374151;
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #C8191E;
+  box-shadow: 0 0 0 3px rgba(200, 25, 30, 0.1);
+}
+
+.textarea::placeholder {
+  color: #9CA3AF;
+}
+
+.textarea--error {
+  border-color: #EF4444;
+}
+
+.textarea--error:focus {
+  border-color: #EF4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+
+

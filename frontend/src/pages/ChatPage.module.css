@@ -1,0 +1,30 @@
+.chatPage {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 5rem;
+  min-height: calc(100vh - 200px);
+}
+
+.chatCard {
+  height: calc(100vh - 280px);
+  min-height: 500px;
+}
+
+.chatContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+@media (min-width: 768px) {
+  .chatPage {
+    padding: 2rem 2rem 2rem;
+  }
+
+  .chatCard {
+    height: calc(100vh - 200px);
+  }
+}
+
+
+

@@ -1,0 +1,38 @@
+.card {
+  background: #FFFFFF;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card--default {
+  background: #FFFFFF;
+}
+
+.card--elevated {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card--interactive {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.card--interactive:hover {
+  box-shadow: 0 4px 8px rgba(200, 25, 30, 0.15);
+  transform: translateY(-2px);
+}
+
+.card--padding-sm {
+  padding: 1rem;
+}
+
+.card--padding-md {
+  padding: 1.5rem;
+}
+
+.card--padding-lg {
+  padding: 2rem;
+}
+
+
+

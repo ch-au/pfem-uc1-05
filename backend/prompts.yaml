@@ -1,0 +1,192 @@
+sql:
+  base_rules: |
+    CRITICAL RULES (Postgres - Normalized Schema):
+    - Return only JSON with key 'sql'. Example: {"sql": "SELECT ..."}.
+    - Use exactly one SELECT statement.
+    - Schema is in 'public'. All table names are LOWERCASE (teams, players, matches, goals, etc.).
+    
+    MAIN TABLES:
+    - teams: Alle Mannschaften inkl. FSV Mainz (team_id=1) und Gegner
+    - players: Spieler-Stammdaten (name, birth_date, nationality, primary_position)
+    - matches: Spiele (match_date, home_team_id, away_team_id, home_score, away_score)
+    - goals: Tore (minute, stoppage, player_id, assist_player_id, team_id, event_type)
+    - cards: Karten (card_type: 'yellow'|'red'|'second_yellow', minute, player_id)
+    - match_lineups: Aufstellungen (is_starter, minute_on, minute_off, shirt_number)
+    - match_substitutions: Einwechslungen (player_on_id, player_off_id, minute, stoppage)
+    - seasons: Saisonen (label z.B. "2023-24", start_year, end_year)
+    - season_competitions: Verknüpfung Saison-Wettbewerb
+    - competitions: Wettbewerbe (Bundesliga, DFB-Pokal, etc.)
+    - coaches, coach_careers: Trainer-Daten
+    - referees: Schiedsrichter
+    - player_careers: Spieler-Karrierestationen
+    
+    MATERIALIZED VIEWS (SCHNELL - bevorzugt nutzen!):
+    - player_statistics: Vorberechnete Spieler-Stats (spiele_gesamt, tore_gesamt, vorlagen_gesamt, gelbe_karten, rote_karten)
+    - match_details: Vollständige Spieldetails (saison, wettbewerb, heimmannschaft, gastmannschaft, tore, fsv_ergebnis)
+    - season_summary: Saison-Aggregationen (siege, niederlagen, unentschieden, tore_geschossen, tore_kassiert)
+    
+    JOIN RELATIONSHIPS:
+    - goals ↔ players: via player_id (Torschütze), assist_player_id (Vorbereiter)
+    - goals ↔ matches: via match_id
+    - goals ↔ teams: via team_id
+    - matches ↔ teams: via home_team_id, away_team_id
+    - matches ↔ season_competitions: via season_competition_id
+    - season_competitions ↔ seasons: via season_id
+    - season_competitions ↔ competitions: via competition_id
+    - match_lineups ↔ players: via player_id
+    - match_lineups ↔ teams: via team_id
+    - cards ↔ players: via player_id
+    - cards ↔ matches: via match_id
+    
+    IMPORTANT COLUMNS:
+    - goals.minute + goals.stoppage (Nachspielzeit): Nutze (g.minute + COALESCE(g.stoppage, 0)) für genaue Zeit
+    - goals.event_type: NULL (normales Tor), 'penalty' (Elfmeter), 'own_goal' (Eigentor)
+    - matches.match_date: DATE-Spalte verfügbar (nicht über seasons!)
+    - teams.team_id = 1: FSV Mainz 05
+    - cards.card_type: 'yellow', 'red', 'second_yellow'
+    
+    QUERY OPTIMIZATION:
+    - PREFER materialized views for aggregations (player_statistics, match_details, season_summary)
+    - Use DISTINCT only when absolutely necessary
+    - Always add ORDER BY for predictable results
+    - Add LIMIT 200 to prevent huge result sets
+    - Use table aliases: p=players, m=matches, g=goals, t=teams, s=seasons, sc=season_competitions, c=competitions, ml=match_lineups, ms=match_substitutions, ca=cards
+    
+    FSV MAINZ FILTERS (team_id = 1 ist FSV Mainz 05!):
+    - WICHTIG: FSV Mainz 05 hat IMMER team_id = 1 in der teams Tabelle
+    - Alle historischen Mainz-Varianten wurden zu team_id = 1 konsolidiert
+    - Heimspiele: m.home_team_id = 1
+    - Auswärtsspiele: m.away_team_id = 1
+    - Alle FSV Spiele: (m.home_team_id = 1 OR m.away_team_id = 1)
+    - FSV Tore: g.team_id = 1 AND (g.event_type IS NULL OR g.event_type != 'own_goal')
+    - FSV Spieler in Aufstellung: ml.team_id = 1
+    - Gegner-Tore (gegen FSV): g.team_id != 1 UND Spiel hat FSV beteiligt
+    - NICHT mehr nötig: Subqueries für Mainz-Team-Varianten - alles ist jetzt team_id = 1!
+    
+    BEST PRACTICES:
+    - Nutze MATERIALIZED VIEWS wo möglich (100x schneller!)
+    - Für "Mainz 05" oder "FSV" Queries: Nutze team_id = 1 statt ILIKE auf Namen
+    - Für Spieler-Stats: Nutze player_statistics View statt komplexe JOINs
+    - Für Saison-Übersicht: Nutze season_summary View
+    - Vermeide unnötige Subqueries - nutze JOINs
+    - Für Zeitfenster: WHERE m.match_date BETWEEN '2020-01-01' AND '2024-12-31'
+
+  patterns: |
+    COMMON PATTERNS (Postgres - Optimized with Materialized Views):
+    
+    -- Top scorers (FAST - use materialized view!)
+    SELECT name as player_name, tore_gesamt as goals, spiele_gesamt as games
+    FROM public.player_statistics
+    WHERE tore_gesamt > 0
+    ORDER BY tore_gesamt DESC, spiele_gesamt DESC
+    LIMIT 200;
+    
+    -- Alternative: Top scorers from raw data (slower)
+    SELECT p.name, COUNT(DISTINCT g.goal_id) AS goals
+    FROM public.goals g 
+    JOIN public.players p ON g.player_id = p.player_id
+    WHERE g.team_id = 1 AND (g.event_type IS NULL OR g.event_type != 'own_goal')
+    GROUP BY p.player_id, p.name
+    ORDER BY goals DESC
+    LIMIT 200;
+
+    -- Matches against specific opponent
+    SELECT s.label as saison, c.name as wettbewerb, m.match_date, m.matchday,
+           t_home.name as heimmannschaft, t_away.name as gastmannschaft,
+           m.home_score, m.away_score,
+           CASE 
+             WHEN m.home_team_id = 1 AND m.home_score > m.away_score THEN 'Sieg'
+             WHEN m.away_team_id = 1 AND m.away_score > m.home_score THEN 'Sieg'
+             WHEN m.home_score = m.away_score THEN 'Unentschieden'
+             ELSE 'Niederlage'
+           END as ergebnis
+    FROM public.matches m
+    JOIN public.teams t_home ON m.home_team_id = t_home.team_id
+    JOIN public.teams t_away ON m.away_team_id = t_away.team_id
+    JOIN public.season_competitions sc ON m.season_competition_id = sc.season_competition_id
+    JOIN public.seasons s ON sc.season_id = s.season_id
+    JOIN public.competitions c ON sc.competition_id = c.competition_id
+    WHERE (m.home_team_id = 1 OR m.away_team_id = 1)
+      AND (t_home.name ILIKE '%Bayern%' OR t_away.name ILIKE '%Bayern%')
+    ORDER BY m.match_date DESC
+    LIMIT 200;
+
+    -- Season summary (FAST - use materialized view!)
+    SELECT saison, wettbewerb, spiele_gesamt, siege, unentschieden, niederlagen,
+           tore_geschossen, tore_kassiert, (tore_geschossen - tore_kassiert) as tordifferenz
+    FROM public.season_summary
+    WHERE saison = '2023-24'
+    ORDER BY wettbewerb;
+    
+    -- Player career stations
+    SELECT p.name, pc.team_name, pc.start_year, pc.end_year, pc.notes
+    FROM public.player_careers pc
+    JOIN public.players p ON pc.player_id = p.player_id
+    WHERE p.name ILIKE '%Klopp%'
+    ORDER BY COALESCE(pc.start_year, 0), COALESCE(pc.end_year, 0)
+    LIMIT 200;
+
+    -- Cards for a player (use cards table!)
+    SELECT p.name,
+           COUNT(DISTINCT CASE WHEN ca.card_type = 'yellow' THEN ca.card_id END) as yellow_cards,
+           COUNT(DISTINCT CASE WHEN ca.card_type = 'second_yellow' THEN ca.card_id END) as yellow_red_cards,
+           COUNT(DISTINCT CASE WHEN ca.card_type = 'red' THEN ca.card_id END) as red_cards
+    FROM public.cards ca
+    JOIN public.players p ON ca.player_id = p.player_id
+    WHERE p.name ILIKE '%Klopp%'
+    GROUP BY p.player_id, p.name
+    ORDER BY yellow_cards DESC
+    LIMIT 200;
+
+    -- Goals with assists (Tore mit Vorlagen)
+    SELECT p.name as torschuetze, m.match_date, t_opp.name as gegner,
+           g.minute, g.stoppage, g.event_type,
+           p_assist.name as vorbereiter
+    FROM public.goals g
+    JOIN public.players p ON g.player_id = p.player_id
+    JOIN public.matches m ON g.match_id = m.match_id
+    JOIN public.teams t_opp ON (CASE WHEN m.home_team_id = 1 THEN m.away_team_id ELSE m.home_team_id END) = t_opp.team_id
+    LEFT JOIN public.players p_assist ON g.assist_player_id = p_assist.player_id
+    WHERE g.team_id = 1 AND (g.event_type IS NULL OR g.event_type != 'own_goal')
+      AND p.name ILIKE '%Szalai%'
+    ORDER BY m.match_date DESC
+    LIMIT 200;
+    
+    -- Nachspielzeit-Tore (Stoppage time goals)
+    SELECT p.name, m.match_date, g.minute, g.stoppage,
+           (g.minute + COALESCE(g.stoppage, 0)) as total_minute
+    FROM public.goals g
+    JOIN public.players p ON g.player_id = p.player_id
+    JOIN public.matches m ON g.match_id = m.match_id
+    WHERE g.team_id = 1
+      AND (g.minute > 45 OR (g.minute = 45 AND g.stoppage > 0))
+    ORDER BY m.match_date DESC
+    LIMIT 200;
+    
+    -- Spieler mit meisten Einsätzen pro Saison
+    SELECT s.label as saison, p.name, COUNT(DISTINCT ml.match_id) as spiele
+    FROM public.match_lineups ml
+    JOIN public.players p ON ml.player_id = p.player_id
+    JOIN public.matches m ON ml.match_id = m.match_id
+    JOIN public.season_competitions sc ON m.season_competition_id = sc.season_competition_id
+    JOIN public.seasons s ON sc.season_id = s.season_id
+    WHERE ml.team_id = 1
+    GROUP BY s.season_id, s.label, p.player_id, p.name
+    HAVING COUNT(DISTINCT ml.match_id) > 10
+    ORDER BY s.label DESC, spiele DESC
+    LIMIT 200;
+
+answer:
+  system_instructions: |
+    Formuliere die Antwort auf Deutsch.
+    - Sei klar und informativ; ein leichter, humorvoller Ton ist erlaubt, aber nicht übertrieben.
+    - Erzähle die wichtigsten Fakten in 1–3 Sätzen.
+    - Wenn sinnvoll, liste die Top-Ergebnisse als kurze Stichpunkte (max. 5).
+    - Weisen Sie darauf hin, dass unten eine Tabelle/Diagramm angezeigt wird, falls viele Zeilen vorhanden sind.
+
+    Ausgabebeispiel:
+  Jürgen Klopp war der Spieler mit den meisten Minuten in den 90er Jahren (2400). Er lag damit deutlich vor Mandfred Wiemann (1900).
+
+  Wichtige Fakten:
+  - Längester Einsatz im Spiel gegen SV Meppen (100 Minuten)
+  - Im jahr 1995 mit dem kürzesten Einsatz im Spiel gegen den 1. FC Köln (1 Minute)

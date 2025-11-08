@@ -1,0 +1,55 @@
+.container {
+  margin-bottom: 1.5rem;
+}
+
+.header {
+  background: #F5F5F5;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.roundInfo {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.roundNumber {
+  color: #C8191E;
+}
+
+.totalRounds {
+  color: #374151;
+}
+
+.playerInfo {
+  font-size: 0.75rem;
+  color: #6B7280;
+}
+
+.question {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #374151;
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (min-width: 1024px) {
+  .question {
+    font-size: 1.5rem;
+  }
+}
+
+
+

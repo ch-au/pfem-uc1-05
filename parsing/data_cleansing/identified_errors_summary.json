@@ -1,0 +1,18 @@
+{
+  "total_errors": 1056,
+  "by_entity_type": {
+    "player": 1024,
+    "referee": 3,
+    "team": 24,
+    "coach": 5
+  },
+  "by_error_category": {
+    "invalid_pattern": 232,
+    "contains_comma": 385,
+    "goal_text": 299,
+    "trainer_name": 93,
+    "referee_name": 41,
+    "error_text": 5,
+    "too_long": 1
+  }
+}
