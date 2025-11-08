@@ -8,7 +8,8 @@ A TypeScript-based web application for FSV Mainz 05 football club featuring:
 ## Technology Stack
 - **Frontend**: React 19 + Vite + TypeScript (port 5000)
 - **Backend**: Node.js + Fastify + TypeScript (port 8000)
-- **AI**: Google Gemini API (gemini-2.0-flash-exp)
+- **AI**: OpenRouter API (anthropic/claude-3.5-sonnet) - 300+ models available
+- **Observability**: Langfuse for AI tracing and prompt management
 - **Database**: PostgreSQL (External Neon Database)
 - **Package Manager**: npm (converted from pnpm for Replit compatibility)
 
@@ -27,11 +28,12 @@ A TypeScript-based web application for FSV Mainz 05 football club featuring:
 ## Environment Variables
 Required secrets in Replit:
 - `DATABASE_URL`: External Neon PostgreSQL database connection string
-- `GEMINI_API_KEY`: Google Gemini API key for AI features
+- `OPENROUTER_API_KEY`: OpenRouter API key for AI features (https://openrouter.ai)
 
-Optional:
-- `LANGFUSE_PUBLIC_KEY`: For AI observability
-- `LANGFUSE_SECRET_KEY`: For AI observability
+Optional (but recommended):
+- `LANGFUSE_PUBLIC_KEY`: For AI observability and prompt management
+- `LANGFUSE_SECRET_KEY`: For AI observability and prompt management
+- `OPENROUTER_MODEL`: Override default model (default: `anthropic/claude-3.5-sonnet`)
 
 ## Development
 
@@ -56,11 +58,34 @@ Configured for Replit Autoscale deployment:
 - Runs backend API on port 8000
 - Frontend proxies API requests to backend
 
+## AI Model Configuration
+
+**OpenRouter Integration:**
+- Default model: `anthropic/claude-3.5-sonnet`
+- Alternative models available: 300+ models from OpenAI, Google, Anthropic, Meta, etc.
+- To switch models: Set `OPENROUTER_MODEL` environment variable to any model from https://openrouter.ai/models
+
+**Langfuse Prompt Management:**
+- Prompts can be managed in Langfuse dashboard when `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set
+- Falls back to local prompts in `prompts/fallback/` when Langfuse is not configured
+- Supports versioning and A/B testing of prompts
+
 ## Known Issues
-1. **AI Prompt Length**: The database schema context is too long for `gemini-2.0-flash-exp` model, causing some AI requests to fail with 400 errors. The app handles this gracefully with fallback error messages. Consider using a model with larger context or shortening the system prompt.
-2. **Package Manager**: Converted from pnpm to npm due to Replit environment compatibility issues.
+1. **Package Manager**: Converted from pnpm to npm due to Replit environment compatibility issues.
+2. **Database Schema**: Fallback prompts were updated to remove references to non-existent materialized views. Using base tables with JOINs instead.
 
 ## Recent Changes (2025-11-08)
+
+### OpenRouter Migration
+- **Migrated from Google Gemini to OpenRouter API** for greater model flexibility
+- Installed `@openrouter/sdk` TypeScript SDK
+- Created `OpenRouterService` to handle AI requests with structured outputs
+- Updated all AI prompt executions to use OpenRouter (chat SQL generator, answer formatter, quiz generators)
+- Configured default model: `anthropic/claude-3.5-sonnet`
+- Maintained full Langfuse tracing integration for AI observability
+- Updated fallback prompts to remove references to non-existent materialized views
+
+### Earlier Changes
 - Migrated from Python/FastAPI to Node.js/TypeScript stack
 - Configured for Replit environment (port 5000 for frontend)
 - Updated to use external Neon database via DATABASE_URL

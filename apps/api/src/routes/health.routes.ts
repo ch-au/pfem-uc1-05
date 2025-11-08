@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { postgresService } from '../services/database/postgres.service.js';
-import { geminiService } from '../services/ai/gemini.service.js';
+import { openRouterService } from '../services/ai/openrouter.service.js';
 import { langfuseService } from '../services/ai/langfuse.service.js';
 
 export async function healthRoutes(fastify: FastifyInstance) {
   // Basic health check
-  fastify.get('/health', async (request, reply) => {
+  fastify.get('/health', async (_request, reply) => {
     return reply.send({
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -13,26 +13,26 @@ export async function healthRoutes(fastify: FastifyInstance) {
   });
 
   // Detailed health check
-  fastify.get('/health/detailed', async (request, reply) => {
+  fastify.get('/health/detailed', async (_request, reply) => {
     const checks = {
       database: false,
-      gemini: false,
+      openrouter: false,
       langfuse: langfuseService.isActive(),
     };
 
     try {
       checks.database = await postgresService.healthCheck();
     } catch (error) {
-      fastify.log.error('Database health check failed:', error);
+      fastify.log.error({ error }, 'Database health check failed');
     }
 
     try {
-      checks.gemini = await geminiService.healthCheck();
+      checks.openrouter = await openRouterService.healthCheck();
     } catch (error) {
-      fastify.log.error('Gemini health check failed:', error);
+      fastify.log.error({ error }, 'OpenRouter health check failed');
     }
 
-    const allHealthy = checks.database && checks.gemini;
+    const allHealthy = checks.database && checks.openrouter;
 
     return reply.code(allHealthy ? 200 : 503).send({
       status: allHealthy ? 'healthy' : 'degraded',

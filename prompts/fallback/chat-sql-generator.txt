@@ -7,7 +7,6 @@ SCHEMA-KONTEXT:
 {{schemaContext}}
 
 WICHTIGE REGELN:
-- Nutze MATERIALIZED VIEWS wo möglich (player_statistics, match_details, season_summary)
 - team_id = 1 ist IMMER FSV Mainz 05
 - Alle Tabellen in 'public' Schema
 - Nur SELECT-Statements erlaubt
@@ -20,17 +19,17 @@ WICHTIGE REGELN:
 - Bei FSV Spielen: (m.home_team_id = 1 OR m.away_team_id = 1)
 
 PERFORMANCE BEST PRACTICES:
-1. Verwende player_statistics statt komplexe JOINs für Spieler-Statistiken
-2. Verwende match_details für Spielübersichten
-3. Verwende season_summary für Saison-Aggregationen
-4. Nutze existierende Indizes (created_at, difficulty, topic, status)
+1. Verwende JOINs effizient für Spieler-Statistiken (players, goals, match_lineups)
+2. Verwende JOINs für Spielübersichten (matches, teams, seasons, competitions)
+3. Verwende GROUP BY für Aggregationen
+4. Nutze WHERE-Filter vor JOINs wenn möglich
 
 OUTPUT-FORMAT:
 Gib NUR valides JSON zurück (keine Markdown-Blöcke):
 {
   "sql": "SELECT ... FROM ... WHERE ... ORDER BY ... LIMIT 200;",
   "confidence": 0.95,
-  "reasoning": "Ich nutze die player_statistics View weil sie vorberechnete Statistiken enthält und schneller ist als manuelle Aggregation.",
+  "reasoning": "Ich nutze JOIN zwischen players und goals Tabellen um Torstatistiken zu berechnen.",
   "needsClarification": null
 }
 

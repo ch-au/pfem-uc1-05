@@ -4,15 +4,15 @@ import cors from '@fastify/cors';
 import { chatRoutes } from '../../routes/chat.routes.js';
 import { quizRoutes } from '../../routes/quiz.routes.js';
 import { healthRoutes } from '../../routes/health.routes.js';
-import { createMockGeminiService } from '../mocks/gemini.mock.js';
+import { createMockOpenRouterService } from '../mocks/openrouter.mock.js';
 import { createMockLangfuseService } from '../mocks/langfuse.mock.js';
 
 // Mock AI services
-const mockGemini = createMockGeminiService();
+const mockOpenRouter = createMockOpenRouterService();
 const mockLangfuse = createMockLangfuseService();
 
-vi.mock('../../services/ai/gemini.service.js', () => ({
-  geminiService: mockGemini,
+vi.mock('../../services/ai/openrouter.service.js', () => ({
+  openRouterService: mockOpenRouter,
 }));
 
 vi.mock('../../services/ai/langfuse.service.js', () => ({
@@ -84,7 +84,7 @@ describe('API Endpoints (e2e)', () => {
       const json = response.json();
       expect(json.checks).toBeDefined();
       expect(json.checks.database).toBe(true);
-      expect(json.checks.gemini).toBe(true);
+      expect(json.checks.openrouter).toBe(true);
     });
   });
 

@@ -1,13 +1,13 @@
 import { vi } from 'vitest';
 
 /**
- * Mock responses for Gemini API
+ * Mock responses for OpenRouter API
  */
-export const mockGeminiResponses = {
+export const mockOpenRouterResponses = {
   sqlGeneration: {
     sql: 'SELECT p.name, COUNT(*) as goals FROM public.goals g JOIN public.players p ON g.player_id = p.player_id WHERE g.team_id = 1 GROUP BY p.player_id, p.name ORDER BY goals DESC LIMIT 1;',
     confidence: 0.95,
-    reasoning: 'Using player_statistics materialized view for better performance',
+    reasoning: 'Using JOIN between players and goals tables to calculate top scorer statistics',
     needsClarification: null,
   },
   answerFormatting: {
@@ -30,7 +30,7 @@ export const mockGeminiResponses = {
         category: 'top_scorers',
         difficulty: 'easy' as const,
         sqlQueryNeeded:
-          'SELECT p.name FROM public.player_statistics ORDER BY tore_gesamt DESC LIMIT 1;',
+          'SELECT p.name FROM public.players p JOIN public.goals g ON p.player_id = g.player_id WHERE g.team_id = 1 GROUP BY p.player_id, p.name ORDER BY COUNT(*) DESC LIMIT 1;',
         expectedAnswerType: 'string' as const,
         hint: undefined,
       },
@@ -55,30 +55,30 @@ export const mockGeminiResponses = {
 };
 
 /**
- * Create a mock Gemini service
+ * Create a mock OpenRouter service
  */
-export const createMockGeminiService = () => {
+export const createMockOpenRouterService = () => {
   return {
-    generateJSON: vi.fn().mockImplementation(async (prompt: string, options?: any) => {
+    generateJSON: vi.fn().mockImplementation(async (prompt: string, _options?: any) => {
       // Determine which response to return based on prompt content
       if (prompt.includes('SQL')) {
         return {
-          data: mockGeminiResponses.sqlGeneration,
+          data: mockOpenRouterResponses.sqlGeneration,
           usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
         };
       } else if (prompt.includes('Formuliere')) {
         return {
-          data: mockGeminiResponses.answerFormatting,
+          data: mockOpenRouterResponses.answerFormatting,
           usage: { promptTokens: 200, completionTokens: 100, totalTokens: 300 },
         };
       } else if (prompt.includes('Quiz-Fragen')) {
         return {
-          data: mockGeminiResponses.questionGeneration,
+          data: mockOpenRouterResponses.questionGeneration,
           usage: { promptTokens: 300, completionTokens: 200, totalTokens: 500 },
         };
       } else if (prompt.includes('Multiple-Choice')) {
         return {
-          data: mockGeminiResponses.answerGeneration,
+          data: mockOpenRouterResponses.answerGeneration,
           usage: { promptTokens: 150, completionTokens: 80, totalTokens: 230 },
         };
       }

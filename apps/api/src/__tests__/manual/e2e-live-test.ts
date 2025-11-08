@@ -4,7 +4,7 @@
  * Manual E2E Test with Real Services
  *
  * Tests the complete pipeline with:
- * - Real Gemini API calls
+ * - Real OpenRouter API calls
  * - Real PostgreSQL database
  * - Real Langfuse tracing
  *
@@ -15,7 +15,7 @@ import { ChatService } from '../../services/chat/chat.service.js';
 import { QuizService } from '../../services/quiz/quiz.service.js';
 import { PostgresService } from '../../services/database/postgres.service.js';
 import { langfuseService } from '../../services/ai/langfuse.service.js';
-import { geminiService } from '../../services/ai/gemini.service.js';
+import { openRouterService } from '../../services/ai/openrouter.service.js';
 
 // Colors for console output
 const colors = {
@@ -282,10 +282,10 @@ async function testSystemHealth() {
     const dbHealth = await postgresService.healthCheck();
     log(dbHealth ? colors.green : colors.red, 'DB', dbHealth ? 'Connected' : 'Failed');
 
-    // Gemini
-    log(colors.blue, 'CHECK', 'Gemini API...');
-    const geminiHealth = await geminiService.healthCheck();
-    log(geminiHealth ? colors.green : colors.red, 'GEMINI', geminiHealth ? 'OK' : 'Failed');
+    // OpenRouter
+    log(colors.blue, 'CHECK', 'OpenRouter API...');
+    const openRouterHealth = await openRouterService.healthCheck();
+    log(openRouterHealth ? colors.green : colors.red, 'OPENROUTER', openRouterHealth ? 'OK' : 'Failed');
 
     // Langfuse
     log(colors.blue, 'CHECK', 'Langfuse...');
@@ -303,7 +303,7 @@ async function testSystemHealth() {
 
     return {
       database: dbHealth,
-      gemini: geminiHealth,
+      openrouter: openRouterHealth,
       langfuse: langfuseActive,
       categoryCount: categories.length,
     };
@@ -319,7 +319,7 @@ async function main() {
   console.log(`${colors.bright}${colors.cyan}${'*'.repeat(80)}${colors.reset}\n`);
 
   console.log(`${colors.yellow}This test will:`);
-  console.log(`  • Make real API calls to Gemini (costs money!)`);
+  console.log(`  • Make real API calls to OpenRouter (costs money!)`);
   console.log(`  • Write to your PostgreSQL database`);
   console.log(`  • Send traces to Langfuse`);
   console.log(`  • Take ~30-60 seconds to complete${colors.reset}\n`);
@@ -327,7 +327,7 @@ async function main() {
   // Health check first
   const healthResult = await testSystemHealth();
 
-  if (!healthResult.database || !healthResult.gemini) {
+  if (!healthResult.database || !healthResult.openrouter) {
     log(colors.red, 'ABORT', 'System health check failed. Cannot proceed.');
     process.exit(1);
   }
@@ -352,7 +352,7 @@ async function main() {
 
   console.log(`${colors.bright}System Health:${colors.reset}`);
   console.log(`  Database: ${healthResult.database ? '✅' : '❌'}`);
-  console.log(`  Gemini API: ${healthResult.gemini ? '✅' : '❌'}`);
+  console.log(`  OpenRouter API: ${healthResult.openrouter ? '✅' : '❌'}`);
   console.log(`  Langfuse: ${healthResult.langfuse ? '✅' : '⚠️  (using local prompts)'}`);
   console.log(`  Quiz Categories: ${healthResult.categoryCount}\n`);
 
