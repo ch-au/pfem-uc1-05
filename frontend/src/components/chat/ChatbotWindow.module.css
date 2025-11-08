@@ -1,0 +1,128 @@
+.chatbotWindow {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #FFFFFF;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.messagesContainer {
+  flex: 1;
+  overflow-y: auto;
+  background: linear-gradient(to bottom, #F9FAFB, #F3F4F6);
+  position: relative;
+}
+
+.messagesContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messagesContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messagesContainer::-webkit-scrollbar-thumb {
+  background: rgba(200, 25, 30, 0.3);
+  border-radius: 4px;
+}
+
+.messagesContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 25, 30, 0.5);
+}
+
+.messagesList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  min-height: 100%;
+}
+
+.inputContainer {
+  background: #FFFFFF;
+  border-top: 1px solid #E5E7EB;
+  padding: 1rem 1.5rem;
+}
+
+.errorBanner {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  border-top: 2px solid #EF4444;
+  animation: slideInBottom 0.3s ease-out;
+  z-index: 20;
+}
+
+@keyframes slideInBottom {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.errorText {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #DC2626;
+}
+
+.errorText::before {
+  content: '⚠️';
+  font-size: 1rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .chatbotWindow {
+    border-radius: 0;
+    height: 100vh;
+  }
+
+  .messagesList {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .inputContainer {
+    padding: 0.875rem 1rem;
+  }
+
+  .errorBanner {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .messagesList {
+    padding: 1.25rem;
+  }
+}
+
+/* Desktop - Center and max width */
+@media (min-width: 1025px) {
+  .chatbotWindow {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .errorBanner {
+    animation: none;
+  }
+}
