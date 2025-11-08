@@ -11,15 +11,20 @@ export interface ChatMessage {
 }
 
 export interface ChatResponse {
-  answer: string;
-  sources?: Array<{
-    sql?: string;
-    table?: string;
-    [key: string]: unknown;
-  }>;
-  confidence?: number;
-  is_data_query: boolean;
-  sql_query?: string;
+  message_id: string;
+  role: 'assistant';
+  content: string;
+  metadata?: {
+    sql_query?: string;
+    sql_execution_time_ms?: number;
+    sql_result_count?: number;
+    confidence_score?: number;
+    visualization_type?: string;
+    highlights?: string[];
+    follow_up_questions?: string[];
+  };
+  langfuse_trace_id?: string;
+  created_at: string;
 }
 
 export interface ChatSessionRequest {

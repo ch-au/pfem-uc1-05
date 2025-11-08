@@ -63,26 +63,11 @@ export const useChatSession = () => {
       // Add assistant response
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: response.answer,
-        timestamp: new Date().toISOString(),
-        metadata: {
-          sources: response.sources,
-          confidence: response.confidence,
-          is_data_query: response.is_data_query,
-        },
+        content: response.content,
+        timestamp: response.created_at,
+        metadata: response.metadata,
       };
       addMessage(assistantMessage);
-
-      // Add system message if SQL query was used
-      if (response.sql_query && response.sources && response.sources.length > 0) {
-        const sqlPreview = response.sql_query.substring(0, 80);
-        const systemMessage: ChatMessage = {
-          role: 'system',
-          content: `SQL: ${sqlPreview}...`,
-          timestamp: new Date().toISOString(),
-        };
-        addMessage(systemMessage);
-      }
     } catch (err) {
       const errorMessage: ChatMessage = {
         role: 'error',

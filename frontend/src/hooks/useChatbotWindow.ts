@@ -16,24 +16,6 @@ export interface UseChatbotWindowReturn {
   handleFeedback: (messageId: string, feedback: 'positive' | 'negative') => void;
 }
 
-const contextualSuggestions: Record<string, string[]> = {
-  default: [
-    'Mehr über die Vereinsgeschichte',
-    'Legendäre Spieler',
-    'Größte Erfolge',
-  ],
-  history: [
-    'Wann war die Gründung?',
-    'Erste Bundesliga-Saison',
-    'Historische Meilensteine',
-  ],
-  players: [
-    'Beste Torschützen',
-    'Längste Vereinszugehörigkeit',
-    'Trainer-Karrieren',
-  ],
-};
-
 export const useChatbotWindow = (): UseChatbotWindowReturn => {
   const {
     sessionId,
@@ -122,14 +104,9 @@ export const useChatbotWindow = (): UseChatbotWindowReturn => {
 
         const assistantMessage: ChatMessage = {
           role: 'assistant',
-          content: response.answer,
-          timestamp: new Date().toISOString(),
-          metadata: {
-            sources: response.sources,
-            confidence: response.confidence,
-            sql_query: response.sql_query,
-            is_data_query: response.is_data_query,
-          },
+          content: response.content,
+          timestamp: response.created_at,
+          metadata: response.metadata,
         };
 
         addMessage(assistantMessage);

@@ -2,13 +2,12 @@ import axios from 'axios';
 import type {
   ChatMessage,
   ChatResponse,
-  ChatSessionRequest,
   ChatSessionResponse,
   ChatHistoryResponse,
-} from '../../types/api';
+} from '../types/api';
 
 const api = axios.create({
-  baseURL: '/',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -40,7 +39,7 @@ export const chatService = {
   async sendMessage(sessionId: string, message: string): Promise<ChatResponse> {
     const response = await api.post<ChatResponse>('/chat/message', {
       session_id: sessionId,
-      message,
+      content: message,
     });
     return response.data;
   },
@@ -49,7 +48,7 @@ export const chatService = {
    * Get chat history for a session
    */
   async getHistory(sessionId: string): Promise<ChatMessage[]> {
-    const response = await api.get<ChatHistoryResponse>(`/chat/history/${sessionId}`);
+    const response = await api.get<ChatHistoryResponse>(`/chat/session/${sessionId}`);
     return response.data.messages;
   },
 };
