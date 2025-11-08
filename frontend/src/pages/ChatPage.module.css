@@ -2,27 +2,22 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem 1.25rem 5rem;
-  min-height: calc(100vh - 200px);
-}
-
-.chatCard {
-  height: calc(100vh - 280px);
-  min-height: 500px;
-}
-
-.chatContainer {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+  height: calc(100vh - 200px);
+  min-height: 600px;
 }
 
 @media (min-width: 768px) {
   .chatPage {
     padding: 2rem 2rem 2rem;
+    height: calc(100vh - 180px);
   }
+}
 
-  .chatCard {
-    height: calc(100vh - 200px);
+@media (max-width: 640px) {
+  .chatPage {
+    padding: 0;
+    height: calc(100vh - 140px);
+    min-height: auto;
   }
 }
 
