@@ -36,7 +36,7 @@ await fastify.register(chatRoutes, { prefix: '/api' });
 await fastify.register(quizRoutes, { prefix: '/api' });
 
 // Global error handler
-fastify.setErrorHandler((error, request, reply) => {
+fastify.setErrorHandler((error, _request, reply) => {
   fastify.log.error(error);
 
   const statusCode = error.statusCode ?? 500;
@@ -60,7 +60,7 @@ const gracefulShutdown = async () => {
     fastify.log.info('Shutdown complete');
     process.exit(0);
   } catch (error) {
-    fastify.log.error('Error during shutdown:', error);
+    fastify.log.error({ error }, 'Error during shutdown');
     process.exit(1);
   }
 };

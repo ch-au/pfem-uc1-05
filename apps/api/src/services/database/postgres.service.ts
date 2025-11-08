@@ -25,7 +25,7 @@ export class PostgresService {
   /**
    * Execute a query
    */
-  async query<T = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
+  async query<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<pg.QueryResult<T>> {
     const start = Date.now();
     try {
       const result = await this.pool.query<T>(text, params);
@@ -45,7 +45,7 @@ export class PostgresService {
   /**
    * Execute a query and return the first row
    */
-  async queryOne<T = any>(text: string, params?: any[]): Promise<T | null> {
+  async queryOne<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<T | null> {
     const result = await this.query<T>(text, params);
     return result.rows[0] ?? null;
   }
@@ -53,7 +53,7 @@ export class PostgresService {
   /**
    * Execute a query and return all rows
    */
-  async queryMany<T = any>(text: string, params?: any[]): Promise<T[]> {
+  async queryMany<T extends pg.QueryResultRow = any>(text: string, params?: any[]): Promise<T[]> {
     const result = await this.query<T>(text, params);
     return result.rows;
   }
