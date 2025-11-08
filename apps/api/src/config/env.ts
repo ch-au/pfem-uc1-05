@@ -13,10 +13,10 @@ const envSchema = z.object({
   // Server
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   API_PORT: z.string().default('8000').transform(Number),
-  API_HOST: z.string().default('0.0.0.0'),
+  API_HOST: z.string().default('localhost'),
 
   // Database
-  DB_URL: z.string().url('Database URL is required'),
+  DATABASE_URL: z.string().url('Database URL is required'),
 
   // Gemini API
   GEMINI_API_KEY: z.string().min(1, 'Gemini API key is required'),
