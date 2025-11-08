@@ -6,6 +6,7 @@ export interface GeminiGenerateOptions {
   temperature?: number;
   maxOutputTokens?: number;
   responseFormat?: 'json' | 'text';
+  responseSchema?: Record<string, any>;
 }
 
 export class GeminiService {
@@ -36,6 +37,9 @@ export class GeminiService {
       temperature: options.temperature ?? 0.7,
       maxOutputTokens: options.maxOutputTokens ?? 2000,
       responseMimeType: 'application/json',
+      ...(options.responseSchema && {
+        responseSchema: options.responseSchema,
+      }),
     };
 
     const chatSession = model.startChat({

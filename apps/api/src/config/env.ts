@@ -20,7 +20,7 @@ const envSchema = z.object({
 
   // Gemini API
   GEMINI_API_KEY: z.string().min(1, 'Gemini API key is required'),
-  GEMINI_MODEL: z.string().default('gemini-2.0-flash-exp'),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
 
   // Langfuse (optional - will use fallback prompts if not set)
   LANGFUSE_PUBLIC_KEY: z.string().optional(),
