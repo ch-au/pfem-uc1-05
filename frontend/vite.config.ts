@@ -5,25 +5,18 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
+    host: '0.0.0.0',
+    port: 5000,
+    strictPort: true,
+    hmr: {
+      clientPort: 5000,
+    },
     proxy: {
-      '/chat': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/quiz': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/query': {
+      '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-      },
-      '/schema': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
