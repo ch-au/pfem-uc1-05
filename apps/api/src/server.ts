@@ -78,7 +78,7 @@ const start = async () => {
 
     fastify.log.info(`🚀 API Server running at http://${env.API_HOST}:${env.API_PORT}`);
     fastify.log.info(`📊 Health check: http://${env.API_HOST}:${env.API_PORT}/health`);
-    fastify.log.info(`🔥 Gemini Model: ${env.GEMINI_MODEL}`);
+    fastify.log.info(`🤖 OpenRouter Model: ${env.OPENROUTER_MODEL}`);
     fastify.log.info(`📡 Langfuse: ${langfuseService.isActive() ? 'Enabled' : 'Disabled (using local prompts)'}`);
   } catch (error) {
     fastify.log.error(error);

@@ -18,9 +18,9 @@ const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().url('Database URL is required'),
 
-  // Gemini API
-  GEMINI_API_KEY: z.string().min(1, 'Gemini API key is required'),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  // OpenRouter API (primary AI provider)
+  OPENROUTER_API_KEY: z.string().min(1, 'OpenRouter API key is required'),
+  OPENROUTER_MODEL: z.string().default('anthropic/claude-3.5-sonnet'),
 
   // Langfuse (optional - will use fallback prompts if not set)
   LANGFUSE_PUBLIC_KEY: z.string().optional(),
@@ -31,6 +31,7 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   COHERE_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

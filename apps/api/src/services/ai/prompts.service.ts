@@ -2,7 +2,8 @@ import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { langfuseService } from './langfuse.service.js';
-import { geminiService } from './gemini.service.js';
+import { openRouterService } from './openrouter.service.js';
+import { env } from '../../config/env.js';
 import type {
   SQLGeneratorInput,
   SQLGeneratorOutput,
@@ -106,19 +107,20 @@ export class PromptsService {
 
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
-      name: 'gemini-sql-generation',
-      model: 'gemini-2.0-flash-exp',
+      name: 'openrouter-sql-generation',
+      model: env.OPENROUTER_MODEL,
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call Gemini
+    // Call OpenRouter
     const startTime = Date.now();
-    const { data, usage } = await geminiService.generateJSON<SQLGeneratorOutput>(
+    const { data, usage } = await openRouterService.generateJSON<SQLGeneratorOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
         temperature: 0.1,
         maxOutputTokens: 2000,
+        responseFormat: 'json',
       }
     );
     const latency = Date.now() - startTime;
@@ -168,19 +170,20 @@ export class PromptsService {
 
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
-      name: 'gemini-answer-formatting',
-      model: 'gemini-2.0-flash-exp',
+      name: 'openrouter-answer-formatting',
+      model: env.OPENROUTER_MODEL,
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call Gemini
+    // Call OpenRouter
     const startTime = Date.now();
-    const { data, usage } = await geminiService.generateJSON<AnswerFormatterOutput>(
+    const { data, usage } = await openRouterService.generateJSON<AnswerFormatterOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
         temperature: 0.7,
         maxOutputTokens: 1500,
+        responseFormat: 'json',
       }
     );
     const latency = Date.now() - startTime;
@@ -234,19 +237,20 @@ export class PromptsService {
 
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
-      name: 'gemini-question-generation',
-      model: 'gemini-2.0-flash-exp',
+      name: 'openrouter-question-generation',
+      model: env.OPENROUTER_MODEL,
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call Gemini
+    // Call OpenRouter
     const startTime = Date.now();
-    const { data, usage } = await geminiService.generateJSON<QuestionGeneratorOutput>(
+    const { data, usage } = await openRouterService.generateJSON<QuestionGeneratorOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
         temperature: 0.8,
         maxOutputTokens: 3000,
+        responseFormat: 'json',
       }
     );
     const latency = Date.now() - startTime;
@@ -296,19 +300,20 @@ export class PromptsService {
 
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
-      name: 'gemini-answer-generation',
-      model: 'gemini-2.0-flash-exp',
+      name: 'openrouter-answer-generation',
+      model: env.OPENROUTER_MODEL,
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call Gemini
+    // Call OpenRouter
     const startTime = Date.now();
-    const { data, usage } = await geminiService.generateJSON<AnswerGeneratorOutput>(
+    const { data, usage } = await openRouterService.generateJSON<AnswerGeneratorOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
         temperature: 0.6,
         maxOutputTokens: 1000,
+        responseFormat: 'json',
       }
     );
     const latency = Date.now() - startTime;
