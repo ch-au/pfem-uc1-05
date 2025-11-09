@@ -69,7 +69,9 @@ export class OpenRouterService {
     try {
       data = JSON.parse(contentStr) as T;
     } catch (error) {
-      throw new Error(`Failed to parse OpenRouter JSON response: ${contentStr.substring(0, 200)}...`);
+      // Log full response for debugging
+      console.error('Full OpenRouter response that failed to parse:', contentStr);
+      throw new Error(`Failed to parse OpenRouter JSON response. Check logs for full response. Preview: ${contentStr.substring(0, 200)}...`);
     }
 
     // Extract usage metadata

@@ -5,48 +5,52 @@ FSV Mainz 05 Football Database Schema (PostgreSQL):
 
 MAIN TABLES:
 - teams: Alle Mannschaften inkl. FSV Mainz (team_id=1) und Gegner
-  Columns: team_id (UUID), name (TEXT)
+  Columns: team_id (INT), name (TEXT), normalized_name (TEXT), team_type (TEXT)
 
 - players: Spieler-Stammdaten
-  Columns: player_id (UUID), name (TEXT), birth_date (DATE), nationality (TEXT), primary_position (TEXT)
+  Columns: player_id (INT), name (TEXT), normalized_name (TEXT), birth_date (DATE), 
+           birth_place (TEXT), height_cm (INT), weight_kg (INT), primary_position (TEXT), nationality (TEXT)
 
 - matches: Spiele
-  Columns: match_id (UUID), match_date (DATE), home_team_id (UUID), away_team_id (UUID),
-           home_score (INT), away_score (INT), season_competition_id (UUID), matchday (INT)
+  Columns: match_id (INT), season_competition_id (INT), match_date (DATE), 
+           home_team_id (INT), away_team_id (INT), home_score (INT), away_score (INT),
+           halftime_home (INT), halftime_away (INT), matchday (INT), round_name (TEXT),
+           venue (TEXT), attendance (INT), referee_id (INT)
 
 - goals: Tore
-  Columns: goal_id (UUID), match_id (UUID), player_id (UUID), assist_player_id (UUID),
-           team_id (UUID), minute (INT), stoppage (INT), event_type (TEXT: NULL, 'penalty', 'own_goal')
+  Columns: goal_id (INT), match_id (INT), player_id (INT), assist_player_id (INT),
+           team_id (INT), minute (INT), stoppage (INT), score_home (INT), score_away (INT),
+           event_type (TEXT: NULL, 'penalty', 'own_goal')
 
 - cards: Karten
-  Columns: card_id (UUID), match_id (UUID), player_id (UUID), team_id (UUID),
+  Columns: card_id (INT), match_id (INT), player_id (INT), team_id (INT),
            card_type (TEXT: 'yellow', 'red', 'second_yellow'), minute (INT)
 
 - match_lineups: Aufstellungen
-  Columns: lineup_id (UUID), match_id (UUID), player_id (UUID), team_id (UUID),
+  Columns: lineup_id (INT), match_id (INT), player_id (INT), team_id (INT),
            is_starter (BOOLEAN), minute_on (INT), minute_off (INT), shirt_number (INT)
 
 - match_substitutions: Einwechslungen
-  Columns: substitution_id (UUID), match_id (UUID), player_on_id (UUID), player_off_id (UUID),
+  Columns: substitution_id (INT), match_id (INT), player_on_id (INT), player_off_id (INT),
            minute (INT), stoppage (INT)
 
 - seasons: Saisonen
-  Columns: season_id (UUID), label (TEXT: '2023-24'), start_year (INT), end_year (INT)
+  Columns: season_id (INT), label (TEXT: '2023-24'), start_year (INT), end_year (INT), team_id (INT)
 
 - season_competitions: Verknüpfung Saison-Wettbewerb
-  Columns: season_competition_id (UUID), season_id (UUID), competition_id (UUID)
+  Columns: season_competition_id (INT), season_id (INT), competition_id (INT)
 
 - competitions: Wettbewerbe
-  Columns: competition_id (UUID), name (TEXT: 'Bundesliga', 'DFB-Pokal', etc.)
+  Columns: competition_id (INT), name (TEXT: 'Bundesliga', 'DFB-Pokal', etc.)
 
 - coaches: Trainer
-  Columns: coach_id (UUID), name (TEXT)
+  Columns: coach_id (INT), name (TEXT), normalized_name (TEXT)
 
 - coach_careers: Trainer-Karrierestationen
-  Columns: career_id (UUID), coach_id (UUID), team_id (UUID), start_year (INT), end_year (INT)
+  Columns: career_id (INT), coach_id (INT), team_name (TEXT), start_date (TEXT), end_date (TEXT), role (TEXT)
 
 - player_careers: Spieler-Karrierestationen
-  Columns: career_id (UUID), player_id (UUID), team_name (TEXT), start_year (INT), end_year (INT)
+  Columns: career_id (INT), player_id (INT), team_name (TEXT), start_year (INT), end_year (INT), team_id (INT)
 
 WICHTIGE FILTER:
 - FSV Mainz 05 hat IMMER team_id = 1
