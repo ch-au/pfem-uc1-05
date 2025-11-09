@@ -37,13 +37,28 @@ FRAGEN-QUALITÄT-KRITERIEN:
 ✓ Zeitliche Eingrenzung wenn nötig
 
 SQL QUERY ANFORDERUNGEN:
-- ⚠️ KRITISCH: Verwende NUR SELECT-Statements! Keine INSERT, UPDATE, DELETE oder andere Statements!
+⚠️ ABSOLUT KRITISCH - NUR SELECT-STATEMENTS ERLAUBT:
+- Du DARFST NUR "SELECT" verwenden - das ist ZWINGEND!
+- VERBOTEN: INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, WITH, CTE
+- VERBOTEN: Jegliche Datenänderung oder Schema-Änderung
+- Wenn du unsicher bist: Verwende nur einfache SELECT FROM WHERE
+
+Beispiele ERLAUBTER Queries:
+✓ SELECT COUNT(*) FROM goals WHERE team_id = 1
+✓ SELECT p.name FROM players p JOIN goals g ON p.player_id = g.player_id WHERE g.team_id = 1 ORDER BY g.minute LIMIT 1
+✓ SELECT SUM(home_score) FROM matches WHERE home_team_id = 1
+
+Beispiele VERBOTENER Queries:
+✗ INSERT INTO players VALUES (...)
+✗ UPDATE matches SET home_score = ...
+✗ WITH cte AS (SELECT ...) SELECT FROM cte
+✗ CREATE TEMPORARY TABLE ...
+
+Zusätzliche Anforderungen:
 - Muss ein eindeutiges Ergebnis liefern (nicht mehrere mögliche Antworten)
 - Nutze COUNT, SUM, MAX, MIN für Zahlen-Fragen
 - Nutze ORDER BY + LIMIT 1 für "beste/meiste/höchste" Fragen
-- Teste gedanklich: Gibt die Query genau EIN eindeutiges Ergebnis?
-- Beispiel gültige Query: "SELECT COUNT(*) FROM goals WHERE team_id = 1"
-- Beispiel UNGÜLTIGE Query: "INSERT INTO ...", "UPDATE ...", "DELETE FROM ..."
+- Vermeide DISTINCT wenn möglich (kann zu ORDER BY Problemen führen)
 
 OUTPUT-FORMAT:
 Gib NUR valides JSON zurück (keine Markdown-Blöcke):

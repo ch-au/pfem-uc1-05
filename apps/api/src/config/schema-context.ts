@@ -46,8 +46,11 @@ MAIN TABLES:
 - coaches: Trainer
   Columns: coach_id (INT), name (TEXT), normalized_name (TEXT)
 
-- coach_careers: Trainer-Karrierestationen
+- coach_careers: Trainer-Karrierestationen  
   Columns: career_id (INT), coach_id (INT), team_name (TEXT), start_date (TEXT), end_date (TEXT), role (TEXT)
+
+- match_coaches: Trainer bei Spielen
+  Columns: match_coach_id (INT), match_id (INT), team_id (INT), coach_id (INT), role (TEXT)
 
 - player_careers: Spieler-Karrierestationen
   Columns: career_id (INT), player_id (INT), team_name (TEXT), start_year (INT), end_year (INT), team_id (INT)
