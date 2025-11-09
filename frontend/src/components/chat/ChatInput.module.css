@@ -6,10 +6,12 @@
   padding: 1rem;
   border-radius: 1rem;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  width: 100%;
 }
 
 .input {
   flex: 1;
+  min-width: 0;
 }
 
 .sendButton {
