@@ -48,17 +48,6 @@ MAIN TABLES:
 - player_careers: Spieler-Karrierestationen
   Columns: career_id (UUID), player_id (UUID), team_name (TEXT), start_year (INT), end_year (INT)
 
-MATERIALIZED VIEWS (⚡ SCHNELL - bevorzugt nutzen!):
-- player_statistics: Vorberechnete Spieler-Stats
-  Columns: player_id, name, spiele_gesamt, tore_gesamt, vorlagen_gesamt, gelbe_karten, rote_karten
-
-- match_details: Vollständige Spieldetails
-  Columns: match_id, saison, wettbewerb, heimmannschaft, gastmannschaft, heimtore, gasttore, fsv_ergebnis
-
-- season_summary: Saison-Aggregationen
-  Columns: saison, wettbewerb, spiele_gesamt, siege, unentschieden, niederlagen,
-           tore_geschossen, tore_kassiert
-
 WICHTIGE FILTER:
 - FSV Mainz 05 hat IMMER team_id = 1
 - Heimspiele: m.home_team_id = 1
@@ -68,11 +57,12 @@ WICHTIGE FILTER:
 - Gegner-Tore: g.team_id != 1 (in Spielen wo FSV beteiligt)
 
 PERFORMANCE BEST PRACTICES:
-1. PREFER materialized views für Aggregationen
+1. Use JOINs efficiently for aggregations
 2. Use table aliases: p=players, m=matches, g=goals, t=teams, s=seasons, etc.
 3. Add LIMIT 200 to all queries
 4. Use ORDER BY for predictable results
 5. Avoid DISTINCT unless necessary
+6. Use WHERE filters before JOINs when possible
 
 KEY STATISTICS:
 - 109 Saisonen, 2,774 Spiele, 8,136 Spieler, 6,288 Tore
