@@ -104,10 +104,24 @@ export const useQuizGame = () => {
         pointsEarned: result.points_earned,
       });
 
-      // Move to next player or show next round button
+      // Move to next player or advance to next round
       const nextPlayerIndex = currentPlayerIndex + 1;
       if (nextPlayerIndex >= playerNames.length) {
         setCurrentPlayerIndex(0);
+        // All players have answered, automatically advance to next round after showing result
+        setTimeout(async () => {
+          try {
+            const roundResult = await quizService.nextRound(gameId);
+            if (roundResult.status === 'completed') {
+              const leaderboardData = await quizService.getLeaderboard(gameId);
+              setLeaderboard(leaderboardData.leaderboard);
+            } else {
+              await loadQuestion();
+            }
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to advance round');
+          }
+        }, 2000); // Wait 2 seconds to show result before advancing
       } else {
         setCurrentPlayerIndex(nextPlayerIndex);
       }
