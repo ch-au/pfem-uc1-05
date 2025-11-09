@@ -81,7 +81,7 @@ export interface QuizAnswerResponse {
 
 export interface QuizGameState {
   game_id: string;
-  status: 'created' | 'started' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed';
   topic?: string;
   difficulty: string;
   num_rounds: number;

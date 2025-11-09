@@ -166,13 +166,13 @@ export const useQuizGame = () => {
       
       let state = await quizService.getGameState(existingGameId);
       
-      if (state.status === 'created') {
+      if (state.status === 'pending') {
         state = await quizService.startGame(existingGameId);
         setGameState(state);
         const question = await quizService.getCurrentQuestion(existingGameId);
         setCurrentQuestion(question);
         setLeaderboard([]);
-      } else if (state.status === 'started') {
+      } else if (state.status === 'in_progress') {
         setGameState(state);
         const question = await quizService.getCurrentQuestion(existingGameId);
         setCurrentQuestion(question);
