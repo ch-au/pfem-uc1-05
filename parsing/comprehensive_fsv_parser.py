@@ -492,19 +492,30 @@ class DatabaseManager:
         # Erkenne alle Mainz-Team-Varianten und normalisiere sie
         mainz_patterns = [
             'mainzer fc hassia',
+            'mainzer fußballclub hassia',
+            'mainzer fussballverein hassia',
+            'mainzer fußball- und sportverein',
+            'mainzer fußball und sportverein',
             'mainzer fsv',
             'mainzer fv',
+            '1. mainzer fc',
+            '1. mainzer fv',
+            '1. mainzer fsv',
             'viktoria 05 mainz',
             'reichsbahn',  # Erfasst "Reichsbahn TSV Mainz 05" und "Reichsbahn-TSV Mainz 05"
             'luftwaffe-sv mainz',
             'mainzer tv',
             'spvgg weisenau mainz',
         ]
-        
+
         # Prüfe ob es ein Mainz-Team ist
-        is_mainz_team = any(pattern in name_lower for pattern in mainz_patterns) or \
-                       (name_lower.startswith('1.') and 'mainz' in name_lower and '05' in name_lower) or \
-                       ('mainz' in name_lower and '05' in name_lower and ('tsv' in name_lower or 'fsv' in name_lower))
+        # CRITICAL FIX: Also check for standalone "FSV" (modern Bundesliga HTML uses this)
+        is_mainz_team = (
+            any(pattern in name_lower for pattern in mainz_patterns) or
+            (name_lower.startswith('1.') and 'mainz' in name_lower and '05' in name_lower) or
+            ('mainz' in name_lower and '05' in name_lower and ('tsv' in name_lower or 'fsv' in name_lower)) or
+            (name_lower == 'fsv')  # Standalone "FSV" = 1. FSV Mainz 05
+        )
         
         if is_mainz_team:
             name_clean = MAINZ_TEAM_KEY

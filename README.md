@@ -1,6 +1,9 @@
-# FSV Mainz 05 SQL Assistant & Archive
+# FSV Mainz 05 Database & Archive
+**Status:** ✅ Production Ready | **Last Updated:** 2025-11-09
 
-FastAPI app that lets you ask natural-language questions about the FSV Mainz 05 database and returns SQL + results, with configurable prompts loaded from YAML. Includes parsers and notebooks to rebuild or explore the historical archive.
+A comprehensive database of **FSV Mainz 05** football data from **1905-2025** (3,305 matches, 10,094 players) with FastAPI backend, React frontend, and natural language SQL querying.
+
+**🎯 New here? Start with:** [QUICK_START.md](QUICK_START.md)
 
 ## 🗂️ Structure
 
@@ -88,11 +91,25 @@ See `data_cleansing/` for data quality scripts and analysis.
 
 ## 📚 Documentation
 
-- **Parser**: `docs/PARSER_IMPROVEMENTS.md` - Complete parser documentation
-- **Schema**: `docs/SCHEMA_DOCUMENTATION.md` - Database schema
+### **Start Here**
+- 📖 [QUICK_START.md](QUICK_START.md) - Get started in 5 minutes
+- 📊 [docs/SCHEMA_DOCUMENTATION_2025.md](docs/SCHEMA_DOCUMENTATION_2025.md) - Complete schema reference (Nov 2025)
+- 🚀 [docs/MATERIALIZED_VIEWS_REFERENCE.md](docs/MATERIALIZED_VIEWS_REFERENCE.md) - Fast query guide
+- 📝 [COMPLETE_SUMMARY.md](COMPLETE_SUMMARY.md) - Full project summary
+
+### **Technical Details**
+- **Parser**: `docs/PARSER_IMPROVEMENTS.md` - Parser documentation
 - **Performance**: `docs/PERFORMANCE_OPTIMIZATION.md` - Optimization guide
+- **Migrations**: `database/migrations/` - Schema migration history
 - **Testing**: `docs/TESTING_GUIDE.md` - How to test
 - **Changelog**: `docs/CHANGELOG.md` - Version history
+
+### **Recent Updates (Nov 2025)**
+- ✅ Fixed duplicate team issue (Bundesliga data now visible)
+- ✅ Added unique constraints (prevent duplicate events)
+- ✅ Added foreign keys (enable table joins)
+- ✅ Created 4 materialized views (100-400x speedup)
+- ✅ Updated parser (recognizes "FSV" = "1. FSV Mainz 05")
 
 ## 🧪 Testing
 

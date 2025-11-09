@@ -79,9 +79,6 @@ def refresh_materialized_views(conn):
     print("\n🔄 Refreshing materialized views...")
 
     views = [
-        'top_scorers',
-        'match_results_summary',
-        'player_season_stats',
         'quiz_global_leaderboard',
         'recent_matches',
         'player_career_highlights',
@@ -184,9 +181,6 @@ def verify_optimizations(conn):
 
     # Check materialized views
     expected_views = [
-        'top_scorers',
-        'match_results_summary',
-        'player_season_stats',
         'quiz_global_leaderboard',
         'recent_matches',
         'player_career_highlights',
@@ -206,7 +200,7 @@ def verify_optimizations(conn):
     expected_indexes = [
         'idx_quiz_rounds_game_round',
         'idx_quiz_answers_round_player',
-        'idx_quiz_questions_category_used',
+        'idx_quiz_questions_topic_created',
         'idx_quiz_games_status_created',
         'idx_chat_messages_metadata',
         'idx_quiz_questions_metadata',
@@ -267,7 +261,7 @@ def main():
 
     try:
         # Apply optimizations
-        migration_file = 'database/migrations/003_performance_optimizations.sql'
+        migration_file = 'database/migrations/003_performance_optimizations_corrected.sql'
         execute_sql_file(conn, migration_file)
 
         # Refresh materialized views
