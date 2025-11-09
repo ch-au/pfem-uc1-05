@@ -73,12 +73,18 @@ export const useQuizGame = () => {
   const submitAnswer = async (answer: string) => {
     if (!gameId || !currentQuestion || isLoading) return;
 
+    const playerNames = gameState?.players || [];
+    
+    if (playerNames.length === 0) {
+      setError('Dieses Quiz hat keine Spieler. Bitte starte ein neues Quiz.');
+      return;
+    }
+
     const startTime = Date.now();
     setSelectedAnswer(answer);
     setLoading(true);
 
     try {
-      const playerNames = gameState?.players || [];
       const currentPlayer = playerNames[currentPlayerIndex] || playerNames[0];
 
       const answerData: QuizAnswer = {

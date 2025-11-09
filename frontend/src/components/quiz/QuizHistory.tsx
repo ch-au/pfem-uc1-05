@@ -22,7 +22,9 @@ const difficultyLabels: Record<string, string> = {
 };
 
 export const QuizHistory: React.FC<QuizHistoryProps> = ({ games, onSelectGame }) => {
-  if (games.length === 0) {
+  const validGames = games.filter(game => game.players && game.players.length > 0);
+
+  if (validGames.length === 0) {
     return (
       <div className={styles.container}>
         <h3 className={styles.title}>
@@ -54,7 +56,7 @@ export const QuizHistory: React.FC<QuizHistoryProps> = ({ games, onSelectGame })
         Bisherige Spiele
       </h3>
       <div className={styles.list}>
-        {games.map((game) => (
+        {validGames.map((game) => (
           <div
             key={game.game_id}
             className={styles.item}

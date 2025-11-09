@@ -95,6 +95,11 @@ export const QuizPage: React.FC = () => {
     try {
       const game = await loadGame(gameId);
       
+      if (!game.players || game.players.length === 0) {
+        alert(`Dieses Quiz wurde mit einer älteren Version erstellt und hat keine Spieler.\n\nBitte starte ein neues Quiz.`);
+        return;
+      }
+      
       if (game.status === 'completed') {
         alert(`Quiz "${game.topic}" ist abgeschlossen!\n\nDiese Funktion kommt bald: Detailansicht mit Leaderboard.`);
       } else {

@@ -26,6 +26,10 @@ export class QuizService {
   async createGame(request: QuizGameCreateRequest): Promise<QuizGameResponse> {
     const { topic, difficulty, num_rounds, game_mode, category_id, player_names } = request;
 
+    if (!player_names || player_names.length === 0) {
+      throw new Error('At least one player name is required to create a quiz game');
+    }
+
     // 1. Create game in database
     const game = await postgresService.queryOne<QuizGame>(
       `INSERT INTO public.quiz_games (topic, difficulty, num_rounds, game_mode, category_id, player_names)
