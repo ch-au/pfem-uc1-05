@@ -96,19 +96,50 @@ export const QuizPage: React.FC = () => {
 
   const handleSelectGame = async (gameId: string) => {
     try {
+      console.log('Loading game:', gameId);
       const game = await quizService.getGameState(gameId);
+      
       if (game.status === 'completed') {
         // For completed games, show leaderboard
         const leaderboardData = await quizService.getLeaderboard(gameId);
-        // You could navigate to a game detail view here
-        console.log('Show completed game:', gameId, leaderboardData);
+        console.log('Showing completed game leaderboard:', leaderboardData);
+        // TODO: Navigate to a completed game view with leaderboard
+        alert(`Quiz "${game.topic}" ist abgeschlossen!\n\nDiese Funktion kommt bald: Detailansicht mit Leaderboard.`);
+      } else if (game.status === 'in_progress') {
+        // Resume in-progress game
+        console.log('Resuming in-progress game:', gameId);
+        
+        // Set game ID and state
+        setGameId(gameId);
+        setGameState(game);
+        
+        // Load current question
+        const question = await quizService.getCurrentQuestion(gameId);
+        setCurrentQuestion(question);
+        
+        // Switch to game screen
+        setScreen('game');
       } else {
-        // For in-progress games, potentially resume them
-        // This would require additional state management
-        console.log('Resume game:', gameId);
+        // For pending games, start them
+        console.log('Starting pending game:', gameId);
+        
+        // Set game ID first
+        setGameId(gameId);
+        
+        // Start the game
+        const startedGame = await quizService.startGame(gameId);
+        setGameState(startedGame);
+        
+        // Load first question
+        const question = await quizService.getCurrentQuestion(gameId);
+        setCurrentQuestion(question);
+        
+        // Switch to game screen
+        setScreen('game');
       }
     } catch (error) {
       console.error('Failed to load game:', error);
+      alert(`Fehler beim Laden des Quiz: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     }
   };
 
@@ -215,7 +246,6 @@ export const QuizPage: React.FC = () => {
   }
 
   // Start screen
-  console.log('Rendering start screen, gameHistory length:', gameHistory.length);
   return (
     <div className={styles.quizPage}>
       <Card variant="elevated" padding="lg">
