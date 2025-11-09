@@ -79,12 +79,16 @@ export const QuizPage: React.FC = () => {
   React.useEffect(() => {
     loadLeaderboard();
     loadGameHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadGameHistory = async () => {
     try {
+      console.log('Loading game history...');
       const result = await quizService.getGameHistory({ limit: 10 });
-      setGameHistory(result.games);
+      console.log('Game history loaded:', result);
+      console.log('Number of games:', result.games?.length || 0);
+      setGameHistory(result.games || []);
     } catch (error) {
       console.error('Failed to load game history:', error);
     }
@@ -211,6 +215,7 @@ export const QuizPage: React.FC = () => {
   }
 
   // Start screen
+  console.log('Rendering start screen, gameHistory length:', gameHistory.length);
   return (
     <div className={styles.quizPage}>
       <Card variant="elevated" padding="lg">
