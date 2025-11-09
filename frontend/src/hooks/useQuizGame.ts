@@ -207,7 +207,7 @@ export const useQuizGame = () => {
     currentPlayerIndex,
     selectedAnswer,
     answerResult,
-    currentPlayer: gameState?.players[currentPlayerIndex] || gameState?.players[0],
+    currentPlayer: gameState?.players?.[currentPlayerIndex] || gameState?.players?.[0] || '',
     createGame,
     loadGame,
     loadQuestion,
