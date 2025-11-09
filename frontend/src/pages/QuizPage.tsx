@@ -112,11 +112,6 @@ export const QuizPage: React.FC = () => {
     reset();
   };
 
-  const handleRetry = () => {
-    reset();
-    setScreen('start');
-  };
-
   if (screen === 'setup') {
     return (
       <div className={styles.quizPage}>
