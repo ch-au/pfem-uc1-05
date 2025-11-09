@@ -28,6 +28,7 @@ export const QuizPage: React.FC = () => {
     selectedAnswer,
     answerResult,
     createGame,
+    loadGame,
     submitAnswer,
     nextRound,
     loadLeaderboard,
@@ -97,44 +98,14 @@ export const QuizPage: React.FC = () => {
   const handleSelectGame = async (gameId: string) => {
     try {
       console.log('Loading game:', gameId);
-      const game = await quizService.getGameState(gameId);
+      
+      const game = await loadGame(gameId);
       
       if (game.status === 'completed') {
-        // For completed games, show leaderboard
-        const leaderboardData = await quizService.getLeaderboard(gameId);
-        console.log('Showing completed game leaderboard:', leaderboardData);
-        // TODO: Navigate to a completed game view with leaderboard
+        console.log('Loaded completed game, showing leaderboard');
         alert(`Quiz "${game.topic}" ist abgeschlossen!\n\nDiese Funktion kommt bald: Detailansicht mit Leaderboard.`);
-      } else if (game.status === 'in_progress') {
-        // Resume in-progress game
-        console.log('Resuming in-progress game:', gameId);
-        
-        // Set game ID and state
-        setGameId(gameId);
-        setGameState(game);
-        
-        // Load current question
-        const question = await quizService.getCurrentQuestion(gameId);
-        setCurrentQuestion(question);
-        
-        // Switch to game screen
-        setScreen('game');
       } else {
-        // For pending games, start them
-        console.log('Starting pending game:', gameId);
-        
-        // Set game ID first
-        setGameId(gameId);
-        
-        // Start the game
-        const startedGame = await quizService.startGame(gameId);
-        setGameState(startedGame);
-        
-        // Load first question
-        const question = await quizService.getCurrentQuestion(gameId);
-        setCurrentQuestion(question);
-        
-        // Switch to game screen
+        console.log('Loaded game, switching to game screen');
         setScreen('game');
       }
     } catch (error) {

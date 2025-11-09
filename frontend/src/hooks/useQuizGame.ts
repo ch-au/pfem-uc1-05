@@ -157,6 +157,46 @@ export const useQuizGame = () => {
     }
   };
 
+  const loadGame = async (existingGameId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      setGameId(existingGameId);
+      
+      let state = await quizService.getGameState(existingGameId);
+      
+      if (state.status === 'created') {
+        state = await quizService.startGame(existingGameId);
+        setGameState(state);
+        const question = await quizService.getCurrentQuestion(existingGameId);
+        setCurrentQuestion(question);
+        setLeaderboard([]);
+      } else if (state.status === 'started') {
+        setGameState(state);
+        const question = await quizService.getCurrentQuestion(existingGameId);
+        setCurrentQuestion(question);
+        setLeaderboard([]);
+      } else {
+        setGameState(state);
+        const data = await quizService.getLeaderboard(existingGameId);
+        setLeaderboard(data.leaderboard);
+        setCurrentQuestion(null);
+      }
+      
+      setCurrentPlayerIndex(0);
+      setSelectedAnswer(null);
+      setAnswerResult(null);
+      
+      return state;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load game');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     gameId,
     gameState,
@@ -169,6 +209,7 @@ export const useQuizGame = () => {
     answerResult,
     currentPlayer: gameState?.players[currentPlayerIndex] || gameState?.players[0],
     createGame,
+    loadGame,
     loadQuestion,
     submitAnswer,
     nextRound,
