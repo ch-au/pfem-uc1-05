@@ -92,9 +92,10 @@ export interface QuizGameState {
 
 export interface QuizLeaderboardEntry {
   player_name: string;
-  total_points: number;
+  score: number;
   correct_answers: number;
-  total_answers: number;
+  total_questions: number;
+  average_time: number;
 }
 
 export interface QuizLeaderboardResponse {

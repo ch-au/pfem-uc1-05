@@ -23,7 +23,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ entries }) => {
             <span className={styles.rank}>{index + 1}.</span>
             <span className={styles.name}>{entry.player_name}</span>
             <span className={styles.score}>
-              {entry.total_points} Punkte ({entry.correct_answers} richtig)
+              {entry.score} Punkte ({entry.correct_answers}/{entry.total_questions} richtig)
             </span>
           </div>
         ))}

@@ -513,6 +513,83 @@ export class QuizService {
       updated_at: game.updated_at.toISOString(),
     };
   }
+
+  /**
+   * Get game history (all games or filtered by status)
+   */
+  async getGameHistory(options?: {
+    status?: 'pending' | 'in_progress' | 'completed' | 'abandoned';
+    limit?: number;
+    offset?: number;
+  }): Promise<{ games: QuizGameResponse[]; total: number }> {
+    const { status, limit = 50, offset = 0 } = options ?? {};
+
+    // Build query
+    let whereClause = '';
+    const params: any[] = [];
+
+    if (status) {
+      whereClause = 'WHERE status = $1';
+      params.push(status);
+    }
+
+    // Get total count
+    const countResult = await postgresService.queryOne<{ count: string }>(
+      `SELECT COUNT(*) as count FROM public.quiz_games ${whereClause}`,
+      params
+    );
+    const total = parseInt(countResult?.count ?? '0');
+
+    // Get games with pagination
+    const games = await postgresService.queryMany<QuizGame>(
+      `SELECT * FROM public.quiz_games
+       ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset]
+    );
+
+    // Convert to response format
+    const gameResponses: QuizGameResponse[] = [];
+    for (const game of games) {
+      let category = undefined;
+      if (game.category_id) {
+        const cat = await postgresService.queryOne<{ category_id: string; name: string; display_name_de: string }>(
+          `SELECT category_id, name, display_name_de FROM public.quiz_categories WHERE category_id = $1`,
+          [game.category_id]
+        );
+        if (cat) {
+          category = {
+            category_id: cat.category_id,
+            name: cat.name,
+            display_name_de: cat.display_name_de,
+          };
+        }
+      }
+
+      gameResponses.push({
+        game_id: game.game_id,
+        topic: game.topic ?? undefined,
+        difficulty: game.difficulty,
+        num_rounds: game.num_rounds,
+        current_round: game.current_round,
+        status: game.status,
+        game_mode: game.game_mode ?? 'classic',
+        category,
+        created_at: game.created_at.toISOString(),
+        updated_at: game.updated_at.toISOString(),
+      });
+    }
+
+    return { games: gameResponses, total };
+  }
+
+  /**
+   * Get completed games only
+   */
+  async getCompletedGames(limit: number = 50, offset: number = 0): Promise<{ games: QuizGameResponse[]; total: number }> {
+    return this.getGameHistory({ status: 'completed', limit, offset });
+  }
 }
 
 // Singleton instance

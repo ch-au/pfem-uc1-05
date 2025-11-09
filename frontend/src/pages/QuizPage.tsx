@@ -1,23 +1,29 @@
 import React, { useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { Alert } from '../components/ui/Alert';
 import { QuizSetup } from '../components/quiz/QuizSetup';
 import { QuizQuestion } from '../components/quiz/QuizQuestion';
 import { QuizOption } from '../components/quiz/QuizOption';
 import { Leaderboard } from '../components/quiz/Leaderboard';
+import { QuizHistory } from '../components/quiz/QuizHistory';
 import { useQuizGame } from '../hooks/useQuizGame';
+import { quizService } from '../services/quizService';
 import { Trophy } from 'lucide-react';
+import type { QuizGameState } from '../types/api';
 import styles from './QuizPage.module.css';
 
 type QuizScreen = 'start' | 'setup' | 'game';
 
 export const QuizPage: React.FC = () => {
   const [screen, setScreen] = useState<QuizScreen>('start');
+  const [gameHistory, setGameHistory] = useState<QuizGameState[]>([]);
   const {
     gameState,
     currentQuestion,
     leaderboard,
     isLoading,
+    error,
     currentPlayer,
     selectedAnswer,
     answerResult,
@@ -25,6 +31,7 @@ export const QuizPage: React.FC = () => {
     submitAnswer,
     nextRound,
     loadLeaderboard,
+    reset,
   } = useQuizGame();
 
   const handleSetupSubmit = async (data: {
@@ -42,6 +49,7 @@ export const QuizPage: React.FC = () => {
       });
       setScreen('game');
     } catch (error) {
+      // Error is already set in the hook, just log it
       console.error('Failed to create game:', error);
     }
   };
@@ -67,14 +75,59 @@ export const QuizPage: React.FC = () => {
     }
   };
 
-  // Load leaderboard on mount
+  // Load leaderboard and game history on mount
   React.useEffect(() => {
     loadLeaderboard();
+    loadGameHistory();
   }, []);
+
+  const loadGameHistory = async () => {
+    try {
+      const result = await quizService.getGameHistory({ limit: 10 });
+      setGameHistory(result.games);
+    } catch (error) {
+      console.error('Failed to load game history:', error);
+    }
+  };
+
+  const handleSelectGame = async (gameId: string) => {
+    try {
+      const game = await quizService.getGameState(gameId);
+      if (game.status === 'completed') {
+        // For completed games, show leaderboard
+        const leaderboardData = await quizService.getLeaderboard(gameId);
+        // You could navigate to a game detail view here
+        console.log('Show completed game:', gameId, leaderboardData);
+      } else {
+        // For in-progress games, potentially resume them
+        // This would require additional state management
+        console.log('Resume game:', gameId);
+      }
+    } catch (error) {
+      console.error('Failed to load game:', error);
+    }
+  };
+
+  const handleErrorClose = () => {
+    reset();
+  };
+
+  const handleRetry = () => {
+    reset();
+    setScreen('start');
+  };
 
   if (screen === 'setup') {
     return (
       <div className={styles.quizPage}>
+        {error && (
+          <Alert
+            variant="error"
+            title="Quiz Erstellung fehlgeschlagen"
+            message={error}
+            onClose={handleErrorClose}
+          />
+        )}
         <QuizSetup onSubmit={handleSetupSubmit} isLoading={isLoading} />
       </div>
     );
@@ -96,6 +149,14 @@ export const QuizPage: React.FC = () => {
 
     return (
       <div className={styles.quizPage}>
+        {error && (
+          <Alert
+            variant="error"
+            title="Fehler"
+            message={error}
+            onClose={handleErrorClose}
+          />
+        )}
         <Card variant="elevated" padding="md">
           <QuizQuestion
             question={currentQuestion.question_text}
@@ -174,6 +235,12 @@ export const QuizPage: React.FC = () => {
           </Button>
         </div>
       </Card>
+
+      {gameHistory.length > 0 && (
+        <Card variant="elevated" padding="md">
+          <QuizHistory games={gameHistory} onSelectGame={handleSelectGame} />
+        </Card>
+      )}
 
       {leaderboard.length > 0 && (
         <Card variant="elevated" padding="md">

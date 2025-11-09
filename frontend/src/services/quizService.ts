@@ -88,6 +88,39 @@ export const quizService = {
     const response = await api.post<QuizNextRoundResponse>(`/quiz/game/${gameId}/next`);
     return response.data;
   },
+
+  /**
+   * Get game history
+   */
+  async getGameHistory(options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ games: QuizGameState[]; total: number }> {
+    const params = new URLSearchParams();
+    if (options?.status) params.append('status', options.status);
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+
+    const response = await api.get<{ games: QuizGameState[]; total: number }>(
+      `/quiz/games?${params.toString()}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get completed games
+   */
+  async getCompletedGames(limit?: number, offset?: number): Promise<{ games: QuizGameState[]; total: number }> {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+
+    const response = await api.get<{ games: QuizGameState[]; total: number }>(
+      `/quiz/games/completed?${params.toString()}`
+    );
+    return response.data;
+  },
 };
 
 
