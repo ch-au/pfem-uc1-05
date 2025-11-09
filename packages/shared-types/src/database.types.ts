@@ -33,6 +33,7 @@ export interface QuizGame {
   status: 'pending' | 'in_progress' | 'completed' | 'abandoned';
   game_mode?: 'classic' | 'speed' | 'survival';
   category_id?: string;
+  player_names: string[];
   created_at: Date;
   updated_at: Date;
   completed_at?: Date;

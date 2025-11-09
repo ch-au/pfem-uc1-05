@@ -22,6 +22,7 @@ export interface QuizGameResponse {
     name: string;
     display_name_de: string;
   };
+  players: string[];
   created_at: string;
   updated_at: string;
   generation_job_id?: string;

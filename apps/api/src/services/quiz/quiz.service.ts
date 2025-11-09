@@ -28,10 +28,10 @@ export class QuizService {
 
     // 1. Create game in database
     const game = await postgresService.queryOne<QuizGame>(
-      `INSERT INTO public.quiz_games (topic, difficulty, num_rounds, game_mode, category_id)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO public.quiz_games (topic, difficulty, num_rounds, game_mode, category_id, player_names)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [topic ?? null, difficulty, num_rounds, game_mode ?? 'classic', category_id ?? null]
+      [topic ?? null, difficulty, num_rounds, game_mode ?? 'classic', category_id ?? null, JSON.stringify(player_names)]
     );
 
     if (!game) {
@@ -521,6 +521,12 @@ export class QuizService {
       }
     }
 
+    const players = Array.isArray(game.player_names)
+      ? game.player_names
+      : typeof game.player_names === 'string'
+      ? JSON.parse(game.player_names)
+      : [];
+
     return {
       game_id: game.game_id,
       topic: game.topic ?? undefined,
@@ -530,6 +536,7 @@ export class QuizService {
       status: game.status,
       game_mode: game.game_mode ?? 'classic',
       category,
+      players,
       created_at: game.created_at.toISOString(),
       updated_at: game.updated_at.toISOString(),
       ...(generationMeta ? generationMeta : {}),
@@ -574,33 +581,8 @@ export class QuizService {
     // Convert to response format
     const gameResponses: QuizGameResponse[] = [];
     for (const game of games) {
-      let category = undefined;
-      if (game.category_id) {
-        const cat = await postgresService.queryOne<{ category_id: string; name: string; display_name_de: string }>(
-          `SELECT category_id, name, display_name_de FROM public.quiz_categories WHERE category_id = $1`,
-          [game.category_id]
-        );
-        if (cat) {
-          category = {
-            category_id: cat.category_id,
-            name: cat.name,
-            display_name_de: cat.display_name_de,
-          };
-        }
-      }
-
-      gameResponses.push({
-        game_id: game.game_id,
-        topic: game.topic ?? undefined,
-        difficulty: game.difficulty,
-        num_rounds: game.num_rounds,
-        current_round: game.current_round,
-        status: game.status,
-        game_mode: game.game_mode ?? 'classic',
-        category,
-        created_at: game.created_at.toISOString(),
-        updated_at: game.updated_at.toISOString(),
-      });
+      const gameResponse = await this.formatGameResponse(game);
+      gameResponses.push(gameResponse);
     }
 
     return { games: gameResponses, total };
