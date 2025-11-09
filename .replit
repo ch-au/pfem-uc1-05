@@ -55,16 +55,16 @@ externalPort = 8000
 exposeLocalhost = true
 
 [[ports]]
-localPort = 35227
-externalPort = 3002
-
-[[ports]]
 localPort = 37231
 externalPort = 3000
 
 [[ports]]
 localPort = 37749
 externalPort = 3001
+
+[[ports]]
+localPort = 43029
+externalPort = 3002
 
 [deployment]
 deploymentTarget = "autoscale"
