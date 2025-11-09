@@ -134,7 +134,19 @@ export const QuizPage: React.FC = () => {
     );
   }
 
-  if (screen === 'game' && currentQuestion && gameState) {
+  if (screen === 'game') {
+    if (!currentQuestion || !gameState) {
+      return (
+        <div className={styles.quizPage}>
+          <Card variant="elevated" padding="lg">
+            <div className={styles.startContent}>
+              <h1 className={styles.startTitle}>Lade Quiz...</h1>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
     const allOptions = currentQuestion.alternatives
       ? [currentQuestion.correct_answer, ...currentQuestion.alternatives]
       : [currentQuestion.correct_answer];
