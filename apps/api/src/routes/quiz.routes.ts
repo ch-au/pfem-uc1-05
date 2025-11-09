@@ -156,4 +156,43 @@ export async function quizRoutes(fastify: FastifyInstance) {
       return reply.code(404).send({ error: 'Generation progress not found' });
     }
   });
+
+  // Get game history (all games or filtered)
+  fastify.get<{
+    Querystring: { status?: string; limit?: string; offset?: string };
+  }>('/quiz/games', async (request, reply) => {
+    try {
+      const { status, limit, offset } = request.query;
+
+      const result = await quizService.getGameHistory({
+        status: status as any,
+        limit: limit ? parseInt(limit) : undefined,
+        offset: offset ? parseInt(offset) : undefined,
+      });
+
+      return reply.send(result);
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Failed to fetch game history' });
+    }
+  });
+
+  // Get completed games only
+  fastify.get<{
+    Querystring: { limit?: string; offset?: string };
+  }>('/quiz/games/completed', async (request, reply) => {
+    try {
+      const { limit, offset } = request.query;
+
+      const result = await quizService.getCompletedGames(
+        limit ? parseInt(limit) : undefined,
+        offset ? parseInt(offset) : undefined
+      );
+
+      return reply.send(result);
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Failed to fetch completed games' });
+    }
+  });
 }

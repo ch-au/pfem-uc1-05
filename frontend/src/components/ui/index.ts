@@ -15,6 +15,8 @@ export { Spinner } from './Spinner';
 export type { SpinnerProps } from './Spinner';
 export { IconButton } from './IconButton';
 export type { IconButtonProps } from './IconButton';
+export { Alert } from './Alert';
+export type { AlertProps } from './Alert';
 
 
 
