@@ -191,7 +191,9 @@ HTML Files → BeautifulSoup → Parse Entities → Validate → Batch Insert �
    - Unified API for 300+ LLM models
    - Used for: SQL generation, quiz generation, chat responses
    - Requires `OPENROUTER_API_KEY`
-   - Default model: `anthropic/claude-3.5-sonnet`
+   - **Default model**: `google/gemini-2.5-flash-preview-09-2025` (optimized for quiz generation)
+   - Alternative: `anthropic/claude-3.5-sonnet` (for chat)
+   - **Note**: Gemini models return Markdown code blocks (```json ... ```), automatically stripped by OpenRouterService
 
 ## Optional Services
 

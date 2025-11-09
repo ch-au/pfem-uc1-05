@@ -37,10 +37,13 @@ FRAGEN-QUALITÄT-KRITERIEN:
 ✓ Zeitliche Eingrenzung wenn nötig
 
 SQL QUERY ANFORDERUNGEN:
+- ⚠️ KRITISCH: Verwende NUR SELECT-Statements! Keine INSERT, UPDATE, DELETE oder andere Statements!
 - Muss ein eindeutiges Ergebnis liefern (nicht mehrere mögliche Antworten)
 - Nutze COUNT, SUM, MAX, MIN für Zahlen-Fragen
 - Nutze ORDER BY + LIMIT 1 für "beste/meiste/höchste" Fragen
 - Teste gedanklich: Gibt die Query genau EIN eindeutiges Ergebnis?
+- Beispiel gültige Query: "SELECT COUNT(*) FROM goals WHERE team_id = 1"
+- Beispiel UNGÜLTIGE Query: "INSERT INTO ...", "UPDATE ...", "DELETE FROM ..."
 
 OUTPUT-FORMAT:
 Gib NUR valides JSON zurück (keine Markdown-Blöcke):

@@ -20,7 +20,7 @@ const envSchema = z.object({
 
   // OpenRouter API (primary AI provider)
   OPENROUTER_API_KEY: z.string().min(1, 'OpenRouter API key is required'),
-  OPENROUTER_MODEL: z.string().default('anthropic/claude-3.5-sonnet'),
+  OPENROUTER_MODEL: z.string().default('google/gemini-2.5-flash-preview-09-2025'),
 
   // Langfuse (optional - will use fallback prompts if not set)
   LANGFUSE_PUBLIC_KEY: z.string().optional(),

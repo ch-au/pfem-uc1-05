@@ -54,7 +54,15 @@ export class OpenRouterService {
     });
 
     const content = response.choices[0]?.message?.content;
-    const contentStr = typeof content === 'string' ? content : JSON.stringify(content) || '{}';
+    let contentStr = typeof content === 'string' ? content : JSON.stringify(content) || '{}';
+
+    // Remove Markdown code blocks if present (for models like Gemini that return ```json ... ```)
+    contentStr = contentStr.trim();
+    if (contentStr.startsWith('```json')) {
+      contentStr = contentStr.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+    } else if (contentStr.startsWith('```')) {
+      contentStr = contentStr.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
+    }
 
     // Parse JSON response
     let data: T;
