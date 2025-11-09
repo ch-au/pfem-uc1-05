@@ -89,7 +89,6 @@ export const useQuizGame = () => {
 
       const result = await quizService.submitAnswer(
         gameId,
-        currentQuestion.round_id!,
         answerData
       );
 

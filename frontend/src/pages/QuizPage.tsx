@@ -76,19 +76,15 @@ export const QuizPage: React.FC = () => {
     }
   };
 
-  // Load leaderboard and game history on mount
+  // Load game history on mount
   React.useEffect(() => {
-    loadLeaderboard();
     loadGameHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadGameHistory = async () => {
     try {
-      console.log('Loading game history...');
       const result = await quizService.getGameHistory({ limit: 10 });
-      console.log('Game history loaded:', result);
-      console.log('Number of games:', result.games?.length || 0);
       setGameHistory(result.games || []);
     } catch (error) {
       console.error('Failed to load game history:', error);
@@ -97,20 +93,26 @@ export const QuizPage: React.FC = () => {
 
   const handleSelectGame = async (gameId: string) => {
     try {
-      console.log('Loading game:', gameId);
-      
       const game = await loadGame(gameId);
       
       if (game.status === 'completed') {
-        console.log('Loaded completed game, showing leaderboard');
         alert(`Quiz "${game.topic}" ist abgeschlossen!\n\nDiese Funktion kommt bald: Detailansicht mit Leaderboard.`);
       } else {
-        console.log('Loaded game, switching to game screen');
         setScreen('game');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load game:', error);
-      alert(`Fehler beim Laden des Quiz: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      
+      const is404Error = error?.response?.status === 404 || 
+                          error?.message?.includes('404') ||
+                          error?.message?.includes('Question not found');
+      
+      if (is404Error) {
+        alert(`Dieses Quiz kann nicht geladen werden, da die Fragen noch generiert werden oder ein Fehler aufgetreten ist.\n\nBitte starte ein neues Quiz.`);
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+        alert(`Fehler beim Laden des Quiz: ${errorMessage}`);
+      }
     }
   };
 
@@ -250,7 +252,7 @@ export const QuizPage: React.FC = () => {
       </Card>
 
       {gameHistory.length > 0 && (
-        <Card variant="elevated" padding="md">
+        <Card variant="elevated" padding="md" style={{ marginTop: '2rem' }}>
           <QuizHistory games={gameHistory} onSelectGame={handleSelectGame} />
         </Card>
       )}
