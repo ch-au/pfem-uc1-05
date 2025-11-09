@@ -249,7 +249,7 @@ export class PromptsService {
       {
         systemInstruction: systemPrompt,
         temperature: 0.8,
-        maxOutputTokens: 3000,
+        maxOutputTokens: 6000,
         responseFormat: 'json',
       }
     );

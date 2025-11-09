@@ -70,8 +70,17 @@ export class OpenRouterService {
       data = JSON.parse(contentStr) as T;
     } catch (error) {
       // Log full response for debugging
-      console.error('Full OpenRouter response that failed to parse:', contentStr);
-      throw new Error(`Failed to parse OpenRouter JSON response. Check logs for full response. Preview: ${contentStr.substring(0, 200)}...`);
+      console.error('Full OpenRouter response that failed to parse (length:', contentStr.length, 'chars)');
+      console.error('Response preview:', contentStr.substring(0, 500));
+      console.error('Response ending:', contentStr.substring(Math.max(0, contentStr.length - 200)));
+      
+      // Write to file for inspection
+      const fs = await import('fs/promises');
+      const debugPath = `/tmp/openrouter_error_${Date.now()}.json`;
+      await fs.writeFile(debugPath, contentStr, 'utf-8');
+      console.error('Full response written to:', debugPath);
+      
+      throw new Error(`Failed to parse OpenRouter JSON response. Length: ${contentStr.length} chars. Debug file: ${debugPath}`);
     }
 
     // Extract usage metadata
