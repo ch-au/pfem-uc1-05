@@ -66,10 +66,7 @@ export const quizService = {
     roundId: string,
     answer: QuizAnswerRequest['answer']
   ): Promise<QuizAnswerResponse> {
-    const response = await api.post<QuizAnswerResponse>(`/quiz/game/${gameId}/answer`, {
-      round_id: roundId,
-      answer,
-    });
+    const response = await api.post<QuizAnswerResponse>(`/quiz/game/${gameId}/answer`, answer);
     return response.data;
   },
 
