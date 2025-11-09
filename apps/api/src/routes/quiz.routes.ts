@@ -140,4 +140,20 @@ export async function quizRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Failed to fetch leaderboard' });
     }
   });
+
+  // Get quiz generation progress
+  fastify.get<{
+    Params: { gameId: string };
+  }>('/quiz/game/:gameId/progress', async (request, reply) => {
+    try {
+      const { gameId } = request.params;
+
+      const progress = await quizService.getGenerationProgress(gameId);
+
+      return reply.send(progress);
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(404).send({ error: 'Generation progress not found' });
+    }
+  });
 }

@@ -93,3 +93,25 @@ export interface AnswerGeneratorOutput {
   explanation: string;
   evidenceScore: number;
 }
+
+// Quiz Generation Progress types
+export interface QuizGenerationProgress {
+  game_id: string;
+  total_rounds: number;
+  completed_rounds: number;
+  current_round?: number;
+  current_status?: 'pending' | 'sql_generated' | 'answer_verified' | 'round_created' | 'failed';
+  error_message?: string;
+  rounds: Array<{
+    round_number: number;
+    status: 'pending' | 'sql_generated' | 'answer_verified' | 'round_created' | 'failed';
+    question_preview?: string;
+    error_message?: string;
+  }>;
+}
+
+export interface QuizGenerationProgressResponse {
+  game_id: string;
+  status: 'generating' | 'completed' | 'failed';
+  progress: QuizGenerationProgress;
+}

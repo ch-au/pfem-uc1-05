@@ -100,3 +100,19 @@ export interface QuizCategory {
   icon_name?: string;
   created_at: Date;
 }
+
+export interface QuizGenerationJob {
+  job_id: string;
+  game_id: string;
+  round_number: number;
+  status: 'pending' | 'sql_generated' | 'answer_verified' | 'round_created' | 'failed';
+  generated_question_text?: string;
+  generated_sql?: string;
+  sql_result?: any[];
+  correct_answer?: string;
+  incorrect_answers?: string[];
+  explanation?: string;
+  error_message?: string;
+  created_at: Date;
+  updated_at: Date;
+}
