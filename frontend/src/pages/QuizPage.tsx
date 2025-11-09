@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { QuizCard } from '../components/quiz/QuizCard';
 import { QuizSetup } from '../components/quiz/QuizSetup';
 import { QuizQuestion } from '../components/quiz/QuizQuestion';
 import { QuizOption } from '../components/quiz/QuizOption';
@@ -68,10 +67,10 @@ export const QuizPage: React.FC = () => {
     }
   };
 
-  const handlePackClick = (packType: string) => {
-    setScreen('setup');
-    // Could pre-fill topic based on packType
-  };
+  // Load leaderboard on mount
+  React.useEffect(() => {
+    loadLeaderboard();
+  }, []);
 
   if (screen === 'setup') {
     return (
@@ -87,11 +86,11 @@ export const QuizPage: React.FC = () => {
       : [currentQuestion.correct_answer];
     const shuffledOptions = [...allOptions].sort(() => Math.random() - 0.5);
 
-    const isCorrect = (option: string) =>
+    const isCorrect = (option: string): boolean =>
       answerResult ? option === answerResult.correctAnswer : false;
-    const isSelected = (option: string) => selectedAnswer === option;
-    const isIncorrect = (option: string) =>
-      answerResult && selectedAnswer === option && !answerResult.correct;
+    const isSelected = (option: string): boolean => selectedAnswer === option;
+    const isIncorrect = (option: string): boolean =>
+      answerResult ? selectedAnswer === option && !answerResult.correct : false;
 
     const canProceed = answerResult !== null && currentPlayer === gameState.players[gameState.players.length - 1];
 
@@ -115,7 +114,7 @@ export const QuizPage: React.FC = () => {
                 selected={isSelected(option)}
                 correct={isCorrect(option)}
                 incorrect={isIncorrect(option)}
-                disabled={!!answerResult}
+                disabled={answerResult !== null}
                 onClick={() => handleAnswerSelect(option)}
               />
             ))}
@@ -158,56 +157,33 @@ export const QuizPage: React.FC = () => {
   // Start screen
   return (
     <div className={styles.quizPage}>
-      <QuizCard
-        variant="featured"
-        title="Top-Scorer der Hinrunde - für Mainz 05 in Saison Bundesliga?"
-        subtitle="Personalisierte Empfehlung basierend auf deinen Interessen"
-        metadata={[
-          { label: 'Historische Statistiken', value: '' },
-        ]}
-        questionCount={50}
-        onClick={() => setScreen('setup')}
-      />
-
-      <Card variant="elevated" padding="md">
-        <h2 className={styles.sectionTitle}>Precomputed Packs</h2>
-        <div className={styles.packsGrid}>
-          <QuizCard
-            title="Historische Momente"
-            questionCount={50}
-            onClick={() => handlePackClick('historische-momente')}
-          />
-          <QuizCard
-            title="Spieler-Statistiken"
-            questionCount={50}
-            onClick={() => handlePackClick('spieler-statistiken')}
-          />
+      <Card variant="elevated" padding="lg">
+        <div className={styles.startContent}>
+          <h1 className={styles.startTitle}>FSV Mainz 05 Quiz</h1>
+          <p className={styles.startDescription}>
+            Teste dein Wissen über 120 Jahre Vereinsgeschichte - von 1905 bis heute
+          </p>
+          
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => setScreen('setup')}
+            className={styles.startButton}
+          >
+            Neues Quiz starten
+          </Button>
         </div>
       </Card>
 
-      <Card variant="elevated" padding="md">
-        <h2 className={styles.sectionTitle}>Challenges & Wettbewerbe</h2>
-        <div className={styles.challenges}>
-          <Card variant="interactive" padding="md" className={styles.challengeCard}>
-            <div className={styles.challengeHeader}>
-              <div className={styles.challengeIcon}>
-                <Trophy size={18} />
-              </div>
-              <div className={styles.challengeTitle}>Wöchentliches Leaderboard</div>
-              <div className={styles.challengeCount}>50 Fragen</div>
-            </div>
-          </Card>
-          <Card variant="interactive" padding="md" className={styles.challengeCard}>
-            <div className={styles.challengeHeader}>
-              <div className={styles.challengeIcon}>
-                <Trophy size={18} />
-              </div>
-              <div className={styles.challengeTitle}>Stadionwissen</div>
-              <div className={styles.challengeCount}>50 Fragen</div>
-            </div>
-          </Card>
-        </div>
-      </Card>
+      {leaderboard.length > 0 && (
+        <Card variant="elevated" padding="md">
+          <h2 className={styles.sectionTitle}>
+            <Trophy size={24} />
+            Leaderboard
+          </h2>
+          <Leaderboard entries={leaderboard} />
+        </Card>
+      )}
     </div>
   );
 };
