@@ -55,10 +55,6 @@ externalPort = 8000
 exposeLocalhost = true
 
 [[ports]]
-localPort = 35623
-externalPort = 3001
-
-[[ports]]
 localPort = 37231
 externalPort = 3000
 
