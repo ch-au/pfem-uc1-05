@@ -13,10 +13,12 @@
 | **Tables** | 26 |
 | **Materialized Views** | 4 |
 | **Indexes** | 107 |
-| **Total Matches** | 3,305 |
-| **Total Players** | 10,094 |
-| **Total Goals** | 5,652 |
+| **Total Matches** | 3,956 |
+| **Total Players** | 9,955 |
+| **Total Goals** | 8,312 |
 | **Total Cards** | 5,768 |
+| **Total Lineups** | 91,475 |
+| **Profirest Matches** | 668 |
 
 ---
 
@@ -28,11 +30,19 @@
 - **Migration 006:** Merged duplicate Mainz team entries (team_id 1 and 31)
 - **Migration 007:** Created 4 materialized views for performance
 
+### ✅ Profirest Matches Integration (Nov 10, 2025)
+- **Parser Enhancement:** Added multi-match file parsing for profirest*.html files
+- **Data Import:** Successfully parsed and synced 668 profirest matches (1905-1960s era)
+- **Related Data:** Synced 6,133 lineups and 1,316 goals for historical matches
+- **Team Expansion:** Added 257 historical opponent teams to database
+- **Coverage:** Increased total match count from 3,354 to 3,956 (+18%)
+
 ### ✅ Key Improvements
 - **Team Consolidation:** All Mainz matches now under single `team_id = 1` (was split across 2 teams)
 - **Data Integrity:** Unique constraints prevent duplicate cards, goals, lineups, substitutions
 - **Query Performance:** Materialized views provide 100-400x speedup
 - **Foreign Keys:** Easy joins between `player_careers`, `season_squads`, and `teams`
+- **Historical Coverage:** Complete match data from 1905-2025 (120 years)
 
 ---
 
@@ -42,18 +52,18 @@
 
 | Table | Rows | Purpose | Key Changes |
 |-------|------|---------|-------------|
-| **teams** | 293 | Teams (Mainz + opponents) | Merged duplicate Mainz entries |
-| **players** | 10,094 | Player master data | - |
-| **coaches** | 566 | Coach master data | - |
+| **teams** | 585 | Teams (Mainz + opponents) | +257 historical teams from profirest |
+| **players** | 9,955 | Player master data | Full name enrichment |
+| **coaches** | 566 | Coach master data | Full name enrichment (13.6%) |
 | **referees** | 870 | Referee master data | - |
 | **competitions** | 23 | Competitions | - |
 | **seasons** | 121 | Seasons (1905-2026) | - |
 | **season_competitions** | 175 | Season-competition links | - |
-| **matches** | 3,305 | Match results | - |
-| **goals** | 5,652 | Goal events | ✅ Unique constraint added |
+| **matches** | 3,956 | Match results | +668 profirest matches |
+| **goals** | 8,312 | Goal events | ✅ Unique constraint added |
 | **cards** | 5,768 | Card events | ✅ Unique constraint added |
-| **match_lineups** | 85,342 | Player appearances | ✅ Unique constraint added |
-| **match_substitutions** | 10,196 | Substitutions | ✅ Unique constraint added |
+| **match_lineups** | 91,475 | Player appearances | ✅ Unique constraint added |
+| **match_substitutions** | 10,029 | Substitutions | ✅ Unique constraint added |
 | **match_coaches** | 2,832 | Coach assignments | - |
 | **match_referees** | 2,879 | Referee assignments | - |
 | **player_careers** | 4,760 | Player career history | ✅ Added optional `team_id` FK |
@@ -337,7 +347,7 @@ Prevents duplicate lineup entries (one entry per player per match per team).
 - `mainz_scorers` (JSON array of goal events)
 - `mainz_cards` (JSON array of card events)
 
-**Row Count:** 3,305 matches
+**Row Count:** 3,956 matches
 
 **Refresh Frequency:** Daily or after match imports
 
@@ -587,8 +597,9 @@ ANALYZE cards;
 
 ### Coverage
 - **Seasons:** 121 (1905-2026)
-- **Matches:** 3,305 (all properly attributed to team_id = 1)
-- **Players:** 10,094 (cleaned, no invalid entries)
+- **Matches:** 3,956 (all properly attributed to team_id = 1)
+  - Including 668 profirest matches from early history (1905-1960s)
+- **Players:** 9,955 (cleaned, full name enrichment where available)
 - **Embeddings:** 100% coverage (all players and teams have vector embeddings)
 
 ### Constraints

@@ -74,6 +74,7 @@ class PlayerAppearance:
     name: str
     shirt_number: Optional[int]
     is_starter: bool
+    profile_url: Optional[str] = None  # URL to player profile page (e.g., "spieler/klopp.html")
     minute_on: Optional[int] = None
     stoppage_on: Optional[int] = None
     minute_off: Optional[int] = None
@@ -681,21 +682,53 @@ class DatabaseManager:
         normalized = normalize_name(name_clean)
         if normalized in self.player_cache:
             return self.player_cache[normalized]
+
         cursor = self.conn.cursor()
+
+        # First try: exact match on normalized name
         cursor.execute("SELECT player_id FROM players WHERE normalized_name = ?", (normalized,))
         row = cursor.fetchone()
         if row:
             player_id = row[0]
-        else:
+            self.player_cache[normalized] = player_id
+            return player_id
+
+        # Second try: if this is a surname only (no space), check if a full name exists
+        # Example: Looking for "Schürrle" → check if "ANDRÉ SCHÜRRLE" exists
+        if ' ' not in name_clean:
+            # This is likely a surname - check if we have a full name with this surname
             cursor.execute(
                 """
-                INSERT INTO players (name, normalized_name, profile_url)
-                VALUES (?, ?, ?)
+                SELECT player_id, name FROM players
+                WHERE profile_url IS NOT NULL
+                  AND normalized_name LIKE ?
+                ORDER BY LENGTH(name) DESC
+                LIMIT 1
                 """,
-                (name_clean, normalized, profile_url),
+                (f'% {normalized}',)  # Look for names ending with this surname
             )
-            player_id = cursor.lastrowid
-            self.conn.commit()
+            row = cursor.fetchone()
+            if row:
+                # Found an existing player with full name containing this surname
+                player_id = row[0]
+                existing_name = row[1]
+                logging.getLogger("DatabaseManager").debug(
+                    "Matched surname '%s' to existing player '%s' (ID: %d)",
+                    name_clean, existing_name, player_id
+                )
+                self.player_cache[normalized] = player_id
+                return player_id
+
+        # No existing player found - create new one
+        cursor.execute(
+            """
+            INSERT INTO players (name, normalized_name, profile_url)
+            VALUES (?, ?, ?)
+            """,
+            (name_clean, normalized, profile_url),
+        )
+        player_id = cursor.lastrowid
+        self.conn.commit()
         self.player_cache[normalized] = player_id
         return player_id
 
@@ -1548,10 +1581,15 @@ class ComprehensiveFSVParser:
                                 ("away", away_team_id, lineups["away"]),
                             ):
                                 for appearance in roster.values():
+                                    # CRITICAL: Resolve full name from profile BEFORE creating player
+                                    player_name, profile_url = self.resolve_player_name(
+                                        appearance.name, appearance.profile_url
+                                    )
+
                                     try:
-                                        player_id = self.db.get_or_create_player(appearance.name, appearance.__dict__.get("profile_url"))
+                                        player_id = self.db.get_or_create_player(player_name, profile_url)
                                     except ValueError as e:
-                                        self.logger.warning("Skipping invalid player name: %s (%s)", appearance.name, e)
+                                        self.logger.warning("Skipping invalid player name: %s (%s)", player_name, e)
                                         continue
                                     # Collect lineup data for batch insert
                                     lineups_batch.append((
@@ -1564,21 +1602,32 @@ class ComprehensiveFSVParser:
                                     # Cards are inserted later from the unified 'cards' list which includes
                                     # cards from appearance.card_events, substitutions, etc.
                                     # This prevents double insertion of the same card event.
-                                    if appearance.name not in self.players_processed:
+
+                                    # Parse player profile for additional bio data if we haven't yet
+                                    if profile_url and appearance.name not in self.players_processed:
                                         self.parse_player_profile(appearance.name, season_path)
                                         self.players_processed[appearance.name] = True
 
                             for sub in substitutions:
                                 team_id = home_team_id if sub["team_role"] == "home" else away_team_id
+
+                                # Resolve full names for substitution players
+                                player_on_name, player_on_url = self.resolve_player_name(
+                                    sub["player_on"], sub.get("player_on_link")
+                                )
+                                player_off_name, player_off_url = self.resolve_player_name(
+                                    sub["player_off"], sub.get("player_off_link")
+                                )
+
                                 try:
-                                    player_on_id = self.db.get_or_create_player(sub["player_on"], sub.get("player_on_link"))
+                                    player_on_id = self.db.get_or_create_player(player_on_name, player_on_url)
                                 except ValueError as e:
-                                    self.logger.warning("Skipping invalid substitution player_on: %s (%s)", sub["player_on"], e)
+                                    self.logger.warning("Skipping invalid substitution player_on: %s (%s)", player_on_name, e)
                                     continue
                                 try:
-                                    player_off_id = self.db.get_or_create_player(sub["player_off"], sub.get("player_off_link"))
+                                    player_off_id = self.db.get_or_create_player(player_off_name, player_off_url)
                                 except ValueError as e:
-                                    self.logger.warning("Skipping invalid substitution player_off: %s (%s)", sub["player_off"], e)
+                                    self.logger.warning("Skipping invalid substitution player_off: %s (%s)", player_off_name, e)
                                     continue
                                 # Collect substitution data for batch insert
                                 subs_batch.append((
@@ -1957,11 +2006,252 @@ class ComprehensiveFSVParser:
 
         return fallback_matches
 
+    # ---------------------------------------------------------------- profirest (multi-match) file parsing
+    def parse_profirest_match_block(self, match_block, overview_info: Dict[str, Optional[str]]):
+        """
+        Parse a single match from a profirest file.
+
+        Profirest files have a simplified structure:
+        - <table width="100%" height="45%"> contains one complete match
+        - Date is in an <a> tag, score is in a <b> tag
+        - Lineup is inline (no separate team blocks)
+        - May or may not have full lineup data
+        """
+        # Get full match block text for parsing
+        block_text = normalize_whitespace(match_block.get_text(" ", strip=True))
+
+        # Extract score from <b> tag
+        header = match_block.find("b")
+        if not header:
+            return None  # No match data
+
+        header_text = normalize_whitespace(header.get_text(" ", strip=True))
+
+        # Parse date from full block text - format: "SA. 20.07.1963" or "SO. 28.07.1963"
+        date_match = re.search(r'(\d{2}\.\d{2}\.\d{4})', block_text)
+        if not date_match:
+            # Try alternative format: "ca. Oktober 1945"
+            date_match = re.search(r'ca\.\s+(\w+)\s+(\d{4})', block_text)  # Fixed: search in block_text not header_text
+            if date_match:
+                month_name = date_match.group(1)
+                year = date_match.group(2)
+                # Map German month names to numbers
+                month_map = {
+                    'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+                    'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+                    'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+                }
+                month_num = month_map.get(month_name, '01')
+                date_iso = f"{year}-{month_num}-01"  # Use first day of month for approximate dates
+            else:
+                return None  # Can't parse date
+        else:
+            # Convert DD.MM.YYYY to YYYY-MM-DD
+            date_parts = date_match.group(1).split('.')
+            date_iso = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"
+
+        # Parse score - format: "team1 - team2 X:Y (A:B)"
+        score_pattern = r"(.+?)\s-\s(.+?)\s(\d+):(\d+)(?:\s\((\d+):(\d+)\))?"
+        score_match = re.search(score_pattern, header_text)
+        if not score_match:
+            return None  # Can't parse score
+
+        home_team = self._clean_team_name(score_match.group(1).strip())
+        away_team = self._clean_team_name(score_match.group(2).strip())
+        home_goals = int(score_match.group(3))
+        away_goals = int(score_match.group(4))
+        half_home = int(score_match.group(5)) if score_match.group(5) else None
+        half_away = int(score_match.group(6)) if score_match.group(6) else None
+
+        metadata = MatchMetadata(
+            home_team=home_team,
+            away_team=away_team,
+            home_goals=home_goals,
+            away_goals=away_goals,
+            half_home=half_home,
+            half_away=half_away,
+            date=date_iso,
+            kickoff=None,
+            attendance=None,
+            referee=None,
+            referee_link=None,
+            home_coach=None,
+            home_coach_link=None,
+            away_coach=None,
+            away_coach_link=None,
+            matchday=None,
+            round_name=overview_info.get("stage"),
+        )
+
+        # Try to parse lineup - may not exist for all matches
+        mainz_is_home = "FSV" in home_team or "Mainz" in home_team
+
+        # Look for player links in the match block
+        player_links = match_block.find_all("a", href=re.compile(r"spieler/.*\.html"))
+
+        if not player_links:
+            # No lineup data - return minimal match metadata
+            return {
+                'metadata': metadata,
+                'lineups': {'home': {}, 'away': {}},
+                'substitutions': [],
+                'goals': [],
+                'cards': []
+            }
+
+        # Parse lineup from inline format
+        # In profirest files, all players are shown inline in tables
+        # We need to distinguish which team they belong to based on position in the HTML
+        roster: Dict[str, PlayerAppearance] = {}
+
+        for link in player_links:
+            player_name = normalize_whitespace(link.get_text(" ", strip=True))
+            profile_url = link.get("href", "").replace("../", "")
+
+            # Check if this is in a substitution table (contains "für")
+            parent_text = link.parent.get_text(" ", strip=True) if link.parent else ""
+            is_sub = "für" in parent_text or "f&uuml;r" in str(link.parent)
+
+            # Skip goal scorers in "Tor"/"Tore" sections
+            if "Tor" in parent_text or "<b>Tor" in str(link.parent.parent):
+                continue
+
+            # Create player appearance
+            # Check for goal icon
+            has_goal_icon = link.find_next_sibling("img", src=re.compile(r"tor\.bmp"))
+
+            # Check for substitution icons
+            has_sub_out = link.find_next_sibling("img", src=re.compile(r"raus\.bmp"))
+
+            appearance = PlayerAppearance(
+                name=player_name,
+                shirt_number=None,  # Not available in profirest files
+                is_starter=not is_sub,
+                profile_url=profile_url,
+                minute_on=None,
+                stoppage_on=None,
+                minute_off=None,
+                stoppage_off=None,
+                card_events=[]
+            )
+
+            roster[player_name] = appearance
+
+        # Since we can't distinguish home/away in the simplified format,
+        # assign all players to Mainz team (this is a limitation)
+        if mainz_is_home:
+            lineups = {'home': roster, 'away': {}}
+        else:
+            lineups = {'home': {}, 'away': roster}
+
+        # Try to parse goals from "Tore" section
+        goals = []
+        tore_section = match_block.find("b", string=re.compile(r"Tor(e)?"))
+        if tore_section:
+            # Find the table after "Tore"
+            goals_table = tore_section.find_next("table")
+            if goals_table:
+                goal_cells = goals_table.find_all("td")
+                current_home = 0
+                current_away = 0
+                for cell in goal_cells:
+                    goal_text = normalize_whitespace(cell.get_text(" ", strip=True))
+                    # Format: "10. 0:1 Fuchs" or "82. 1:0 Bader (Storck)"
+                    goal_match = re.match(r'(\d+)\.\s+(\d+):(\d+)\s+(.+)', goal_text)
+                    if goal_match:
+                        minute = int(goal_match.group(1))
+                        score_home = int(goal_match.group(2))
+                        score_away = int(goal_match.group(3))
+                        scorer = goal_match.group(4).strip()
+
+                        # Determine which team scored by comparing with previous score
+                        team_role = 'home' if score_home > current_home else 'away'
+                        current_home = score_home
+                        current_away = score_away
+
+                        # Extract assist if present
+                        assist_match = re.search(r'\((.+?)\)', scorer)
+                        assist = assist_match.group(1) if assist_match else None
+                        scorer = re.sub(r'\s*\(.+?\)', '', scorer).strip()
+
+                        goals.append(GoalEvent(
+                            minute=minute,
+                            stoppage=None,
+                            score_home=score_home,
+                            score_away=score_away,
+                            scorer=scorer,
+                            assist=assist,
+                            team_role=team_role,
+                            is_penalty=False,
+                            is_own_goal=False
+                        ))
+
+        # Try to parse substitutions
+        substitutions = []
+        # Look for substitution patterns: "46. Bader für Dutiné"
+        sub_pattern = re.compile(r'(\d+)\.\s+(.+?)\s+f[üu]r\s+(.+)')
+        all_text = match_block.get_text(" ", strip=True)
+        for match in sub_pattern.finditer(all_text):
+            minute = int(match.group(1))
+            player_on = match.group(2).strip()
+            player_off = match.group(3).strip()
+
+            substitutions.append({
+                'minute': minute,
+                'stoppage': None,  # Not available in profirest format
+                'player_on': player_on,
+                'player_off': player_off,
+                'team_role': 'home' if mainz_is_home else 'away',
+                'player_on_link': None,
+                'player_off_link': None
+            })
+
+        return {
+            'metadata': metadata,
+            'lineups': lineups,
+            'substitutions': substitutions,
+            'goals': goals,
+            'cards': []
+        }
+
+    def parse_profirest_file(self, match_blocks, overview_info: Dict[str, Optional[str]], detail_path: Path):
+        """
+        Parse a profirest*.html file containing multiple matches.
+        Returns data for the first parseable match (for compatibility with existing code).
+
+        Note: This is a simplified approach - ideally we would process all matches,
+        but that would require changing the caller's logic. For now, we extract
+        the first match to at least capture something from these files.
+        """
+        for idx, block in enumerate(match_blocks):
+            match_data = self.parse_profirest_match_block(block, overview_info)
+            if match_data:
+                self.logger.debug("Parsed match %d/%d from %s", idx + 1, len(match_blocks), detail_path.name)
+                # Return in the format expected by parse_match_detail
+                return (
+                    match_data['metadata'],
+                    match_data['lineups'],
+                    match_data['substitutions'],
+                    match_data['goals'],
+                    match_data['cards']
+                )
+
+        # No parseable matches found
+        raise ValueError(f"No parseable matches in {detail_path}")
+
     # ---------------------------------------------------------------- detail parsing
     def parse_match_detail(self, detail_path: Path, overview_info: Dict[str, Optional[str]], season_path: Path):
         soup = read_html(detail_path)
         if soup is None:
             raise FileNotFoundError(detail_path)
+
+        # Check if this is a multi-match file (profirest*.html)
+        # These files contain multiple <table width="100%" height="45%"> blocks
+        match_blocks = soup.find_all("table", attrs={"width": "100%", "height": "45%"})
+        if len(match_blocks) >= 2:
+            # This is a multi-match file - parse each match separately
+            self.logger.debug("Detected multi-match file with %d matches: %s", len(match_blocks), detail_path.name)
+            return self.parse_profirest_file(match_blocks, overview_info, detail_path)
 
         header = soup.find("b")
         header_text = normalize_whitespace(header.get_text(" ", strip=True)) if header else ""
@@ -2163,6 +2453,14 @@ class ComprehensiveFSVParser:
                         substitutions.append(substitution)
                     continue
 
+                # Extract profile URL from <a href="../spieler/..."> link
+                profile_url = None
+                anchor = cell.find("a", href=re.compile(r"spieler/.*\.html"))
+                if anchor and anchor.get("href"):
+                    href = anchor["href"]
+                    # Normalize path: "../spieler/klopp.html" -> "spieler/klopp.html"
+                    profile_url = href.replace("../", "")
+
                 number_match = re.match(r"^(\d+)\s+(.*)", text)
                 if number_match:
                     shirt_number = int(number_match.group(1))
@@ -2189,6 +2487,7 @@ class ComprehensiveFSVParser:
                         name=name,
                         shirt_number=shirt_number,
                         is_starter=not table_is_reserve,
+                        profile_url=profile_url,
                     )
                 else:
                     existing = players[name]
@@ -2196,6 +2495,9 @@ class ComprehensiveFSVParser:
                         existing.shirt_number = shirt_number
                     if table_is_reserve:
                         existing.is_starter = False
+                    # Update profile URL if we found one and didn't have it before
+                    if profile_url and not existing.profile_url:
+                        existing.profile_url = profile_url
 
                 for icon in icons:
                     if icon in CARD_ICON_MAP:
@@ -2530,19 +2832,33 @@ class ComprehensiveFSVParser:
         image = soup.find("img")
         image_url = image["src"] if image else None
 
-        try:
-            player_id = self.db.get_or_create_player(name, str(player_file.relative_to(self.base_path)))
-        except ValueError as e:
-            self.logger.warning("Skipping invalid player profile: %s (%s)", name, e)
-            return
+        # Find existing player by normalized surname and update with additional bio data
+        # NOTE: Player was already created with full name from profile URL during lineup parsing
         cursor = self.db.conn.cursor()
+        normalized_key = normalize_name(player_name)
+        cursor.execute("SELECT player_id FROM players WHERE normalized_name = ?", (normalized_key,))
+        row = cursor.fetchone()
+
+        if not row:
+            self.logger.warning("Player '%s' not found in database for profile update", player_name)
+            return
+
+        player_id = row[0]
+
+        # Update with biographical data (only update fields that are NULL)
         cursor.execute(
             """
             UPDATE players
-            SET name = ?, birth_date = ?, birth_place = ?, height_cm = ?, weight_kg = ?, primary_position = ?, nationality = ?, image_url = ?
+            SET birth_date = COALESCE(?, birth_date),
+                birth_place = COALESCE(?, birth_place),
+                height_cm = COALESCE(?, height_cm),
+                weight_kg = COALESCE(?, weight_kg),
+                primary_position = COALESCE(?, primary_position),
+                nationality = COALESCE(?, nationality),
+                image_url = COALESCE(?, image_url)
             WHERE player_id = ?
             """,
-            (name, birth_date, birth_place, height_cm, weight_kg, primary_position, nationality, image_url, player_id),
+            (birth_date, birth_place, height_cm, weight_kg, primary_position, nationality, image_url, player_id),
         )
         self.db.conn.commit()
 
@@ -2922,18 +3238,21 @@ class ComprehensiveFSVParser:
                     if "nationalit" in string.lower():
                         found_header = True
         
-        # Update coach record
+        # Update coach record with full name from profile
         cursor = self.db.conn.cursor()
         cursor.execute(
             """
             UPDATE coaches
-            SET birth_date = COALESCE(?, birth_date),
+            SET name = ?,
+                normalized_name = ?,
+                birth_date = COALESCE(?, birth_date),
                 birth_place = COALESCE(?, birth_place),
                 nationality = COALESCE(?, nationality),
                 profile_url = COALESCE(?, profile_url)
             WHERE coach_id = ?
             """,
-            (birth_date, birth_place, nationality, str(coach_file.relative_to(self.base_path)), coach_id),
+            (profile_name, normalize_name(profile_name), birth_date, birth_place, nationality,
+             str(coach_file.relative_to(self.base_path)), coach_id),
         )
         
         # Parse career table
@@ -2977,14 +3296,87 @@ class ComprehensiveFSVParser:
                 index[normalize_name(path.stem)] = path
         return index
 
+    def get_full_name_from_profile(self, profile_url: str) -> Optional[str]:
+        """Extract full name from player profile HTML.
+
+        Args:
+            profile_url: Relative path to profile (e.g., "spieler/klopp.html")
+
+        Returns:
+            Full name from <b> tag (e.g., "JÜRGEN KLOPP") or None if not found
+        """
+        if not profile_url:
+            return None
+
+        profile_path = self.base_path / profile_url
+        if not profile_path.exists():
+            return None
+
+        soup = read_html(profile_path)
+        if soup is None:
+            return None
+
+        # Extract full name from first <b> tag
+        header = soup.find("b")
+        if not header:
+            return None
+
+        full_name = normalize_whitespace(header.get_text(" ", strip=True))
+
+        # Clean extracted name
+        if full_name.startswith('?'):
+            full_name = full_name[1:].strip()
+        full_name = re.sub(r'^wdh\.\s*', '', full_name, flags=re.IGNORECASE).strip()
+
+        # Validate
+        if not full_name or len(full_name) < 2:
+            return None
+
+        return full_name
+
+    def resolve_player_name(self, name: str, profile_url: Optional[str] = None) -> tuple[str, Optional[str]]:
+        """Resolve player name to full name using profile if available.
+
+        Args:
+            name: Player surname from lineup (e.g., "Klopp")
+            profile_url: Optional profile URL (e.g., "spieler/klopp.html")
+
+        Returns:
+            Tuple of (resolved_name, normalized_profile_url)
+            - If profile URL exists and has full name: ("JÜRGEN KLOPP", "spieler/klopp.html")
+            - Otherwise: ("Klopp", None)
+        """
+        if not profile_url:
+            return (name, None)
+
+        # Normalize profile URL
+        normalized_url = profile_url.replace("../", "")
+
+        # Try to get full name from profile
+        full_name = self.get_full_name_from_profile(normalized_url)
+        if full_name:
+            return (full_name, normalized_url)
+
+        return (name, normalized_url)
+
 
 def main():
+    import argparse
+
+    arg_parser = argparse.ArgumentParser(description="Parse FSV Mainz 05 archive HTML files into database")
+    arg_parser.add_argument("--seasons", nargs="+", help="Specific seasons to parse (e.g., 2009-10 2010-11)")
+    arg_parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
+    args = arg_parser.parse_args()
+
     if not logging.getLogger().handlers:
+        log_level = logging.DEBUG if args.verbose else logging.INFO
         logging.basicConfig(
-            level=logging.INFO,
+            level=log_level,
             format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         )
-    parser = ComprehensiveFSVParser()
+
+    seasons = args.seasons if args.seasons else None
+    parser = ComprehensiveFSVParser(seasons=seasons)
     parser.run()
 
 
