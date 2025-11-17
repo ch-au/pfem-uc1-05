@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { langfuseService } from './langfuse.service.js';
 import { openRouterService } from './openrouter.service.js';
 import { env } from '../../config/env.js';
+import { promptsConfig, type PromptConfig } from '../../config/prompts.config.js';
 import type {
   SQLGeneratorInput,
   SQLGeneratorOutput,
@@ -17,50 +18,60 @@ import type {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const PROMPTS_DIR = join(__dirname, '../../../../../prompts/fallback');
 
 export class PromptsService {
   /**
-   * Load prompt template from Langfuse or local fallback
+   * Load prompt template from Langfuse or local fallback using YAML config
    */
-  private async loadPromptTemplate(name: string): Promise<{ system: string; user: string }> {
-    // Try Langfuse first
-    if (langfuseService.isActive()) {
+  private async loadPromptTemplate(promptKey: string): Promise<{ 
+    system: string; 
+    user: string;
+    config: PromptConfig;
+  }> {
+    const config = promptsConfig.getPromptConfig(promptKey);
+    const defaults = promptsConfig.getDefaults();
+
+    // Try Langfuse first if enabled
+    if (defaults.langfuse_enabled && langfuseService.isActive()) {
       try {
-        const promptData = await langfuseService.getPrompt(name);
+        const promptData = await langfuseService.getPrompt(
+          config.langfuse_name,
+          config.langfuse_label ? undefined : undefined // TODO: Support version numbers
+        );
         if (promptData) {
-          console.log(`✅ Loaded prompt "${name}" from Langfuse`);
+          console.log(`✅ Loaded prompt "${promptKey}" from Langfuse (${config.langfuse_name})`);
           // Parse prompt (format: "SYSTEM INSTRUCTION:\n...\n\nUSER PROMPT:\n...")
           const parts = promptData.prompt.split('---');
           if (parts.length === 2) {
             const systemPart = parts[0].split('USER PROMPT:')[0].replace('SYSTEM INSTRUCTION:', '').trim();
             const userPart = parts[1].trim();
-            return { system: systemPart, user: userPart };
+            return { system: systemPart, user: userPart, config };
           }
         }
       } catch (error) {
-        console.warn(`⚠️  Failed to load prompt "${name}" from Langfuse, falling back to local`);
+        console.warn(`⚠️  Failed to load prompt "${promptKey}" from Langfuse, falling back to local`);
       }
     }
 
     // Fallback to local file
     try {
-      const filePath = join(PROMPTS_DIR, `${name}.txt`);
+      const fallbackDir = join(__dirname, defaults.fallback_dir);
+      const filePath = join(fallbackDir, config.fallback_file);
       const content = await readFile(filePath, 'utf-8');
-      console.log(`📁 Loaded prompt "${name}" from local fallback`);
+      console.log(`📁 Loaded prompt "${promptKey}" from local fallback (${config.fallback_file})`);
 
       // Parse local file format
       const parts = content.split('---');
       if (parts.length !== 2) {
-        throw new Error(`Invalid prompt format in ${name}.txt`);
+        throw new Error(`Invalid prompt format in ${config.fallback_file}`);
       }
 
       const systemPart = parts[0].split('USER PROMPT:')[0].replace('SYSTEM INSTRUCTION:', '').trim();
       const userPart = parts[1].trim();
 
-      return { system: systemPart, user: userPart };
+      return { system: systemPart, user: userPart, config };
     } catch (error) {
-      throw new Error(`Failed to load prompt "${name}" from both Langfuse and local fallback: ${error}`);
+      throw new Error(`Failed to load prompt "${promptKey}" from both Langfuse and local fallback: ${error}`);
     }
   }
 
@@ -85,17 +96,17 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
-    const promptName = 'chat-sql-generator';
+    const promptKey = 'chat-sql-generator';
 
-    // Load prompt template
-    const template = await this.loadPromptTemplate(promptName);
+    // Load prompt template with config
+    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
-    const systemPrompt = this.compileTemplate(template.system, {
+    const systemPrompt = this.compileTemplate(systemTemplate, {
       schemaContext: input.schemaContext,
     });
 
-    const userPrompt = this.compileTemplate(template.user, {
+    const userPrompt = this.compileTemplate(userTemplate, {
       conversationHistory: JSON.stringify(input.conversationHistory, null, 2),
       userQuestion: input.userQuestion,
     });
@@ -112,15 +123,15 @@ export class PromptsService {
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call OpenRouter
+    // Call OpenRouter with config from YAML
     const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<SQLGeneratorOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
-        temperature: 0.1,
-        maxOutputTokens: 2000,
-        responseFormat: 'json',
+        temperature: config.llm_config.temperature,
+        maxOutputTokens: config.llm_config.max_tokens,
+        responseFormat: config.llm_config.response_format,
       }
     );
     const latency = Date.now() - startTime;
@@ -148,14 +159,14 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
-    const promptName = 'chat-answer-formatter';
+    const promptKey = 'chat-answer-formatter';
 
-    // Load prompt template
-    const template = await this.loadPromptTemplate(promptName);
+    // Load prompt template with config
+    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
-    const systemPrompt = template.system;
-    const userPrompt = this.compileTemplate(template.user, {
+    const systemPrompt = systemTemplate;
+    const userPrompt = this.compileTemplate(userTemplate, {
       userQuestion: input.userQuestion,
       sqlQuery: input.sqlQuery,
       sqlResult: JSON.stringify(input.sqlResult, null, 2),
@@ -175,15 +186,15 @@ export class PromptsService {
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call OpenRouter
+    // Call OpenRouter with config from YAML
     const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<AnswerFormatterOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
-        temperature: 0.7,
-        maxOutputTokens: 1500,
-        responseFormat: 'json',
+        temperature: config.llm_config.temperature,
+        maxOutputTokens: config.llm_config.max_tokens,
+        responseFormat: config.llm_config.response_format,
       }
     );
     const latency = Date.now() - startTime;
@@ -211,17 +222,17 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
-    const promptName = 'quiz-question-generator';
+    const promptKey = 'quiz-question-generator';
 
-    // Load prompt template
-    const template = await this.loadPromptTemplate(promptName);
+    // Load prompt template with config
+    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
-    const systemPrompt = this.compileTemplate(template.system, {
+    const systemPrompt = this.compileTemplate(systemTemplate, {
       schemaContext: input.schemaContext,
     });
 
-    const userPrompt = this.compileTemplate(template.user, {
+    const userPrompt = this.compileTemplate(userTemplate, {
       category: input.category,
       difficulty: input.difficulty,
       count: String(input.count),
@@ -242,15 +253,15 @@ export class PromptsService {
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call OpenRouter
+    // Call OpenRouter with config from YAML
     const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<QuestionGeneratorOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
-        temperature: 0.8,
-        maxOutputTokens: 10000,
-        responseFormat: 'json',
+        temperature: config.llm_config.temperature,
+        maxOutputTokens: config.llm_config.max_tokens,
+        responseFormat: config.llm_config.response_format,
       }
     );
     const latency = Date.now() - startTime;
@@ -278,14 +289,14 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
-    const promptName = 'quiz-answer-generator';
+    const promptKey = 'quiz-answer-generator';
 
-    // Load prompt template
-    const template = await this.loadPromptTemplate(promptName);
+    // Load prompt template with config
+    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
-    const systemPrompt = template.system;
-    const userPrompt = this.compileTemplate(template.user, {
+    const systemPrompt = systemTemplate;
+    const userPrompt = this.compileTemplate(userTemplate, {
       question: input.question,
       difficulty: input.difficulty,
       sqlQuery: input.sqlQuery,
@@ -305,15 +316,15 @@ export class PromptsService {
       input: { system: systemPrompt, user: userPrompt },
     });
 
-    // Call OpenRouter
+    // Call OpenRouter with config from YAML
     const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<AnswerGeneratorOutput>(
       userPrompt,
       {
         systemInstruction: systemPrompt,
-        temperature: 0.6,
-        maxOutputTokens: 1000,
-        responseFormat: 'json',
+        temperature: config.llm_config.temperature,
+        maxOutputTokens: config.llm_config.max_tokens,
+        responseFormat: config.llm_config.response_format,
       }
     );
     const latency = Date.now() - startTime;

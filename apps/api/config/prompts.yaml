@@ -1,0 +1,54 @@
+# AI Prompt Configuration
+# Each prompt can be loaded from Langfuse or a local fallback file
+
+prompts:
+  # Chat SQL Generator - Converts user questions to SQL
+  chat-sql-generator:
+    langfuse_name: 'chat-sql-generator'
+    langfuse_label: 'production'  # Optional: use specific version/label
+    fallback_file: 'chat-sql-generator.txt'
+    llm_config:
+      temperature: 0.1
+      max_tokens: 2000
+      response_format: 'json'
+    description: 'Generates SQL queries from natural language questions about FSV Mainz 05 history'
+
+  # Chat Answer Formatter - Formats SQL results into natural language
+  chat-answer-formatter:
+    langfuse_name: 'chat-answer-formatter'
+    langfuse_label: 'production'
+    fallback_file: 'chat-answer-formatter.txt'
+    llm_config:
+      temperature: 0.7
+      max_tokens: 1500
+      response_format: 'json'
+    description: 'Formats SQL query results into conversational German answers'
+
+  # Quiz Question Generator - Creates quiz questions from database
+  quiz-question-generator:
+    langfuse_name: 'quiz-question-generator'
+    langfuse_label: 'production'
+    fallback_file: 'quiz-question-generator.txt'
+    llm_config:
+      temperature: 0.8
+      max_tokens: 10000
+      response_format: 'json'
+    description: 'Generates multiple-choice quiz questions based on FSV Mainz 05 data'
+
+  # Quiz Answer Generator - Generates alternative wrong answers
+  quiz-answer-generator:
+    langfuse_name: 'quiz-answer-generator'
+    langfuse_label: 'production'
+    fallback_file: 'quiz-answer-generator.txt'
+    llm_config:
+      temperature: 0.6
+      max_tokens: 1000
+      response_format: 'json'
+    description: 'Generates plausible incorrect alternatives for quiz questions'
+
+# Global defaults
+defaults:
+  fallback_dir: '../../../../../prompts/fallback'
+  langfuse_enabled: true
+  retry_on_error: true
+  max_retries: 2
