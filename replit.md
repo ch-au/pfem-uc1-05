@@ -167,6 +167,29 @@ HTML Files → BeautifulSoup → Parse Entities → Validate → Batch Insert �
 - `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`: Optional observability
 - `LITELLM_DEFAULT_MODEL`: Model selection (defaults to Gemini Flash)
 
+## Deployment Configuration
+
+**Package Manager**: pnpm@10.12.4 (specified in `package.json`)
+
+**Monorepo Structure**: Turborepo with pnpm workspaces
+- `apps/api/`: Node.js/Fastify backend
+- `frontend/`: React/Vite frontend
+- `packages/*`: Shared packages
+
+**Build Process**:
+```bash
+pnpm install --frozen-lockfile && pnpm run build
+```
+This installs all dependencies and builds both frontend and backend using Turborepo.
+
+**Production Run**:
+```bash
+node apps/api/dist/server.js & npx vite preview --config frontend/vite.config.ts --outDir frontend/dist --host 0.0.0.0 --port 5000 --strictPort
+```
+Starts the API server and serves the built frontend on port 5000.
+
+**Deployment Target**: Autoscale (stateless web application)
+
 ## Error Handling & Observability
 
 **Logging Strategy**:
