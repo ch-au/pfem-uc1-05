@@ -7,11 +7,9 @@ const ChatMessageRequestSchema = z.object({
   content: z.string().min(1).max(5000),
 });
 
-const CreateSessionSchema = z.object({});
-
 export async function chatRoutes(fastify: FastifyInstance) {
   // Create a new chat session
-  fastify.post('/chat/session', async (request, reply) => {
+  fastify.post('/chat/session', async (_request, reply) => {
     try {
       const session = await chatService.createSession();
       return reply.code(201).send({

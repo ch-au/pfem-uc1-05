@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { QuizService } from '../../services/quiz/quiz.service.js';
 import { PostgresService } from '../../services/database/postgres.service.js';
 
 /**
@@ -10,9 +9,8 @@ import { PostgresService } from '../../services/database/postgres.service.js';
  * - Database schema applied (including migrations)
  */
 describe('QuizService (integration)', () => {
-  let quizService: QuizService;
   let postgresService: PostgresService;
-  let testGameId: string;
+  let testGameId: string | undefined;
 
   beforeAll(() => {
     if (!process.env.DB_URL) {
@@ -23,7 +21,6 @@ describe('QuizService (integration)', () => {
       console.warn('⚠️  GEMINI_API_KEY not set, skipping integration tests');
       return;
     }
-    quizService = new QuizService();
     postgresService = new PostgresService();
   });
 

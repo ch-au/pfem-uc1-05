@@ -126,7 +126,6 @@ export class PromptsService {
     });
 
     // Call OpenRouter with config from YAML
-    const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<SQLGeneratorOutput>(
       userPrompt,
       {
@@ -137,10 +136,9 @@ export class PromptsService {
         responseFormat: config.llm_config.response_format,
       }
     );
-    const latency = Date.now() - startTime;
 
-    // End generation
-    langfuseService.endGeneration(generation, data, usage, latency);
+    // End generation (latency calculated automatically by Langfuse)
+    langfuseService.endGeneration(generation, data, usage);
 
     // Flush to Langfuse
     await langfuseService.flush();
@@ -193,7 +191,6 @@ export class PromptsService {
     });
 
     // Call OpenRouter with config from YAML
-    const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<AnswerFormatterOutput>(
       userPrompt,
       {
@@ -204,10 +201,9 @@ export class PromptsService {
         responseFormat: config.llm_config.response_format,
       }
     );
-    const latency = Date.now() - startTime;
 
-    // End generation
-    langfuseService.endGeneration(generation, data, usage, latency);
+    // End generation (latency calculated automatically by Langfuse)
+    langfuseService.endGeneration(generation, data, usage);
 
     // Flush to Langfuse
     await langfuseService.flush();
@@ -264,7 +260,6 @@ export class PromptsService {
     });
 
     // Call OpenRouter with config from YAML
-    const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<QuestionGeneratorOutput>(
       userPrompt,
       {
@@ -275,10 +270,9 @@ export class PromptsService {
         responseFormat: config.llm_config.response_format,
       }
     );
-    const latency = Date.now() - startTime;
 
-    // End generation
-    langfuseService.endGeneration(generation, data, usage, latency);
+    // End generation (latency calculated automatically by Langfuse)
+    langfuseService.endGeneration(generation, data, usage);
 
     // Flush to Langfuse
     await langfuseService.flush();
@@ -331,7 +325,6 @@ export class PromptsService {
     });
 
     // Call OpenRouter with config from YAML
-    const startTime = Date.now();
     const { data, usage } = await openRouterService.generateJSON<AnswerGeneratorOutput>(
       userPrompt,
       {
@@ -342,10 +335,9 @@ export class PromptsService {
         responseFormat: config.llm_config.response_format,
       }
     );
-    const latency = Date.now() - startTime;
 
-    // End generation
-    langfuseService.endGeneration(generation, data, usage, latency);
+    // End generation (latency calculated automatically by Langfuse)
+    langfuseService.endGeneration(generation, data, usage);
 
     // Flush to Langfuse
     await langfuseService.flush();

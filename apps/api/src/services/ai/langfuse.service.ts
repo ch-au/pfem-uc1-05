@@ -91,12 +91,12 @@ export class LangfuseService {
 
   /**
    * End a generation with output and usage stats
+   * Note: Latency is calculated automatically by Langfuse from start/end timestamps
    */
   endGeneration(
     generation: LangfuseGenerationClient | null,
     output: any,
-    usage: { promptTokens: number; completionTokens: number; totalTokens: number },
-    latency: number
+    usage: { promptTokens: number; completionTokens: number; totalTokens: number }
   ): void {
     if (!generation) {
       return;
@@ -109,7 +109,6 @@ export class LangfuseService {
         completionTokens: usage.completionTokens,
         totalTokens: usage.totalTokens,
       },
-      latencyMs: latency,
     });
   }
 
