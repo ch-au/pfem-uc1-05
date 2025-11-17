@@ -3,7 +3,6 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { langfuseService } from './langfuse.service.js';
 import { openRouterService } from './openrouter.service.js';
-import { env } from '../../config/env.js';
 import { promptsConfig, type PromptConfig } from '../../config/prompts.config.js';
 import type {
   SQLGeneratorInput,
@@ -116,10 +115,13 @@ export class PromptsService {
       userQuestion: input.userQuestion,
     });
 
+    // Get model from config (prompt-specific or default)
+    const model = promptsConfig.getModelForPrompt(promptKey);
+
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
       name: 'openrouter-sql-generation',
-      model: env.OPENROUTER_MODEL,
+      model: model,
       input: { system: systemPrompt, user: userPrompt },
     });
 
@@ -128,6 +130,7 @@ export class PromptsService {
     const { data, usage } = await openRouterService.generateJSON<SQLGeneratorOutput>(
       userPrompt,
       {
+        model: model,
         systemInstruction: systemPrompt,
         temperature: config.llm_config.temperature,
         maxOutputTokens: config.llm_config.max_tokens,
@@ -179,10 +182,13 @@ export class PromptsService {
       userQuestion: input.userQuestion,
     });
 
+    // Get model from config (prompt-specific or default)
+    const model = promptsConfig.getModelForPrompt(promptKey);
+
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
       name: 'openrouter-answer-formatting',
-      model: env.OPENROUTER_MODEL,
+      model: model,
       input: { system: systemPrompt, user: userPrompt },
     });
 
@@ -191,6 +197,7 @@ export class PromptsService {
     const { data, usage } = await openRouterService.generateJSON<AnswerFormatterOutput>(
       userPrompt,
       {
+        model: model,
         systemInstruction: systemPrompt,
         temperature: config.llm_config.temperature,
         maxOutputTokens: config.llm_config.max_tokens,
@@ -246,10 +253,13 @@ export class PromptsService {
       count: input.count,
     });
 
+    // Get model from config (prompt-specific or default)
+    const model = promptsConfig.getModelForPrompt(promptKey);
+
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
       name: 'openrouter-question-generation',
-      model: env.OPENROUTER_MODEL,
+      model: model,
       input: { system: systemPrompt, user: userPrompt },
     });
 
@@ -258,6 +268,7 @@ export class PromptsService {
     const { data, usage } = await openRouterService.generateJSON<QuestionGeneratorOutput>(
       userPrompt,
       {
+        model: model,
         systemInstruction: systemPrompt,
         temperature: config.llm_config.temperature,
         maxOutputTokens: config.llm_config.max_tokens,
@@ -309,10 +320,13 @@ export class PromptsService {
       difficulty: input.difficulty,
     });
 
+    // Get model from config (prompt-specific or default)
+    const model = promptsConfig.getModelForPrompt(promptKey);
+
     // Create generation
     const generation = langfuseService.createGeneration(trace, {
       name: 'openrouter-answer-generation',
-      model: env.OPENROUTER_MODEL,
+      model: model,
       input: { system: systemPrompt, user: userPrompt },
     });
 
@@ -321,6 +335,7 @@ export class PromptsService {
     const { data, usage } = await openRouterService.generateJSON<AnswerGeneratorOutput>(
       userPrompt,
       {
+        model: model,
         systemInstruction: systemPrompt,
         temperature: config.llm_config.temperature,
         maxOutputTokens: config.llm_config.max_tokens,

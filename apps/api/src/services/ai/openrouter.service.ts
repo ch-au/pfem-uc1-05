@@ -2,6 +2,7 @@ import { OpenRouter } from '@openrouter/sdk';
 import { env } from '../../config/env.js';
 
 export interface OpenRouterGenerateOptions {
+  model?: string;  // Optional: Override default model
   systemInstruction?: string;
   temperature?: number;
   maxOutputTokens?: number;
@@ -46,7 +47,7 @@ export class OpenRouterService {
     });
 
     const response = await this.client.chat.send({
-      model: env.OPENROUTER_MODEL,
+      model: options.model ?? env.OPENROUTER_MODEL,
       messages,
       temperature: options.temperature ?? 0.7,
       maxTokens: options.maxOutputTokens ?? 2000,
@@ -116,7 +117,7 @@ export class OpenRouterService {
     });
 
     const stream = await this.client.chat.send({
-      model: env.OPENROUTER_MODEL,
+      model: options.model ?? env.OPENROUTER_MODEL,
       messages,
       temperature: options.temperature ?? 0.7,
       maxTokens: options.maxOutputTokens ?? 2000,

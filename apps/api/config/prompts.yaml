@@ -4,9 +4,10 @@
 prompts:
   # Chat SQL Generator - Converts user questions to SQL
   chat-sql-generator:
-    langfuse_name: 'chat-sql-generator'
+    langfuse_name: 'uc1/production/SQL_Interface'
     langfuse_label: 'production'  # Optional: use specific version/label
     fallback_file: 'chat-sql-generator.txt'
+    model: 'google/gemini-2.0-flash-exp:free'  # Optional: Override default model
     llm_config:
       temperature: 0.1
       max_tokens: 20000
@@ -18,6 +19,7 @@ prompts:
     langfuse_name: 'uc1/production/Chatbot_Antwort'
     langfuse_label: 'production'
     fallback_file: 'chat-answer-formatter.txt'
+    # model: (uses default_model)
     llm_config:
       temperature: 0.7
       max_tokens: 2000
@@ -26,28 +28,34 @@ prompts:
 
   # Quiz Question Generator - Creates quiz questions from database
   quiz-question-generator:
-    langfuse_name: 'quiz-question-generator'
+    langfuse_name: 'uc1/production/Quiz_Fragen'
     langfuse_label: 'production'
     fallback_file: 'quiz-question-generator.txt'
+    # model: (uses default_model)
     llm_config:
-      temperature: 0.8
+      temperature: 0.7
       max_tokens: 10000
       response_format: 'json'
     description: 'Generates multiple-choice quiz questions based on FSV Mainz 05 data'
 
   # Quiz Answer Generator - Generates alternative wrong answers
   quiz-answer-generator:
-    langfuse_name: 'quiz-answer-generator'
+    langfuse_name: 'uc1/production/Quiz_Antworten'
     langfuse_label: 'production'
     fallback_file: 'quiz-answer-generator.txt'
+    # model: (uses default_model)
     llm_config:
-      temperature: 0.6
-      max_tokens: 1000
+      temperature: 0.7
+      max_tokens: 2000
       response_format: 'json'
     description: 'Generates plausible incorrect alternatives for quiz questions'
 
 # Global defaults
 defaults:
+  # Default model for all prompts (unless overridden per prompt)
+  default_model: 'google/gemini-2.0-flash-exp:free'
+  
+  # Prompt loading settings
   fallback_dir: '../../../../../prompts/fallback'
   langfuse_enabled: true
   retry_on_error: true

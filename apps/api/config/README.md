@@ -27,12 +27,22 @@ prompts:
     langfuse_name: 'langfuse-prompt'  # Name in Langfuse
     langfuse_label: 'production'      # Optional: Version/Label
     fallback_file: 'prompt.txt'       # Lokale Fallback-Datei
+    model: 'google/gemini-2.0-flash-exp:free'  # Optional: Eigenes Modell (überschreibt default_model)
     llm_config:                       # LLM-Parameter
       temperature: 0.7                # Kreativität (0.0-1.0)
       max_tokens: 1500                # Maximale Antwortlänge
       response_format: 'json'         # 'json' oder 'text'
     description: 'Was macht dieser Prompt?'
+
+defaults:
+  default_model: 'google/gemini-2.0-flash-exp:free'  # Standard-Modell für alle Prompts
+  # ... weitere defaults
 ```
+
+**Modell-Auswahl:**
+- Jeder Prompt kann ein eigenes `model` definieren (optional)
+- Wenn kein `model` definiert → `default_model` wird verwendet
+- Default: `google/gemini-2.0-flash-exp:free`
 
 ## 🔧 Neuen Prompt hinzufügen
 
@@ -44,6 +54,7 @@ prompts:
     langfuse_name: 'mein-neuer-prompt'
     langfuse_label: 'production'
     fallback_file: 'mein-neuer-prompt.txt'
+    model: 'anthropic/claude-3.5-sonnet'  # Optional: Eigenes Modell für diesen Prompt
     llm_config:
       temperature: 0.5
       max_tokens: 2000
@@ -109,6 +120,14 @@ const userPrompt = this.compileTemplate(template.user, {
 ```
 
 ## 🎨 LLM-Parameter
+
+### model
+- **Optional**: Eigenes Modell für diesen Prompt
+- **Standard**: Verwendet `default_model` aus defaults
+- **Beispiele**:
+  - `'google/gemini-2.0-flash-exp:free'` (kostenlos, schnell)
+  - `'anthropic/claude-3.5-sonnet'` (sehr intelligent)
+  - `'openai/gpt-4o'` (multimodal)
 
 ### temperature
 - **0.0-0.3**: Sehr präzise, deterministische Antworten (SQL, Daten)

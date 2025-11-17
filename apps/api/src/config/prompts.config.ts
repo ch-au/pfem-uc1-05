@@ -16,6 +16,7 @@ export interface PromptConfig {
   langfuse_name: string;
   langfuse_label?: string;
   fallback_file: string;
+  model?: string;  // Optional: Override default model for this prompt
   llm_config: PromptLLMConfig;
   description: string;
 }
@@ -23,6 +24,7 @@ export interface PromptConfig {
 export interface PromptsConfiguration {
   prompts: Record<string, PromptConfig>;
   defaults: {
+    default_model: string;  // Default model for all prompts
     fallback_dir: string;
     langfuse_enabled: boolean;
     retry_on_error: boolean;
@@ -68,6 +70,15 @@ class PromptsConfigLoader {
 
   getAllPromptKeys(): string[] {
     return Object.keys(this.load().prompts);
+  }
+
+  /**
+   * Get the model to use for a specific prompt
+   * Returns prompt-specific model if defined, otherwise default model
+   */
+  getModelForPrompt(promptKey: string): string {
+    const promptConfig = this.getPromptConfig(promptKey);
+    return promptConfig.model || this.getDefaults().default_model;
   }
 }
 
