@@ -48,7 +48,7 @@ prompts:
 
 # Global defaults
 defaults:
-  default_model: 'google/gemini-2.0-flash-exp:free' 
+  default_model: 'google/gemini-2.0-flash-exp:free'
   fallback_dir: '../../../../../prompts/fallback'
   langfuse_enabled: true
   retry_on_error: true

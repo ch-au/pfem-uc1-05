@@ -6,6 +6,7 @@ import { quizRoutes } from './routes/quiz.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { postgresService } from './services/database/postgres.service.js';
 import { langfuseService } from './services/ai/langfuse.service.js';
+import { promptsConfig } from './config/prompts.config.js';
 
 // Create Fastify instance
 const fastify = Fastify({
@@ -71,6 +72,9 @@ process.on('SIGINT', gracefulShutdown);
 // Start server
 const start = async () => {
   try {
+    // Load prompts configuration on startup
+    const config = promptsConfig.load();
+    
     await fastify.listen({
       port: env.API_PORT,
       host: env.API_HOST,
@@ -78,7 +82,8 @@ const start = async () => {
 
     fastify.log.info(`🚀 API Server running at http://${env.API_HOST}:${env.API_PORT}`);
     fastify.log.info(`📊 Health check: http://${env.API_HOST}:${env.API_PORT}/health`);
-    fastify.log.info(`🤖 OpenRouter Model: ${env.OPENROUTER_MODEL}`);
+    fastify.log.info(`🤖 Default Model (YAML): ${config.defaults.default_model}`);
+    fastify.log.info(`🔧 Fallback Model (.env): ${env.OPENROUTER_MODEL}`);
     fastify.log.info(`📡 Langfuse: ${langfuseService.isActive() ? 'Enabled' : 'Disabled (using local prompts)'}`);
   } catch (error) {
     fastify.log.error(error);

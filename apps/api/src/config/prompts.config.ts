@@ -34,23 +34,41 @@ export interface PromptsConfiguration {
 
 class PromptsConfigLoader {
   private config: PromptsConfiguration | null = null;
+  private configPath: string;
 
-  load(): PromptsConfiguration {
-    if (this.config) {
+  constructor() {
+    this.configPath = join(__dirname, '../../config/prompts.yaml');
+  }
+
+  /**
+   * Load YAML configuration (with hot-reload support)
+   * Set forceReload=true to reload from disk
+   */
+  load(forceReload: boolean = false): PromptsConfiguration {
+    if (this.config && !forceReload) {
       return this.config;
     }
 
     try {
-      const configPath = join(__dirname, '../../config/prompts.yaml');
-      const fileContents = readFileSync(configPath, 'utf8');
+      const fileContents = readFileSync(this.configPath, 'utf8');
       this.config = yaml.load(fileContents) as PromptsConfiguration;
       
       console.log(`✅ Loaded prompts configuration with ${Object.keys(this.config.prompts).length} prompts`);
+      console.log(`📌 Default model: ${this.config.defaults.default_model}`);
       return this.config;
     } catch (error) {
       console.error('Failed to load prompts.yaml:', error);
       throw new Error('Could not load prompts configuration');
     }
+  }
+
+  /**
+   * Force reload configuration from disk
+   */
+  reload(): void {
+    this.config = null;
+    this.load(true);
+    console.log('🔄 Prompts configuration reloaded from YAML');
   }
 
   getPromptConfig(promptKey: string): PromptConfig {
