@@ -6,6 +6,7 @@ import type {
   QuizAnswerRequest,
   QuizAnswerResponse,
   QuizLeaderboardResponse,
+  QuizLeaderboardEntry,
   QuizNextRoundResponse,
   QuizGenerationProgressResponse,
 } from '../types/api';
@@ -31,7 +32,10 @@ export const quizService = {
    * Create a new quiz game
    */
   async createGame(gameRequest: QuizGameCreate): Promise<string> {
-    const response = await api.post<{ game_id: string; message: string }>('/quiz/game', gameRequest);
+    const response = await api.post<{ game_id: string; generation_job_id?: string; generation_status?: string }>(
+      '/quiz/game',
+      gameRequest
+    );
     return response.data.game_id;
   },
 
@@ -126,9 +130,15 @@ export const quizService = {
     const response = await api.get<QuizGenerationProgressResponse>(`/quiz/game/${gameId}/progress`);
     return response.data;
   },
+
+  /**
+   * Global leaderboard (aggregate across games)
+   */
+  async getGlobalLeaderboard(limit: number = 20): Promise<QuizLeaderboardEntry[]> {
+    const response = await api.get<{ leaderboard: QuizLeaderboardEntry[] }>(
+      `/quiz/leaderboard?limit=${limit}`
+    );
+    return response.data.leaderboard || [];
+  },
 };
-
-
-
-
 

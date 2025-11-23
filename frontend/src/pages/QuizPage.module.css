@@ -5,6 +5,82 @@
   min-height: calc(100vh - 200px);
 }
 
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sidebar {
+  position: sticky;
+  top: 96px;
+  height: fit-content;
+}
+
+.historyGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.gameList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.gameListItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gameListItem:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.gameListItem:focus-visible {
+  outline: 2px solid #6366F1;
+  outline-offset: 2px;
+}
+
+.gameTitle {
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.gameMeta {
+  font-size: 0.875rem;
+  color: #6B7280;
+}
+
+.badge {
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
 .sectionTitle {
   font-size: 1.125rem;
   font-weight: 600;
@@ -36,6 +112,89 @@
 
 .startButton {
   min-width: 250px;
+}
+
+.statusText {
+  font-size: 0.95rem;
+  color: #6B7280;
+  margin-top: 0.5rem;
+}
+
+.roundHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.roundTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.roundMeta {
+  font-size: 0.9rem;
+  color: #6B7280;
+}
+
+.roundProgressBar {
+  flex: 1;
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.roundProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366F1, #22d3ee);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.statusInline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.statusTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  border-top-color: #2563eb;
+  animation: spin 0.8s linear infinite;
+}
+
+.progressRow {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: #4B5563;
+  margin-top: 0.25rem;
+}
+
+.progressStatus {
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 .options {
@@ -98,9 +257,22 @@
   }
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (min-width: 768px) {
   .quizPage {
     padding: 2rem 2rem 2rem;
+  }
+
+  .historyGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .packsGrid {
@@ -109,6 +281,10 @@
 }
 
 @media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: 2fr 1fr;
+  }
+
   .packsGrid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -119,8 +295,3 @@
     gap: 1rem;
   }
 }
-
-
-
-
-

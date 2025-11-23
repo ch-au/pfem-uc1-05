@@ -88,6 +88,8 @@ export interface QuizGameState {
   current_round: number;
   players: string[];
   created_at: string;
+  generation_job_id?: string;
+  generation_status?: 'queued' | 'running' | 'succeeded' | 'failed';
 }
 
 export interface QuizLeaderboardEntry {
@@ -130,4 +132,3 @@ export interface QuizGenerationProgressResponse {
 export interface ApiError {
   detail: string;
 }
-

@@ -1,10 +1,26 @@
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import yaml from 'js-yaml';
+import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
+// Lazy/optional YAML loader (falls back to JSON.parse if js-yaml is unavailable)
+let yamlLoad: (content: string) => any;
+try {
+  const jsYaml = require('js-yaml');
+  yamlLoad = jsYaml.load.bind(jsYaml);
+} catch {
+  yamlLoad = (content: string) => {
+    try {
+      return JSON.parse(content);
+    } catch {
+      throw new Error('Failed to parse prompts configuration (js-yaml not installed)');
+    }
+  };
+}
 
 export interface PromptLLMConfig {
   temperature: number;
@@ -51,7 +67,7 @@ class PromptsConfigLoader {
 
     try {
       const fileContents = readFileSync(this.configPath, 'utf8');
-      this.config = yaml.load(fileContents) as PromptsConfiguration;
+      this.config = yamlLoad(fileContents) as PromptsConfiguration;
       
       console.log(`✅ Loaded prompts configuration with ${Object.keys(this.config.prompts).length} prompts`);
       console.log(`📌 Default model: ${this.config.defaults.default_model}`);

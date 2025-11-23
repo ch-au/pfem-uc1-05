@@ -6,11 +6,10 @@ import { QuizSetup } from '../components/quiz/QuizSetup';
 import { QuizQuestion } from '../components/quiz/QuizQuestion';
 import { QuizOption } from '../components/quiz/QuizOption';
 import { Leaderboard } from '../components/quiz/Leaderboard';
-import { QuizHistory } from '../components/quiz/QuizHistory';
 import { useQuizGame } from '../hooks/useQuizGame';
 import { quizService } from '../services/quizService';
 import { Trophy } from 'lucide-react';
-import type { QuizGameState } from '../types/api';
+import type { QuizGameState, QuizLeaderboardEntry } from '../types/api';
 import styles from './QuizPage.module.css';
 
 type QuizScreen = 'start' | 'setup' | 'game';
@@ -18,12 +17,25 @@ type QuizScreen = 'start' | 'setup' | 'game';
 export const QuizPage: React.FC = () => {
   const [screen, setScreen] = useState<QuizScreen>('start');
   const [gameHistory, setGameHistory] = useState<QuizGameState[]>([]);
+  const [globalLeaderboard, setGlobalLeaderboard] = useState<QuizLeaderboardEntry[]>([]);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
+  const statusLabels: Record<string, string> = {
+    pending: 'Wartet',
+    sql_generated: 'Fragen werden generiert',
+    answer_verified: 'Antworten werden geprüft',
+    round_created: 'Runde erstellt',
+    running: 'Läuft',
+    queued: 'Wartet',
+    succeeded: 'Fertig',
+  };
   const {
     gameState,
     currentQuestion,
     leaderboard,
     isLoading,
     error,
+    statusMessage,
+    generationProgress,
     currentPlayer,
     selectedAnswer,
     answerResult,
@@ -48,6 +60,8 @@ export const QuizPage: React.FC = () => {
         num_rounds: data.numRounds,
         player_names: data.playerNames,
       });
+      await loadGameHistory();
+      await loadGlobalLeaderboard();
       setScreen('game');
     } catch (error) {
       // Error is already set in the hook, just log it
@@ -76,9 +90,16 @@ export const QuizPage: React.FC = () => {
     }
   };
 
+  const validGames = gameHistory.filter((game) => game.players && game.players.length > 0);
+  const activeGames = validGames.filter(
+    (game) => game.status === 'in_progress' || game.status === 'pending'
+  );
+  const completedGames = validGames.filter((game) => game.status === 'completed').slice(0, 5);
+
   // Load game history on mount
   React.useEffect(() => {
     loadGameHistory();
+    loadGlobalLeaderboard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -91,20 +112,29 @@ export const QuizPage: React.FC = () => {
     }
   };
 
+  const loadGlobalLeaderboard = async () => {
+    try {
+      setIsLoadingLeaderboard(true);
+      const result = await quizService.getGlobalLeaderboard(10);
+      setGlobalLeaderboard(result || []);
+    } catch (error) {
+      console.error('Failed to load leaderboard:', error);
+    } finally {
+      setIsLoadingLeaderboard(false);
+    }
+  };
+
   const handleSelectGame = async (gameId: string) => {
     try {
       const game = await loadGame(gameId);
+      await loadGameHistory();
       
       if (!game.players || game.players.length === 0) {
         alert(`Dieses Quiz wurde mit einer älteren Version erstellt und hat keine Spieler.\n\nBitte starte ein neues Quiz.`);
         return;
       }
       
-      if (game.status === 'completed') {
-        alert(`Quiz "${game.topic}" ist abgeschlossen!\n\nDiese Funktion kommt bald: Detailansicht mit Leaderboard.`);
-      } else {
-        setScreen('game');
-      }
+      setScreen('game');
     } catch (error: any) {
       console.error('Failed to load game:', error);
       
@@ -128,6 +158,13 @@ export const QuizPage: React.FC = () => {
   if (screen === 'setup') {
     return (
       <div className={styles.quizPage}>
+        {statusMessage && (
+          <Alert
+            variant="info"
+            title="Quiz wird vorbereitet"
+            message={statusMessage}
+          />
+        )}
         {error && (
           <Alert
             variant="error"
@@ -142,22 +179,77 @@ export const QuizPage: React.FC = () => {
   }
 
   if (screen === 'game') {
-    if (!currentQuestion || !gameState) {
+    if (!gameState) {
       return (
         <div className={styles.quizPage}>
           <Card variant="elevated" padding="lg">
             <div className={styles.startContent}>
               <h1 className={styles.startTitle}>Lade Quiz...</h1>
+              {statusMessage && <p className={styles.statusText}>{statusMessage}</p>}
             </div>
           </Card>
         </div>
       );
     }
 
-    const allOptions = currentQuestion.alternatives
-      ? [currentQuestion.correct_answer, ...currentQuestion.alternatives]
-      : [currentQuestion.correct_answer];
-    const shuffledOptions = [...allOptions].sort(() => Math.random() - 0.5);
+    if (gameState.status === 'completed') {
+      return (
+        <div className={styles.quizPage}>
+          <div className={styles.layout}>
+            <div className={styles.mainColumn}>
+              <Card variant="elevated" padding="lg">
+                <div className={styles.startContent}>
+                  <h1 className={styles.startTitle}>Quiz abgeschlossen</h1>
+                  <p className={styles.startDescription}>
+                    {gameState.topic || 'Dein Quiz'} ist beendet. Hier sind die Ergebnisse.
+                  </p>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => {
+                      setScreen('start');
+                      reset();
+                    }}
+                    className={styles.startButton}
+                  >
+                    Neues Quiz starten
+                  </Button>
+                </div>
+              </Card>
+
+              <Card variant="elevated" padding="md">
+                <h2 className={styles.sectionTitle}>
+                  <Trophy size={24} />
+                  Endstand
+                </h2>
+                {leaderboard.length > 0 ? (
+                  <Leaderboard entries={leaderboard} />
+                ) : (
+                  <p className={styles.statusText}>Keine Ergebnisse verfügbar.</p>
+                )}
+              </Card>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!currentQuestion) {
+      return (
+        <div className={styles.quizPage}>
+          <Card variant="elevated" padding="lg">
+            <div className={styles.startContent}>
+              <h1 className={styles.startTitle}>Lade Frage...</h1>
+              {statusMessage && <p className={styles.statusText}>{statusMessage}</p>}
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    const allOptions = (currentQuestion.alternatives || []).filter(
+      (option) => option && option.trim().length > 0
+    );
 
     const isCorrect = (option: string): boolean =>
       answerResult ? option === answerResult.correctAnswer : false;
@@ -165,7 +257,8 @@ export const QuizPage: React.FC = () => {
     const isIncorrect = (option: string): boolean =>
       answerResult ? selectedAnswer === option && !answerResult.correct : false;
 
-    const canProceed = answerResult !== null && currentPlayer === gameState.players[gameState.players.length - 1];
+    const canProceed =
+      answerResult !== null && currentPlayer === gameState.players[gameState.players.length - 1];
 
     return (
       <div className={styles.quizPage}>
@@ -177,60 +270,120 @@ export const QuizPage: React.FC = () => {
             onClose={handleErrorClose}
           />
         )}
-        <Card variant="elevated" padding="md">
-          <QuizQuestion
-            question={currentQuestion.question_text}
-            roundNumber={currentQuestion.round_number || gameState.current_round}
-            totalRounds={gameState.num_rounds}
-            currentPlayer={currentPlayer}
-          />
 
-          <div className={styles.options}>
-            {shuffledOptions.map((option, index) => (
-              <QuizOption
-                key={option}
-                option={option}
-                label={option}
-                index={index}
-                selected={isSelected(option)}
-                correct={isCorrect(option)}
-                incorrect={isIncorrect(option)}
-                disabled={answerResult !== null}
-                onClick={() => handleAnswerSelect(option)}
+        <div className={styles.layout}>
+          <div className={styles.mainColumn}>
+            <Card variant="elevated" padding="md">
+              <div className={styles.roundHeader}>
+                <div>
+                  <div className={styles.roundTitle}>
+                    Runde {Math.min(gameState.current_round, gameState.num_rounds)} von {gameState.num_rounds}
+                  </div>
+                  <div className={styles.roundMeta}>Spieler: {currentPlayer}</div>
+                </div>
+                <div className={styles.roundProgressBar}>
+                  <div
+                    className={styles.roundProgressFill}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        ((gameState.current_round - 1) / gameState.num_rounds) * 100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <QuizQuestion
+                question={currentQuestion.question_text}
+                roundNumber={currentQuestion.round_number || gameState.current_round}
+                totalRounds={gameState.num_rounds}
+                currentPlayer={currentPlayer}
               />
-            ))}
+
+              <div className={styles.options}>
+                {allOptions.length === 0 && (
+                  <p className={styles.statusText}>Antworten werden geladen...</p>
+                )}
+                {allOptions.map((option, index) => (
+                  <QuizOption
+                    key={option}
+                    option={option}
+                    label={option}
+                    index={index}
+                    selected={isSelected(option)}
+                    correct={isCorrect(option)}
+                    incorrect={isIncorrect(option)}
+                    disabled={answerResult !== null || isLoading}
+                    onClick={() => handleAnswerSelect(option)}
+                  />
+                ))}
+              </div>
+
+              {answerResult && (
+                <div className={`${styles.result} ${styles[answerResult.correct ? 'result--correct' : 'result--incorrect']}`}>
+                  <div className={styles.resultText}>
+                    {answerResult.correct ? (
+                      <>✓ Richtig! (+{answerResult.pointsEarned} Punkte)</>
+                    ) : (
+                      <>✗ Falsch</>
+                    )}
+                  </div>
+                  <div className={styles.explanation}>
+                    Richtige Antwort: {answerResult.correctAnswer}
+                  </div>
+                </div>
+              )}
+
+              {canProceed && (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleNextRound}
+                  className={styles.nextButton}
+                >
+                  {gameState.current_round >= gameState.num_rounds ? 'Fertig' : 'Nächste Runde'}
+                </Button>
+              )}
+            </Card>
           </div>
 
-          {answerResult && (
-            <div className={`${styles.result} ${styles[answerResult.correct ? 'result--correct' : 'result--incorrect']}`}>
-              <div className={styles.resultText}>
-                {answerResult.correct ? (
-                  <>✓ Richtig! (+{answerResult.pointsEarned} Punkte)</>
-                ) : (
-                  <>✗ Falsch</>
-                )}
+          <aside className={styles.sidebar}>
+            {(statusMessage || generationProgress) && (
+              <div className={styles.statusInline}>
+                <div className={styles.spinner} aria-hidden />
+                <div>
+                  <div className={styles.statusTitle}>Quiz wird vorbereitet</div>
+                  {statusMessage && <div className={styles.statusText}>{statusMessage}</div>}
+                  {generationProgress && (
+                    <div className={styles.progressRow}>
+                      <span>
+                        Runde {generationProgress.completed_rounds}/{generationProgress.total_rounds}
+                      </span>
+                      {generationProgress.current_status && (
+                        <span className={styles.progressStatus}>
+                          {statusLabels[generationProgress.current_status] ?? generationProgress.current_status}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className={styles.explanation}>
-                Richtige Antwort: {answerResult.correctAnswer}
-              </div>
-            </div>
-          )}
+            )}
 
-          {canProceed && (
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleNextRound}
-              className={styles.nextButton}
-            >
-              {gameState.current_round >= gameState.num_rounds ? 'Fertig' : 'Nächste Runde'}
-            </Button>
-          )}
-
-          {leaderboard.length > 0 && (
-            <Leaderboard entries={leaderboard} />
-          )}
-        </Card>
+            <Card variant="elevated" padding="md">
+              <h2 className={styles.sectionTitle}>
+                <Trophy size={24} />
+                Aktuelle Punkte
+              </h2>
+              {leaderboard.length > 0 ? (
+                <Leaderboard entries={leaderboard} />
+              ) : (
+                <p className={styles.statusText}>Leaderboard wird aufgebaut...</p>
+              )}
+            </Card>
+          </aside>
+        </div>
       </div>
     );
   }
@@ -238,44 +391,101 @@ export const QuizPage: React.FC = () => {
   // Start screen
   return (
     <div className={styles.quizPage}>
-      <Card variant="elevated" padding="lg">
-        <div className={styles.startContent}>
-          <h1 className={styles.startTitle}>FSV Mainz 05 Quiz</h1>
-          <p className={styles.startDescription}>
-            Teste dein Wissen über 120 Jahre Vereinsgeschichte - von 1905 bis heute
-          </p>
-          
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => setScreen('setup')}
-            className={styles.startButton}
-          >
-            Neues Quiz starten
-          </Button>
+      <div className={styles.layout}>
+        <div className={styles.mainColumn}>
+          <Card variant="elevated" padding="lg">
+            <div className={styles.startContent}>
+              <h1 className={styles.startTitle}>FSV Mainz 05 Quiz</h1>
+              <p className={styles.startDescription}>
+                Teste dein Wissen über 120 Jahre Vereinsgeschichte - von 1905 bis heute
+              </p>
+              
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => setScreen('setup')}
+                className={styles.startButton}
+              >
+                Neues Quiz starten
+              </Button>
+            </div>
+          </Card>
+
+          <div className={styles.historyGrid}>
+            <Card variant="elevated" padding="md">
+              <h2 className={styles.sectionTitle}>
+                Laufende Spiele
+              </h2>
+              {activeGames.length > 0 ? (
+                <div className={styles.gameList}>
+                  {activeGames.map((game) => (
+                    <button
+                      key={game.game_id}
+                      className={styles.gameListItem}
+                      onClick={() => handleSelectGame(game.game_id)}
+                    >
+                      <div>
+                        <div className={styles.gameTitle}>{game.topic || 'Quiz'}</div>
+                        <div className={styles.gameMeta}>
+                          Runde {game.current_round}/{game.num_rounds} • {game.players.length} Spieler
+                        </div>
+                      </div>
+                      <span className={styles.badge}>
+                        {game.status === 'pending' ? 'Wartet' : 'Läuft'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.statusText}>Keine aktiven Spiele. Starte ein neues Quiz!</p>
+              )}
+            </Card>
+
+            <Card variant="elevated" padding="md">
+              <h2 className={styles.sectionTitle}>
+                Kürzlich abgeschlossen
+              </h2>
+              {completedGames.length > 0 ? (
+                <div className={styles.gameList}>
+                  {completedGames.map((game) => (
+                    <button
+                      key={game.game_id}
+                      className={styles.gameListItem}
+                      onClick={() => handleSelectGame(game.game_id)}
+                    >
+                      <div>
+                        <div className={styles.gameTitle}>{game.topic || 'Quiz'}</div>
+                        <div className={styles.gameMeta}>
+                          {game.num_rounds} Runden • {game.players.length} Spieler
+                        </div>
+                      </div>
+                      <span className={styles.badge}>Beendet</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.statusText}>Noch keine abgeschlossenen Spiele.</p>
+              )}
+            </Card>
+          </div>
         </div>
-      </Card>
 
-      {gameHistory.length > 0 && (
-        <Card variant="elevated" padding="md" style={{ marginTop: '2rem' }}>
-          <QuizHistory games={gameHistory} onSelectGame={handleSelectGame} />
-        </Card>
-      )}
-
-      {leaderboard.length > 0 && (
-        <Card variant="elevated" padding="md">
-          <h2 className={styles.sectionTitle}>
-            <Trophy size={24} />
-            Leaderboard
-          </h2>
-          <Leaderboard entries={leaderboard} />
-        </Card>
-      )}
+        <aside className={styles.sidebar}>
+          <Card variant="elevated" padding="md">
+            <h2 className={styles.sectionTitle}>
+              <Trophy size={24} />
+              Globales Leaderboard
+            </h2>
+            {isLoadingLeaderboard && <p className={styles.statusText}>Lade Leaderboard...</p>}
+            {!isLoadingLeaderboard && globalLeaderboard.length === 0 && (
+              <p className={styles.statusText}>Noch keine Ergebnisse vorhanden.</p>
+            )}
+            {globalLeaderboard.length > 0 && (
+              <Leaderboard entries={globalLeaderboard} />
+            )}
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 };
-
-
-
-
-

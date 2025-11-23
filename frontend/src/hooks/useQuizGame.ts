@@ -11,12 +11,16 @@ export const useQuizGame = () => {
     leaderboard,
     isLoading,
     error,
+    statusMessage,
+    generationProgress,
     setGameId,
     setGameState,
     setCurrentQuestion,
     setLeaderboard,
     setLoading,
     setError,
+    setStatusMessage,
+    setGenerationProgress,
     reset,
   } = useQuizStore();
 
@@ -32,19 +36,27 @@ export const useQuizGame = () => {
     try {
       setLoading(true);
       setError(null);
+      setStatusMessage('Quiz wird erstellt...');
+      setGenerationProgress(null);
       const newGameId = await quizService.createGame(gameRequest);
       setGameId(newGameId);
       
       // Wait for questions to finish generating
-      await waitForQuestionGeneration(newGameId);
+      await waitForQuestionGeneration(newGameId, (msg) => {
+        setStatusMessage(msg);
+      });
       
       // Start the game
+      setStatusMessage('Starte Quiz...');
       const state = await quizService.startGame(newGameId);
       setGameState(state);
       
       // Load first question
+      setStatusMessage('Frage laden...');
       const question = await quizService.getCurrentQuestion(newGameId);
       setCurrentQuestion(question);
+      setStatusMessage(null);
+      setGenerationProgress(null);
       
       setCurrentPlayerIndex(0);
       return newGameId;
@@ -56,20 +68,37 @@ export const useQuizGame = () => {
     }
   };
 
-  const waitForQuestionGeneration = async (gameId: string, maxWaitTime = 120000) => {
+  const waitForQuestionGeneration = async (
+    gameId: string,
+    onProgress?: (message: string) => void,
+    maxWaitTime = 120000
+  ) => {
     const startTime = Date.now();
     const pollInterval = 1000; // Check every 1 second
 
     while (Date.now() - startTime < maxWaitTime) {
       try {
         const progress = await quizService.getGenerationProgress(gameId);
+        setGenerationProgress(progress.progress);
         
         if (progress.status === 'completed') {
+          onProgress?.('Quiz wird fertiggestellt...');
           return; // Generation completed successfully
         }
         
         if (progress.status === 'failed') {
           throw new Error(`Question generation failed: ${progress.progress.error_message || 'Unknown error'}`);
+        }
+
+        // Update progress message based on current round status
+        const activeRound = progress.progress.current_round;
+        const currentStatus = progress.progress.current_status;
+        if (currentStatus === 'sql_generated') {
+          onProgress?.(`Fragen werden generiert (Runde ${activeRound})...`);
+        } else if (currentStatus === 'answer_verified') {
+          onProgress?.(`Antworten werden geprüft (Runde ${activeRound})...`);
+        } else {
+          onProgress?.('Quiz wird vorbereitet...');
         }
         
         // Still generating, wait before checking again
@@ -77,8 +106,10 @@ export const useQuizGame = () => {
       } catch (err) {
         // If we get a 404, generation jobs might not be created yet, keep waiting
         if ((err as any)?.response?.status !== 404) {
+          setGenerationProgress(null);
           throw err;
         }
+        onProgress?.('Quiz wird vorbereitet...');
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     }
@@ -144,12 +175,10 @@ export const useQuizGame = () => {
         // All players have answered, automatically advance to next round after showing result
         setTimeout(async () => {
           try {
-            const roundResult = await quizService.nextRound(gameId);
-            if (roundResult.status === 'completed') {
+            const roundResult = await nextRound();
+            if (roundResult?.status === 'completed') {
               const leaderboardData = await quizService.getLeaderboard(gameId);
               setLeaderboard(leaderboardData.leaderboard);
-            } else {
-              await loadQuestion();
             }
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to advance round');
@@ -213,6 +242,8 @@ export const useQuizGame = () => {
     try {
       setLoading(true);
       setError(null);
+      setStatusMessage('Lade Quiz...');
+      setGenerationProgress(null);
       
       setGameId(existingGameId);
       
@@ -239,6 +270,7 @@ export const useQuizGame = () => {
       setCurrentPlayerIndex(0);
       setSelectedAnswer(null);
       setAnswerResult(null);
+      setStatusMessage(null);
       
       return state;
     } catch (err) {
@@ -256,6 +288,8 @@ export const useQuizGame = () => {
     leaderboard,
     isLoading,
     error,
+    statusMessage,
+    generationProgress,
     currentPlayerIndex,
     selectedAnswer,
     answerResult,
@@ -269,4 +303,3 @@ export const useQuizGame = () => {
     reset,
   };
 };
-

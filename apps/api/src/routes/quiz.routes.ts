@@ -195,4 +195,18 @@ export async function quizRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Failed to fetch completed games' });
     }
   });
+
+  // Global leaderboard
+  fastify.get<{
+    Querystring: { limit?: string };
+  }>('/quiz/leaderboard', async (request, reply) => {
+    try {
+      const { limit } = request.query;
+      const entries = await quizService.getGlobalLeaderboard(limit ? parseInt(limit) : 20);
+      return reply.send({ leaderboard: entries });
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Failed to fetch global leaderboard' });
+    }
+  });
 }

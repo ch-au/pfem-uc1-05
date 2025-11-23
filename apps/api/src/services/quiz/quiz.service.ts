@@ -397,7 +397,8 @@ export class QuizService {
 
           // Step 5: Save question to database
           const allAnswers = [correctAnswer, ...incorrectAnswers];
-          const shuffledAnswers = allAnswers.sort(() => Math.random() - 0.5);
+          // Keep answer order stable; no shuffling on the server
+          const stableAnswers = allAnswers;
 
           const question = await postgresService.queryOne<QuizQuestion>(
             `INSERT INTO public.quiz_questions
@@ -410,7 +411,7 @@ export class QuizService {
             [
               generatedQuestion.questionText,
               correctAnswer,
-              JSON.stringify(shuffledAnswers),
+              JSON.stringify(stableAnswers),
               explanation,
               config.difficulty,
               config.category,
@@ -495,6 +496,7 @@ export class QuizService {
 
     const completedCount = jobs.filter((j) => j.status === 'round_created').length;
     const failedJob = jobs.find((j) => j.status === 'failed');
+    const active = jobs.find((j) => j.status !== 'round_created' && j.status !== 'failed');
 
     return {
       game_id: gameId,
@@ -503,8 +505,8 @@ export class QuizService {
         game_id: gameId,
         total_rounds: jobs.length,
         completed_rounds: completedCount,
-        current_round: jobs.find((j) => j.status !== 'round_created' && j.status !== 'failed')?.round_number,
-        current_status: jobs.find((j) => j.status !== 'round_created' && j.status !== 'failed')?.status,
+        current_round: active?.round_number,
+        current_status: active?.status,
         error_message: failedJob?.error_message,
         rounds: jobs.map((j) => ({
           round_number: j.round_number,
@@ -610,6 +612,39 @@ export class QuizService {
    */
   async getCompletedGames(limit: number = 50, offset: number = 0): Promise<{ games: QuizGameResponse[]; total: number }> {
     return this.getGameHistory({ status: 'completed', limit, offset });
+  }
+
+  /**
+   * Global leaderboard (aggregate across all games)
+   */
+  async getGlobalLeaderboard(limit: number = 20): Promise<QuizLeaderboardResponse['leaderboard']> {
+    const rows = await postgresService.queryMany<{
+      player_name: string;
+      score: number;
+      correct_answers: number;
+      total_questions: number;
+      average_time: number;
+    }>(
+      `SELECT
+         qa.player_name,
+         SUM(qa.points_earned) as score,
+         SUM(CASE WHEN qa.is_correct THEN 1 ELSE 0 END) as correct_answers,
+         COUNT(*) as total_questions,
+         AVG(qa.time_taken) as average_time
+       FROM public.quiz_answers qa
+       GROUP BY qa.player_name
+       ORDER BY score DESC
+       LIMIT $1`,
+      [limit]
+    );
+
+    return rows.map((row) => ({
+      player_name: row.player_name,
+      score: Number(row.score),
+      correct_answers: Number(row.correct_answers),
+      total_questions: Number(row.total_questions),
+      average_time: Number(row.average_time),
+    }));
   }
 }
 
