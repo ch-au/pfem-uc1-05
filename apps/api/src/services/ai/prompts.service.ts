@@ -164,15 +164,19 @@ export class PromptsService {
     const promptKey = 'chat-sql-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
-    // Compile system prompt with variables
+    // Compile system prompt with Kontext variable
     const systemPrompt = this.compileTemplate(systemTemplate, {
-      schemaContext: input.schemaContext,
+      Kontext: input.schemaContext,
     });
 
-    // Construct user prompt from input parameters
-    const userPrompt = `Conversation History:\n${JSON.stringify(input.conversationHistory, null, 2)}\n\nUser Question:\n${input.userQuestion}`;
+    // Compile user prompt with Frage variable
+    const userPrompt = userTemplate
+      ? this.compileTemplate(userTemplate, {
+          Frage: input.userQuestion,
+        })
+      : `AKTUELLE FRAGE:\n${input.userQuestion}`;
 
     // Create trace with input (only user question, not full conversation)
     const trace = langfuseService.createTrace('chat-sql-generation', {
