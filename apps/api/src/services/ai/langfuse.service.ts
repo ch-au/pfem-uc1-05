@@ -50,15 +50,35 @@ export class LangfuseService {
   /**
    * Create a trace for tracking AI operations
    */
-  createTrace(name: string, metadata?: Record<string, any>): LangfuseTraceClient | null {
+  createTrace(
+    name: string,
+    config?: {
+      input?: any;
+      metadata?: Record<string, any>;
+    }
+  ): LangfuseTraceClient | null {
     if (!this.isEnabled || !this.langfuse) {
       return null;
     }
 
     return this.langfuse.trace({
       name,
-      metadata,
+      input: config?.input,
+      metadata: config?.metadata,
       timestamp: new Date(),
+    });
+  }
+
+  /**
+   * End a trace with output
+   */
+  endTrace(trace: LangfuseTraceClient | null, output?: any): void {
+    if (!trace) {
+      return;
+    }
+
+    trace.end({
+      output,
     });
   }
 
