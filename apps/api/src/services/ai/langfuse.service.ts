@@ -94,9 +94,11 @@ export class LangfuseService {
       model: config.model,
       input: config.input,
       metadata: config.metadata,
-      promptId: config.promptId,
-      promptName: config.promptName,
-      promptVersion: config.promptVersion,
+      prompt: config.promptId
+        ? { id: config.promptId }
+        : config.promptName
+        ? { name: config.promptName, version: config.promptVersion }
+        : undefined,
     });
   }
 

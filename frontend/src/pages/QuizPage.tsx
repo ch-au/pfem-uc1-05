@@ -325,6 +325,11 @@ export const QuizPage: React.FC = () => {
                   </div>
                   <div className={styles.explanation}>
                     Richtige Antwort: {answerResult.correctAnswer}
+                    {answerResult.explanation && (
+                      <div className={styles.explanationDetail}>
+                        {answerResult.explanation}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

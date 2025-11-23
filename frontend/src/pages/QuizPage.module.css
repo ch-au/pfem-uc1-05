@@ -242,6 +242,11 @@
   color: #6B7280;
 }
 
+.explanationDetail {
+  margin-top: 0.35rem;
+  line-height: 1.5;
+}
+
 .nextButton {
   width: 100%;
   justify-content: center;

@@ -30,6 +30,7 @@ export const useQuizGame = () => {
     correct: boolean;
     correctAnswer: string;
     pointsEarned: number;
+    explanation?: string;
   } | null>(null);
 
   const createGame = async (gameRequest: QuizGameCreate) => {
@@ -168,6 +169,7 @@ export const useQuizGame = () => {
         correct: result.correct,
         correctAnswer: result.correct_answer,
         pointsEarned: result.points_earned,
+        explanation: result.explanation,
       });
 
       // Move to next player or advance to next round
