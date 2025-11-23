@@ -466,94 +466,111 @@ export class PromptsService {
     
     const promptKey = 'quiz-answer-generator';
 
-    // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    try {
+      // Load prompt template with config
+      const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+      console.log(`   ✓ Loaded prompt template`);
 
-    // Compile system prompt
-    const systemPrompt = systemTemplate;
-    
-    // Compile user prompt from template (or construct if template is empty)
-    const userPrompt = userTemplate
-      ? this.compileTemplate(userTemplate, {
-          question: input.question,
-          difficulty: input.difficulty,
-          sqlQuery: input.sqlQuery,
-          sqlResult: JSON.stringify(input.sqlResult, null, 2),
-        })
-      : `Question: ${input.question}\nDifficulty: ${input.difficulty}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}`;
+      // Compile system prompt
+      const systemPrompt = systemTemplate;
+      
+      // Compile user prompt from template (or construct if template is empty)
+      const userPrompt = userTemplate
+        ? this.compileTemplate(userTemplate, {
+            question: input.question,
+            difficulty: input.difficulty,
+            sqlQuery: input.sqlQuery,
+            sqlResult: JSON.stringify(input.sqlResult, null, 2),
+          })
+        : `Question: ${input.question}\nDifficulty: ${input.difficulty}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}`;
 
-    // Create trace with input (only the question)
-    const trace = langfuseService.createTrace('quiz-answer-generation', {
-      input: input.question,
-      metadata: {
-        prompt_key: promptKey,
-        prompt_source: meta.source,
-        prompt_name: meta.promptName,
-        prompt_label: meta.promptLabel,
-        prompt_version: meta.promptVersion,
-        prompt_fallback: meta.fallbackFile,
-      },
-    });
+      console.log(`   ✓ User prompt compiled`);
 
-    // Get model from config (prompt-specific or default)
-    const model = promptsConfig.getModelForPrompt(promptKey);
+      // Create trace with input (only the question)
+      const trace = langfuseService.createTrace('quiz-answer-generation', {
+        input: input.question,
+        metadata: {
+          prompt_key: promptKey,
+          prompt_source: meta.source,
+          prompt_name: meta.promptName,
+          prompt_label: meta.promptLabel,
+          prompt_version: meta.promptVersion,
+          prompt_fallback: meta.fallbackFile,
+        },
+      });
+      console.log(`   ✓ Langfuse trace created`);
 
-    // Fetch the prompt object from Langfuse to link it to the generation
-    const langfusePrompt = await langfuseService.getPrompt(meta.promptName,
-      meta.promptVersion && meta.promptVersion !== 'fallback' ? Number(meta.promptVersion) : undefined
-    );
+      // Get model from config (prompt-specific or default)
+      const model = promptsConfig.getModelForPrompt(promptKey);
 
-    // Create generation with direct prompt link
-    const generation = langfuseService.createGenerationWithPrompt(trace, {
-      name: 'Quiz Answer Generation',
-      model: model,
-      input: { system: systemPrompt, user: userPrompt },
-      metadata: {
-        prompt_key: promptKey,
-        prompt_source: meta.source,
-        prompt_name: meta.promptName,
-        prompt_label: meta.promptLabel,
-        prompt_version: meta.promptVersion,
-        prompt_id: meta.promptId,
-        prompt_fallback: meta.fallbackFile,
-      },
-      langfusePrompt: langfusePrompt,
-      promptName: meta.promptName,
-      promptVersion: meta.promptVersion,
-    });
+      // Fetch the prompt object from Langfuse to link it to the generation
+      const langfusePrompt = await langfuseService.getPrompt(meta.promptName,
+        meta.promptVersion && meta.promptVersion !== 'fallback' ? Number(meta.promptVersion) : undefined
+      );
+      console.log(`   ✓ Langfuse prompt fetched`);
 
-    // Call OpenRouter with config from YAML
-    const { data, usage } = await openRouterService.generateJSON<AnswerGeneratorOutput>(
-      userPrompt,
-      {
+      // Create generation with direct prompt link
+      const generation = langfuseService.createGenerationWithPrompt(trace, {
+        name: 'Quiz Answer Generation',
         model: model,
-        systemInstruction: systemPrompt,
-        temperature: config.llm_config.temperature,
-        maxOutputTokens: config.llm_config.max_tokens,
-        responseFormat: config.llm_config.response_format,
+        input: { system: systemPrompt, user: userPrompt },
+        metadata: {
+          prompt_key: promptKey,
+          prompt_source: meta.source,
+          prompt_name: meta.promptName,
+          prompt_label: meta.promptLabel,
+          prompt_version: meta.promptVersion,
+          prompt_id: meta.promptId,
+          prompt_fallback: meta.fallbackFile,
+        },
+        langfusePrompt: langfusePrompt,
+        promptName: meta.promptName,
+        promptVersion: meta.promptVersion,
+      });
+      console.log(`   ✓ Generation started (calling LLM...)`);
+
+      // Call OpenRouter with config from YAML
+      const { data, usage } = await openRouterService.generateJSON<AnswerGeneratorOutput>(
+        userPrompt,
+        {
+          model: model,
+          systemInstruction: systemPrompt,
+          temperature: config.llm_config.temperature,
+          maxOutputTokens: config.llm_config.max_tokens,
+          responseFormat: config.llm_config.response_format,
+        }
+      );
+
+      // End generation (latency calculated automatically by Langfuse)
+      langfuseService.endGeneration(generation, data, usage);
+      console.log(`   ✓ Answer generation complete:`);
+      console.log(`     Correct: "${data.correctAnswer}"`);
+      console.log(`     Wrong options: ${data.incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
+      console.log(`     Evidence score: ${data.evidenceScore}`);
+
+      // End trace with output (only the correct answer)
+      langfuseService.endTrace(trace, data.correctAnswer);
+
+      // Flush to Langfuse
+      await langfuseService.flush();
+      console.log(`   ✓ Langfuse trace flushed`);
+      console.log(`🎯 [ANSWER GENERATOR] ✅ Complete\n`);
+
+      return {
+        result: data,
+        traceId: trace?.id,
+        generationId: generation?.id,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error(`\n❌ [ANSWER GENERATOR] FAILED`);
+      console.error(`   Error: ${errorMessage}`);
+      if (errorStack) {
+        console.error(`   Stack: ${errorStack.substring(0, 300)}`);
       }
-    );
-
-    // End generation (latency calculated automatically by Langfuse)
-    langfuseService.endGeneration(generation, data, usage);
-    console.log(`   ✓ Answer generation complete:`);
-    console.log(`     Correct: "${data.correctAnswer}"`);
-    console.log(`     Wrong options: ${data.incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
-    console.log(`     Evidence score: ${data.evidenceScore}`);
-
-    // End trace with output (only the correct answer)
-    langfuseService.endTrace(trace, data.correctAnswer);
-
-    // Flush to Langfuse
-    await langfuseService.flush();
-    console.log(`   ✓ Langfuse trace flushed`);
-    console.log(`🎯 [ANSWER GENERATOR] ✅ Complete\n`);
-
-    return {
-      result: data,
-      traceId: trace?.id,
-      generationId: generation?.id,
-    };
+      throw error;
+    }
   }
 }
 

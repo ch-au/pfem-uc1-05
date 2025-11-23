@@ -33,7 +33,11 @@ export class PostgresService {
       const duration = Date.now() - start;
 
       if (env.NODE_ENV === 'development') {
-        console.log(`📊 Query executed in ${duration}ms:`, text.substring(0, 100));
+        // Skip logging for polling queries (quiz_generation_jobs progress checks)
+        const isPollingQuery = text.includes('quiz_generation_jobs') && !text.includes('INSERT') && !text.includes('UPDATE');
+        if (!isPollingQuery) {
+          console.log(`📊 Query executed in ${duration}ms:`, text.substring(0, 100));
+        }
       }
 
       return result;
