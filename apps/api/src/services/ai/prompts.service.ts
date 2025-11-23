@@ -363,10 +363,10 @@ export class PromptsService {
     // Compile system prompt with variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
       schemaContext: input.schemaContext,
-      theme: input.category,
-      difficulty: input.difficulty,
-      rounds: String(input.rounds),
-      numberOfPlayers: String(input.numberOfPlayers),
+      Thema: input.category,
+      Schwierigkeitsgrad: input.difficulty,
+      Rundenanzahl: String(input.rounds),
+      AnzahlMitspieler: String(input.numberOfPlayers),
     });
 
     // Compile user prompt from template (or construct if template is empty)

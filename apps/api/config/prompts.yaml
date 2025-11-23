@@ -20,7 +20,7 @@ prompts:
     fallback_file: 'chat-answer-formatter.txt'
     llm_config:
       temperature: 0.7
-      max_tokens: 2000
+      max_tokens: 10000
       response_format: 'json'
     description: 'Formats SQL query results into conversational German answers'
 
@@ -42,13 +42,13 @@ prompts:
     fallback_file: 'quiz-answer-generator.txt'
     llm_config:
       temperature: 0.7
-      max_tokens: 2000
+      max_tokens: 10000
       response_format: 'json'
     description: 'Generates plausible incorrect alternatives for quiz questions'
 
 # Global defaults
 defaults:
-  default_model: 'openai/gpt-5.1'
+  default_model: 'gemini/gemini-flash-latest'
   fallback_dir: '../../../../../prompts/fallback'
   langfuse_enabled: true
   retry_on_error: true
