@@ -162,7 +162,7 @@ export class PromptsService {
 
     // Create generation with direct prompt link
     const generation = langfuseService.createGenerationWithPrompt(trace, {
-      name: 'openrouter-sql-generation',
+      name: 'SQL Query Generation',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
       metadata: {
@@ -250,7 +250,7 @@ export class PromptsService {
 
     // Create generation with direct prompt link
     const generation = langfuseService.createGenerationWithPrompt(trace, {
-      name: 'openrouter-answer-formatting',
+      name: 'Answer Formatting',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
       metadata: {
@@ -342,7 +342,7 @@ export class PromptsService {
 
     // Create generation with direct prompt link
     const generation = langfuseService.createGenerationWithPrompt(trace, {
-      name: 'openrouter-question-generation',
+      name: 'Quiz Question Generation',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
       metadata: {
@@ -430,7 +430,7 @@ export class PromptsService {
 
     // Create generation with direct prompt link
     const generation = langfuseService.createGenerationWithPrompt(trace, {
-      name: 'openrouter-answer-generation',
+      name: 'Quiz Answer Generation',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
       metadata: {
