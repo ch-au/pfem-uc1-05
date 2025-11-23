@@ -174,9 +174,9 @@ export class PromptsService {
     // Construct user prompt from input parameters
     const userPrompt = `Conversation History:\n${JSON.stringify(input.conversationHistory, null, 2)}\n\nUser Question:\n${input.userQuestion}`;
 
-    // Create trace with input
+    // Create trace with input (only user question, not full conversation)
     const trace = langfuseService.createTrace('chat-sql-generation', {
-      input: { conversationHistory: input.conversationHistory, userQuestion: input.userQuestion },
+      input: input.userQuestion,
       metadata: {
         prompt_key: promptKey,
         prompt_source: meta.source,
@@ -229,8 +229,8 @@ export class PromptsService {
     // End generation (latency calculated automatically by Langfuse)
     langfuseService.endGeneration(generation, data, usage);
 
-    // End trace with output
-    langfuseService.endTrace(trace, data);
+    // End trace with output (only the SQL query, not the full response object)
+    langfuseService.endTrace(trace, data.sql);
 
     // Flush to Langfuse
     await langfuseService.flush();
@@ -277,9 +277,9 @@ export class PromptsService {
         })
       : `Formuliere eine hilfreiche, informative Antwort auf Deutsch. Antworte NUR mit JSON.`;
 
-    // Create trace with input
+    // Create trace with input (only the user question, not the SQL query)
     const trace = langfuseService.createTrace('chat-answer-formatting', {
-      input: { userQuestion: input.userQuestion, sqlQuery: input.sqlQuery },
+      input: input.userQuestion,
       metadata: {
         prompt_key: promptKey,
         prompt_source: meta.source,
@@ -332,8 +332,8 @@ export class PromptsService {
     // End generation (latency calculated automatically by Langfuse)
     langfuseService.endGeneration(generation, data, usage);
 
-    // End trace with output
-    langfuseService.endTrace(trace, data);
+    // End trace with output (only the formatted answer)
+    langfuseService.endTrace(trace, data.answer);
 
     // Flush to Langfuse
     await langfuseService.flush();
@@ -378,9 +378,9 @@ export class PromptsService {
         })
       : `Category: ${input.category}\nDifficulty: ${input.difficulty}\nNumber of Questions: ${input.count}`;
 
-    // Create trace with input
+    // Create trace with input (only the prompt)
     const trace = langfuseService.createTrace('quiz-question-generation', {
-      input: { category: input.category, difficulty: input.difficulty, count: input.count },
+      input: userPrompt,
       metadata: {
         prompt_key: promptKey,
         prompt_source: meta.source,
@@ -433,8 +433,8 @@ export class PromptsService {
     // End generation (latency calculated automatically by Langfuse)
     langfuseService.endGeneration(generation, data, usage);
 
-    // End trace with output
-    langfuseService.endTrace(trace, data);
+    // End trace with output (only the questions array)
+    langfuseService.endTrace(trace, data.questions);
 
     // Flush to Langfuse
     await langfuseService.flush();
@@ -474,9 +474,9 @@ export class PromptsService {
         })
       : `Question: ${input.question}\nDifficulty: ${input.difficulty}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}`;
 
-    // Create trace with input
+    // Create trace with input (only the question)
     const trace = langfuseService.createTrace('quiz-answer-generation', {
-      input: { question: input.question, difficulty: input.difficulty },
+      input: input.question,
       metadata: {
         prompt_key: promptKey,
         prompt_source: meta.source,
@@ -529,8 +529,8 @@ export class PromptsService {
     // End generation (latency calculated automatically by Langfuse)
     langfuseService.endGeneration(generation, data, usage);
 
-    // End trace with output
-    langfuseService.endTrace(trace, data);
+    // End trace with output (only the correct answer)
+    langfuseService.endTrace(trace, data.correctAnswer);
 
     // Flush to Langfuse
     await langfuseService.flush();

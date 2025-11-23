@@ -71,13 +71,19 @@ export class LangfuseService {
 
   /**
    * End a trace with output
-   * Note: Langfuse SDK manages trace lifecycle automatically, so this is a no-op
-   * Traces are flushed periodically based on flushInterval config
+   * Sets the output on the trace object
    */
-  endTrace(_trace: LangfuseTraceClient | null, _output?: any): void {
-    // Traces are automatically managed by Langfuse SDK
-    // No explicit end call needed
-    return;
+  endTrace(trace: LangfuseTraceClient | null, output?: any): void {
+    if (!trace) {
+      return;
+    }
+
+    // Update trace output via update method
+    if (trace.update && typeof trace.update === 'function') {
+      trace.update({
+        output,
+      });
+    }
   }
 
   /**
