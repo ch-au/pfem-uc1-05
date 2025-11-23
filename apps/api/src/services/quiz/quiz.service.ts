@@ -57,6 +57,7 @@ export class QuizService {
         category: category_id ?? 'statistics',
         difficulty,
         numRounds: num_rounds,
+        numberOfPlayers: normalizedPlayers.length,
       })
     );
 
@@ -302,7 +303,7 @@ export class QuizService {
    */
   async generateQuestionsForGame(
     gameId: string,
-    config: { category: string; difficulty: 'easy' | 'medium' | 'hard'; numRounds: number },
+    config: { category: string; difficulty: 'easy' | 'medium' | 'hard'; numRounds: number; numberOfPlayers: number },
     options?: { ensureJobs?: boolean }
   ): Promise<void> {
     const ensureJobs = options?.ensureJobs ?? true;
@@ -347,6 +348,8 @@ export class QuizService {
       previousQuestions,
       count: questionsToGenerate,
       schemaContext: getSchemaContext(),
+      rounds: config.numRounds,
+      numberOfPlayers: config.numberOfPlayers,
     });
 
     // 4. Process each question sequentially with progress tracking
