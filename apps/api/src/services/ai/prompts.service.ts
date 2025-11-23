@@ -96,6 +96,7 @@ export class PromptsService {
           source: 'local',
           promptName: config.langfuse_name,
           promptLabel: config.langfuse_label,
+          promptVersion: config.langfuse_label || 'fallback',
           fallbackFile: config.fallback_file,
         },
       };
