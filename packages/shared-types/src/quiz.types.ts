@@ -46,7 +46,7 @@ export interface QuizAnswerRequest {
 }
 
 export interface QuizAnswerResponse {
-  is_correct: boolean;
+  correct: boolean;
   correct_answer: string;
   explanation?: string;
   points_earned: number;

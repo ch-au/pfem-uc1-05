@@ -213,7 +213,7 @@ export class QuizService {
 
     // 6. Return response
     return {
-      is_correct: isCorrect,
+      correct: isCorrect,
       correct_answer: round.correct_answer,
       explanation: round.explanation ?? undefined,
       points_earned: pointsEarned,
