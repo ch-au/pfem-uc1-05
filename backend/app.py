@@ -43,9 +43,15 @@ def serialize_for_json(obj):
 
 app = FastAPI(title="FSV Mainz 05 SQL Query Assistant")
 
-# Setup static files and templates
-app.mount("/static", StaticFiles(directory=str(Path(__file__).parent.parent / "static")), name="static")
-templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+# Setup static files and templates (tolerate missing static dir locally)
+project_root = Path(__file__).parent.parent
+static_dir = project_root / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+else:
+    logger.warning("Static directory '%s' not found; skipping static mount", static_dir)
+
+templates = Jinja2Templates(directory=str(project_root / "templates"))
 
 # Serve React build if available (production)
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"

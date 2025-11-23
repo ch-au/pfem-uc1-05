@@ -159,12 +159,12 @@ export const useQuizGame = () => {
         time_taken: (Date.now() - startTime) / 1000,
       };
 
-      const result = await quizService.submitAnswer(
-        gameId,
-        answerData
-      );
+    const result = await quizService.submitAnswer(
+      gameId,
+      answerData
+    );
 
-      setAnswerResult({
+    setAnswerResult({
         correct: result.correct,
         correctAnswer: result.correct_answer,
         pointsEarned: result.points_earned,
@@ -174,6 +174,13 @@ export const useQuizGame = () => {
       const nextPlayerIndex = currentPlayerIndex + 1;
       if (nextPlayerIndex >= playerNames.length) {
         setCurrentPlayerIndex(0);
+        // Update leaderboard after the round is finished for all players
+        try {
+          const board = await quizService.getLeaderboard(gameId);
+          setLeaderboard(board.leaderboard);
+        } catch {
+          // best-effort
+        }
         // All players have answered, automatically advance to next round after showing result
         setTimeout(async () => {
           try {
@@ -207,6 +214,8 @@ export const useQuizGame = () => {
       setError(null);
       const result = await quizService.nextRound(gameId);
 
+      setGameState(result);
+
       if (result.status === 'completed') {
         // Load leaderboard
         const leaderboardData = await quizService.getLeaderboard(gameId);
@@ -214,6 +223,9 @@ export const useQuizGame = () => {
       } else {
         // Load next question
         await loadQuestion();
+        // Refresh leaderboard to reflect new scores after the previous round
+        const leaderboardData = await quizService.getLeaderboard(gameId);
+        setLeaderboard(leaderboardData.leaderboard);
       }
 
       return result;
@@ -229,14 +241,10 @@ export const useQuizGame = () => {
     if (!gameId) return;
 
     try {
-      setLoading(true);
-      setError(null);
       const data = await quizService.getLeaderboard(gameId);
       setLeaderboard(data.leaderboard);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load leaderboard');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -261,7 +269,12 @@ export const useQuizGame = () => {
         setGameState(state);
         const question = await quizService.getCurrentQuestion(existingGameId);
         setCurrentQuestion(question);
-        setLeaderboard([]);
+        try {
+          const data = await quizService.getLeaderboard(existingGameId);
+          setLeaderboard(data.leaderboard);
+        } catch {
+          setLeaderboard([]);
+        }
       } else {
         setGameState(state);
         const data = await quizService.getLeaderboard(existingGameId);

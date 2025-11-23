@@ -2,6 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { quizService } from '../services/quiz/quiz.service.js';
 import { z } from 'zod';
 
+// Track last progress logged per game to avoid noisy logs
+const progressLogCache: Record<
+  string,
+  { status: string; completed: number; total: number; currentStatus?: string | null }
+> = {};
+
 const CreateGameSchema = z.object({
   topic: z.string().optional(),
   difficulty: z.enum(['easy', 'medium', 'hard']),
@@ -157,16 +163,33 @@ export async function quizRoutes(fastify: FastifyInstance) {
       const { gameId } = request.params;
 
       const progress = await quizService.getGenerationProgress(gameId);
-      fastify.log.info(
-        {
-          gameId,
-          status: progress.status,
-          completed: progress.progress.completed_rounds,
-          total: progress.progress.total_rounds,
-          currentStatus: progress.progress.current_status,
-        },
-        'quiz generation progress'
-      );
+      const last = progressLogCache[gameId];
+      const current = {
+        status: progress.status,
+        completed: progress.progress.completed_rounds,
+        total: progress.progress.total_rounds,
+        currentStatus: progress.progress.current_status,
+      };
+
+      // Only log when something changes to keep logs readable
+      if (
+        !last ||
+        last.status !== current.status ||
+        last.completed !== current.completed ||
+        last.currentStatus !== current.currentStatus
+      ) {
+        fastify.log.info(
+          {
+            gameId,
+            status: current.status,
+            completed: current.completed,
+            total: current.total,
+            currentStatus: current.currentStatus,
+          },
+          'quiz generation progress'
+        );
+        progressLogCache[gameId] = current;
+      }
 
       return reply.send(progress);
     } catch (error: any) {

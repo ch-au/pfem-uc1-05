@@ -82,9 +82,7 @@ export const QuizPage: React.FC = () => {
   const handleNextRound = async () => {
     try {
       const result = await nextRound();
-      if (result?.status === 'completed') {
-        await loadLeaderboard();
-      }
+      await loadLeaderboard();
     } catch (error) {
       console.error('Failed to advance round:', error);
     }
@@ -290,26 +288,6 @@ export const QuizPage: React.FC = () => {
         <div className={styles.layout}>
           <div className={styles.mainColumn}>
             <Card variant="elevated" padding="md">
-              <div className={styles.roundHeader}>
-                <div>
-                  <div className={styles.roundTitle}>
-                    Runde {Math.min(gameState.current_round, gameState.num_rounds)} von {gameState.num_rounds}
-                  </div>
-                  <div className={styles.roundMeta}>Spieler: {currentPlayer}</div>
-                </div>
-                <div className={styles.roundProgressBar}>
-                  <div
-                    className={styles.roundProgressFill}
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        ((gameState.current_round - 1) / gameState.num_rounds) * 100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
               <QuizQuestion
                 question={currentQuestion.question_text}
                 roundNumber={currentQuestion.round_number || gameState.current_round}

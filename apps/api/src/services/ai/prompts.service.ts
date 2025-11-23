@@ -26,6 +26,13 @@ export class PromptsService {
     system: string; 
     user: string;
     config: PromptConfig;
+    meta: {
+      source: 'langfuse' | 'local';
+      promptName: string;
+      promptLabel?: string;
+      promptVersion?: string | number;
+      fallbackFile?: string;
+    };
   }> {
     const config = promptsConfig.getPromptConfig(promptKey);
     const defaults = promptsConfig.getDefaults();
@@ -44,7 +51,18 @@ export class PromptsService {
           if (parts.length === 2) {
             const systemPart = parts[0].split('USER PROMPT:')[0].replace('SYSTEM INSTRUCTION:', '').trim();
             const userPart = parts[1].trim();
-            return { system: systemPart, user: userPart, config };
+            return { 
+              system: systemPart, 
+              user: userPart, 
+              config,
+              meta: {
+                source: 'langfuse',
+                promptName: config.langfuse_name,
+                promptLabel: config.langfuse_label,
+                promptVersion: (promptData as any)?.config?.version,
+                fallbackFile: config.fallback_file,
+              },
+            };
           }
         }
       } catch (error) {
@@ -68,7 +86,17 @@ export class PromptsService {
       const systemPart = parts[0].split('USER PROMPT:')[0].replace('SYSTEM INSTRUCTION:', '').trim();
       const userPart = parts[1].trim();
 
-      return { system: systemPart, user: userPart, config };
+      return { 
+        system: systemPart, 
+        user: userPart, 
+        config,
+        meta: {
+          source: 'local',
+          promptName: config.langfuse_name,
+          promptLabel: config.langfuse_label,
+          fallbackFile: config.fallback_file,
+        },
+      };
     } catch (error) {
       throw new Error(`Failed to load prompt "${promptKey}" from both Langfuse and local fallback: ${error}`);
     }
@@ -98,7 +126,7 @@ export class PromptsService {
     const promptKey = 'chat-sql-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
@@ -113,6 +141,12 @@ export class PromptsService {
     // Create trace
     const trace = langfuseService.createTrace('chat-sql-generation', {
       userQuestion: input.userQuestion,
+      prompt_key: promptKey,
+      prompt_source: meta.source,
+      prompt_name: meta.promptName,
+      prompt_label: meta.promptLabel,
+      prompt_version: meta.promptVersion,
+      prompt_fallback: meta.fallbackFile,
     });
 
     // Get model from config (prompt-specific or default)
@@ -123,6 +157,14 @@ export class PromptsService {
       name: 'openrouter-sql-generation',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
+      metadata: {
+        prompt_key: promptKey,
+        prompt_source: meta.source,
+        prompt_name: meta.promptName,
+        prompt_label: meta.promptLabel,
+        prompt_version: meta.promptVersion,
+        prompt_fallback: meta.fallbackFile,
+      },
     });
 
     // Call OpenRouter with config from YAML
@@ -163,7 +205,7 @@ export class PromptsService {
     const promptKey = 'chat-answer-formatter';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
     const systemPrompt = systemTemplate;
@@ -178,6 +220,12 @@ export class PromptsService {
     // Create trace
     const trace = langfuseService.createTrace('chat-answer-formatting', {
       userQuestion: input.userQuestion,
+      prompt_key: promptKey,
+      prompt_source: meta.source,
+      prompt_name: meta.promptName,
+      prompt_label: meta.promptLabel,
+      prompt_version: meta.promptVersion,
+      prompt_fallback: meta.fallbackFile,
     });
 
     // Get model from config (prompt-specific or default)
@@ -188,6 +236,14 @@ export class PromptsService {
       name: 'openrouter-answer-formatting',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
+      metadata: {
+        prompt_key: promptKey,
+        prompt_source: meta.source,
+        prompt_name: meta.promptName,
+        prompt_label: meta.promptLabel,
+        prompt_version: meta.promptVersion,
+        prompt_fallback: meta.fallbackFile,
+      },
     });
 
     // Call OpenRouter with config from YAML
@@ -228,7 +284,7 @@ export class PromptsService {
     const promptKey = 'quiz-question-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
@@ -247,6 +303,12 @@ export class PromptsService {
       category: input.category,
       difficulty: input.difficulty,
       count: input.count,
+      prompt_key: promptKey,
+      prompt_source: meta.source,
+      prompt_name: meta.promptName,
+      prompt_label: meta.promptLabel,
+      prompt_version: meta.promptVersion,
+      prompt_fallback: meta.fallbackFile,
     });
 
     // Get model from config (prompt-specific or default)
@@ -257,6 +319,14 @@ export class PromptsService {
       name: 'openrouter-question-generation',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
+      metadata: {
+        prompt_key: promptKey,
+        prompt_source: meta.source,
+        prompt_name: meta.promptName,
+        prompt_label: meta.promptLabel,
+        prompt_version: meta.promptVersion,
+        prompt_fallback: meta.fallbackFile,
+      },
     });
 
     // Call OpenRouter with config from YAML
@@ -297,7 +367,7 @@ export class PromptsService {
     const promptKey = 'quiz-answer-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
     // Compile with variables
     const systemPrompt = systemTemplate;
@@ -312,6 +382,12 @@ export class PromptsService {
     const trace = langfuseService.createTrace('quiz-answer-generation', {
       question: input.question,
       difficulty: input.difficulty,
+      prompt_key: promptKey,
+      prompt_source: meta.source,
+      prompt_name: meta.promptName,
+      prompt_label: meta.promptLabel,
+      prompt_version: meta.promptVersion,
+      prompt_fallback: meta.fallbackFile,
     });
 
     // Get model from config (prompt-specific or default)
@@ -322,6 +398,14 @@ export class PromptsService {
       name: 'openrouter-answer-generation',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
+      metadata: {
+        prompt_key: promptKey,
+        prompt_source: meta.source,
+        prompt_name: meta.promptName,
+        prompt_label: meta.promptLabel,
+        prompt_version: meta.promptVersion,
+        prompt_fallback: meta.fallbackFile,
+      },
     });
 
     // Call OpenRouter with config from YAML
