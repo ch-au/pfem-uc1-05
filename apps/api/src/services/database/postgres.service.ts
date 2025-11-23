@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { env } from '../../config/env.js';
+import { validateAndNormalizeSql, SqlValidationError } from './sql-validator.js';
 
 const { Pool } = pg;
 
@@ -63,27 +64,31 @@ export class PostgresService {
    * Includes safety checks and timeouts
    */
   async executeUserQuery(sql: string): Promise<{ rows: any[]; executionTimeMs: number }> {
-    // Safety check: Only allow SELECT statements
-    const trimmedSql = sql.trim().toUpperCase();
-    if (!trimmedSql.startsWith('SELECT')) {
-      throw new Error('Only SELECT statements are allowed');
-    }
+    const { sql: safeSql } = validateAndNormalizeSql(sql);
 
-    // Add statement timeout (5 seconds)
     const client = await this.pool.connect();
     try {
-      await client.query('SET statement_timeout = 5000');
+      await client.query('BEGIN READ ONLY');
+      await client.query('SET LOCAL statement_timeout = 5000');
 
       const start = Date.now();
-      const result = await client.query(sql);
+      const result = await client.query(safeSql);
       const executionTimeMs = Date.now() - start;
+
+      await client.query('COMMIT');
 
       return {
         rows: result.rows,
         executionTimeMs,
       };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error instanceof SqlValidationError) {
+        throw error;
+      }
+      console.error('Database query error:', error);
+      throw error;
     } finally {
-      await client.query('RESET statement_timeout');
       client.release();
     }
   }

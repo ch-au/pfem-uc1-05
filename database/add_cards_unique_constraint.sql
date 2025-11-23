@@ -24,3 +24,5 @@ WHERE minute IS NULL;
 
 
 
+
+

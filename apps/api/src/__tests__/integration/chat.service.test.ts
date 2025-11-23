@@ -13,18 +13,27 @@ describe('ChatService (integration)', () => {
   let chatService: ChatService;
   let postgresService: PostgresService;
   let testSessionId: string;
+  const hasDb = Boolean(process.env.DATABASE_URL || process.env.DB_URL);
+  let dbAvailable = false;
 
-  beforeAll(() => {
-    if (!process.env.DB_URL) {
-      console.warn('⚠️  DB_URL not set, skipping integration tests');
+  beforeAll(async () => {
+    if (!hasDb) {
+      console.warn('⚠️  DATABASE_URL/DB_URL not set, skipping integration tests');
       return;
     }
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn('⚠️  GEMINI_API_KEY not set, skipping integration tests');
-      return;
+    if (!process.env.GEMINI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+      console.warn('⚠️  GEMINI/OPENROUTER API key not set, skipping Gemini-dependent tests');
     }
     chatService = new ChatService();
     postgresService = new PostgresService();
+    try {
+      dbAvailable = await postgresService.healthCheck();
+      if (!dbAvailable) {
+        console.warn('⚠️  Database unreachable, skipping chat integration tests');
+      }
+    } catch {
+      dbAvailable = false;
+    }
   });
 
   afterAll(async () => {
@@ -44,8 +53,8 @@ describe('ChatService (integration)', () => {
 
   describe('Session Management', () => {
     it('should create a new chat session', async () => {
-      if (!process.env.DB_URL) {
-        console.log('⏭️  Skipping test - no DB_URL');
+      if (!hasDb || !dbAvailable) {
+        console.log('⏭️  Skipping test - no DATABASE_URL/DB_URL or DB not reachable');
         return;
       }
 
@@ -63,8 +72,8 @@ describe('ChatService (integration)', () => {
     });
 
     it('should retrieve session by ID', async () => {
-      if (!process.env.DB_URL) {
-        console.log('⏭️  Skipping test - no DB_URL');
+      if (!hasDb || !dbAvailable) {
+        console.log('⏭️  Skipping test - no DATABASE_URL/DB_URL or DB not reachable');
         return;
       }
 
@@ -80,8 +89,8 @@ describe('ChatService (integration)', () => {
     });
 
     it('should delete session and messages', async () => {
-      if (!process.env.DB_URL) {
-        console.log('⏭️  Skipping test - no DB_URL');
+      if (!hasDb || !dbAvailable) {
+        console.log('⏭️  Skipping test - no DATABASE_URL/DB_URL or DB not reachable');
         return;
       }
 
