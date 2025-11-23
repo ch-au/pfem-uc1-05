@@ -250,13 +250,27 @@ export class PromptsService {
     const promptKey = 'chat-answer-formatter';
 
     // Load prompt template with config
-    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
-    // Compile system prompt
-    const systemPrompt = systemTemplate;
+    // Compile system prompt - inject the SQL context into the system prompt
+    const systemPrompt = this.compileTemplate(systemTemplate, {
+      userQuestion: input.userQuestion,
+      sqlQuery: input.sqlQuery,
+      sqlResult: JSON.stringify(input.sqlResult, null, 2),
+      rowCount: String(input.resultMetadata.rowCount),
+      executionTimeMs: String(input.resultMetadata.executionTimeMs),
+    });
     
-    // Construct user prompt from input parameters
-    const userPrompt = `User Question:\n${input.userQuestion}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}\n\nResult Metadata:\n- Row Count: ${input.resultMetadata.rowCount}\n- Execution Time: ${input.resultMetadata.executionTimeMs}ms`;
+    // Use user template or provide a minimal user prompt
+    const userPrompt = userTemplate 
+      ? this.compileTemplate(userTemplate, {
+          userQuestion: input.userQuestion,
+          sqlQuery: input.sqlQuery,
+          sqlResult: JSON.stringify(input.sqlResult, null, 2),
+          rowCount: String(input.resultMetadata.rowCount),
+          executionTimeMs: String(input.resultMetadata.executionTimeMs),
+        })
+      : `Formuliere eine hilfreiche, informative Antwort auf Deutsch. Antworte NUR mit JSON.`;
 
     // Create trace
     const trace = langfuseService.createTrace('chat-answer-formatting', {
