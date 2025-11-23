@@ -31,6 +31,7 @@ export class PromptsService {
       promptName: string;
       promptLabel?: string;
       promptVersion?: string | number;
+      promptId?: string;
       fallbackFile?: string;
     };
   }> {
@@ -59,7 +60,8 @@ export class PromptsService {
                 source: 'langfuse',
                 promptName: config.langfuse_name,
                 promptLabel: config.langfuse_label,
-                promptVersion: (promptData as any)?.config?.version,
+                promptVersion: promptData.version ?? (promptData as any)?.config?.version,
+                promptId: promptData.id,
                 fallbackFile: config.fallback_file,
               },
             };
@@ -163,8 +165,12 @@ export class PromptsService {
         prompt_name: meta.promptName,
         prompt_label: meta.promptLabel,
         prompt_version: meta.promptVersion,
+        prompt_id: meta.promptId,
         prompt_fallback: meta.fallbackFile,
       },
+      promptId: meta.promptId,
+      promptName: meta.promptName,
+      promptVersion: meta.promptVersion,
     });
 
     // Call OpenRouter with config from YAML
@@ -242,8 +248,12 @@ export class PromptsService {
         prompt_name: meta.promptName,
         prompt_label: meta.promptLabel,
         prompt_version: meta.promptVersion,
+        prompt_id: meta.promptId,
         prompt_fallback: meta.fallbackFile,
       },
+      promptId: meta.promptId,
+      promptName: meta.promptName,
+      promptVersion: meta.promptVersion,
     });
 
     // Call OpenRouter with config from YAML
@@ -325,8 +335,12 @@ export class PromptsService {
         prompt_name: meta.promptName,
         prompt_label: meta.promptLabel,
         prompt_version: meta.promptVersion,
+        prompt_id: meta.promptId,
         prompt_fallback: meta.fallbackFile,
       },
+      promptId: meta.promptId,
+      promptName: meta.promptName,
+      promptVersion: meta.promptVersion,
     });
 
     // Call OpenRouter with config from YAML
@@ -404,8 +418,12 @@ export class PromptsService {
         prompt_name: meta.promptName,
         prompt_label: meta.promptLabel,
         prompt_version: meta.promptVersion,
+        prompt_id: meta.promptId,
         prompt_fallback: meta.fallbackFile,
       },
+      promptId: meta.promptId,
+      promptName: meta.promptName,
+      promptVersion: meta.promptVersion,
     });
 
     // Call OpenRouter with config from YAML

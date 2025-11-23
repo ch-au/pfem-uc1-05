@@ -33,7 +33,10 @@ export class LangfuseService {
    * Get a prompt from Langfuse
    * Returns null if Langfuse is not available
    */
-  async getPrompt(name: string, version?: number): Promise<{ prompt: string; config: any } | null> {
+  async getPrompt(
+    name: string,
+    version?: number
+  ): Promise<{ prompt: string; config: any; id?: string; version?: number } | null> {
     if (!this.isEnabled || !this.langfuse) {
       return null;
     }
@@ -43,6 +46,8 @@ export class LangfuseService {
       return {
         prompt: prompt.prompt,
         config: prompt.config,
+        id: (prompt as any)?.id,
+        version: (prompt as any)?.version,
       };
     } catch (error) {
       console.error(`Failed to fetch prompt "${name}" from Langfuse:`, error);
@@ -75,6 +80,9 @@ export class LangfuseService {
       model: string;
       input: any;
       metadata?: Record<string, any>;
+      promptId?: string;
+      promptName?: string;
+      promptVersion?: string | number;
     }
   ): LangfuseGenerationClient | null {
     if (!trace) {
@@ -86,6 +94,9 @@ export class LangfuseService {
       model: config.model,
       input: config.input,
       metadata: config.metadata,
+      promptId: config.promptId,
+      promptName: config.promptName,
+      promptVersion: config.promptVersion,
     });
   }
 

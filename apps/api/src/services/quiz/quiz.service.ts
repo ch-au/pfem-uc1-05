@@ -24,9 +24,10 @@ export class QuizService {
    * Create a new quiz game
    */
   async createGame(request: QuizGameCreateRequest): Promise<QuizGameResponse> {
-    const { topic, difficulty, num_rounds, game_mode, category_id, player_names } = request;
+    const { topic, difficulty, num_rounds, game_mode, category_id } = request;
+    const normalizedPlayers = this.normalizePlayerNames(request.player_names);
 
-    if (!player_names || player_names.length === 0) {
+    if (!normalizedPlayers || normalizedPlayers.length === 0) {
       throw new Error('At least one player name is required to create a quiz game');
     }
 
@@ -35,7 +36,7 @@ export class QuizService {
       `INSERT INTO public.quiz_games (topic, difficulty, num_rounds, game_mode, category_id, player_names)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [topic ?? null, difficulty, num_rounds, game_mode ?? 'classic', category_id ?? null, JSON.stringify(player_names)]
+      [topic ?? null, difficulty, num_rounds, game_mode ?? 'classic', category_id ?? null, JSON.stringify(normalizedPlayers)]
     );
 
     if (!game) {
@@ -43,7 +44,7 @@ export class QuizService {
     }
 
     // 2. Create or get quiz players
-    for (const playerName of player_names) {
+    for (const playerName of normalizedPlayers) {
       await postgresService.query(
         `SELECT get_or_create_quiz_player($1)`,
         [playerName]
@@ -164,6 +165,7 @@ export class QuizService {
     request: QuizAnswerRequest
   ): Promise<QuizAnswerResponse> {
     const { player_name, answer, time_taken } = request;
+    const cleanedPlayerName = player_name.trim();
 
     // 1. Get round and question
     const round = await postgresService.queryOne<QuizRoundWithQuestion>(
@@ -199,7 +201,7 @@ export class QuizService {
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         round.round_id,
-        player_name,
+        cleanedPlayerName,
         playerId?.get_or_create_quiz_player ?? null,
         answer,
         isCorrect,
@@ -270,7 +272,7 @@ export class QuizService {
       average_time: number;
     }>(
       `SELECT
-         qa.player_name,
+         MIN(qa.player_name) as player_name,
          SUM(qa.points_earned) as score,
          SUM(CASE WHEN qa.is_correct THEN 1 ELSE 0 END) as correct_answers,
          COUNT(*) as total_questions,
@@ -278,7 +280,7 @@ export class QuizService {
        FROM public.quiz_answers qa
        JOIN public.quiz_rounds qr ON qa.round_id = qr.round_id
        WHERE qr.game_id = $1
-       GROUP BY qa.player_name
+       GROUP BY LOWER(TRIM(qa.player_name))
        ORDER BY score DESC`,
       [gameId]
     );
@@ -543,9 +545,9 @@ export class QuizService {
     }
 
     const players = Array.isArray(game.player_names)
-      ? game.player_names
+      ? this.normalizePlayerNames(game.player_names)
       : typeof game.player_names === 'string'
-      ? JSON.parse(game.player_names)
+      ? this.normalizePlayerNames(JSON.parse(game.player_names))
       : [];
 
     return {
@@ -628,13 +630,13 @@ export class QuizService {
       average_time: number;
     }>(
       `SELECT
-         qa.player_name,
+         MIN(qa.player_name) as player_name,
          SUM(qa.points_earned) as score,
          SUM(CASE WHEN qa.is_correct THEN 1 ELSE 0 END) as correct_answers,
          COUNT(*) as total_questions,
          AVG(qa.time_taken) as average_time
        FROM public.quiz_answers qa
-       GROUP BY qa.player_name
+       GROUP BY LOWER(TRIM(qa.player_name))
        ORDER BY score DESC
        LIMIT $1`,
       [limit]
@@ -647,6 +649,27 @@ export class QuizService {
       total_questions: Number(row.total_questions),
       average_time: Number(row.average_time),
     }));
+  }
+
+  /**
+   * Normalize and deduplicate player names (trim, case-insensitive)
+   */
+  private normalizePlayerNames(names: string[] | null | undefined): string[] {
+    if (!names) return [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    for (const raw of names) {
+      if (!raw) continue;
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(trimmed);
+    }
+
+    return result;
   }
 }
 
