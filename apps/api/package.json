@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run src/__tests__/unit",
     "test:integration": "vitest run src/__tests__/integration",
-    "test:e2e": "vitest run src/__tests__/e2e"
+    "test:e2e": "vitest run src/__tests__/e2e",
+    "worker:quiz": "tsx src/worker/quiz.worker.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

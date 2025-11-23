@@ -14,6 +14,7 @@ import type {
   QuizLeaderboardResponse,
   QuizGenerationProgressResponse,
 } from '@fsv/shared-types';
+import { quizJobQueue } from './quiz.job-queue.js';
 
 // DTO for joined quiz_rounds + quiz_questions
 type QuizRoundWithQuestion = QuizRound & QuizQuestion;
@@ -46,14 +47,19 @@ export class QuizService {
     }
 
     // 3. Generate questions for all rounds
-    await this.generateQuestionsForGame(game.game_id, {
-      category: category_id ?? 'statistics',
-      difficulty,
-      numRounds: num_rounds,
-    });
+    const generationJob = quizJobQueue.enqueue(() =>
+      this.generateQuestionsForGame(game.game_id, {
+        category: category_id ?? 'statistics',
+        difficulty,
+        numRounds: num_rounds,
+      })
+    );
 
     // 4. Return response
-    return this.formatGameResponse(game);
+    return this.formatGameResponse(game, {
+      generation_job_id: generationJob.id,
+      generation_status: generationJob.status,
+    });
   }
 
   /**
@@ -275,17 +281,29 @@ export class QuizService {
   /**
    * Generate questions for a game with progress tracking
    */
-  private async generateQuestionsForGame(
+  async generateQuestionsForGame(
     gameId: string,
-    config: { category: string; difficulty: 'easy' | 'medium' | 'hard'; numRounds: number }
+    config: { category: string; difficulty: 'easy' | 'medium' | 'hard'; numRounds: number },
+    options?: { ensureJobs?: boolean }
   ): Promise<void> {
+    const ensureJobs = options?.ensureJobs ?? true;
+
     // 1. Create job records for tracking progress
-    for (let i = 1; i <= config.numRounds; i++) {
-      await postgresService.query(
-        `INSERT INTO quiz_generation_jobs (game_id, round_number, status)
-         VALUES ($1, $2, 'pending')`,
-        [gameId, i]
+    if (ensureJobs) {
+      const existingJobs = await postgresService.queryMany<{ round_number: number }>(
+        `SELECT round_number FROM quiz_generation_jobs WHERE game_id = $1 ORDER BY round_number ASC`,
+        [gameId]
       );
+
+      if (existingJobs.length === 0) {
+        for (let i = 1; i <= config.numRounds; i++) {
+          await postgresService.query(
+            `INSERT INTO quiz_generation_jobs (game_id, round_number, status)
+             VALUES ($1, $2, 'pending')`,
+            [gameId, i]
+          );
+        }
+      }
     }
 
     // 2. Get existing questions to avoid duplicates
@@ -484,7 +502,10 @@ export class QuizService {
   /**
    * Format game response
    */
-  private async formatGameResponse(game: QuizGame): Promise<QuizGameResponse> {
+  private async formatGameResponse(
+    game: QuizGame,
+    generationMeta?: { generation_job_id: string; generation_status: 'queued' | 'running' | 'succeeded' | 'failed' }
+  ): Promise<QuizGameResponse> {
     let category = undefined;
     if (game.category_id) {
       const cat = await postgresService.queryOne<{ category_id: string; name: string; display_name_de: string }>(
@@ -511,6 +532,7 @@ export class QuizService {
       category,
       created_at: game.created_at.toISOString(),
       updated_at: game.updated_at.toISOString(),
+      ...(generationMeta ? generationMeta : {}),
     };
   }
 

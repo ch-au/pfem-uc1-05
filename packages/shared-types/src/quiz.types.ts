@@ -24,6 +24,8 @@ export interface QuizGameResponse {
   };
   created_at: string;
   updated_at: string;
+  generation_job_id?: string;
+  generation_status?: 'queued' | 'running' | 'succeeded' | 'failed';
 }
 
 export interface QuizQuestionResponse {
