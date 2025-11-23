@@ -155,8 +155,13 @@ export class PromptsService {
     // Get model from config (prompt-specific or default)
     const model = promptsConfig.getModelForPrompt(promptKey);
 
-    // Create generation
-    const generation = langfuseService.createGeneration(trace, {
+    // Fetch the prompt object from Langfuse to link it to the generation
+    const langfusePrompt = await langfuseService.getPrompt(meta.promptName,
+      meta.promptVersion && meta.promptVersion !== 'fallback' ? Number(meta.promptVersion) : undefined
+    );
+
+    // Create generation with direct prompt link
+    const generation = langfuseService.createGenerationWithPrompt(trace, {
       name: 'openrouter-sql-generation',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
@@ -169,7 +174,7 @@ export class PromptsService {
         prompt_id: meta.promptId,
         prompt_fallback: meta.fallbackFile,
       },
-      promptId: meta.promptId,
+      langfusePrompt: langfusePrompt,
       promptName: meta.promptName,
       promptVersion: meta.promptVersion,
     });
@@ -238,8 +243,13 @@ export class PromptsService {
     // Get model from config (prompt-specific or default)
     const model = promptsConfig.getModelForPrompt(promptKey);
 
-    // Create generation
-    const generation = langfuseService.createGeneration(trace, {
+    // Fetch the prompt object from Langfuse to link it to the generation
+    const langfusePrompt = await langfuseService.getPrompt(meta.promptName,
+      meta.promptVersion && meta.promptVersion !== 'fallback' ? Number(meta.promptVersion) : undefined
+    );
+
+    // Create generation with direct prompt link
+    const generation = langfuseService.createGenerationWithPrompt(trace, {
       name: 'openrouter-answer-formatting',
       model: model,
       input: { system: systemPrompt, user: userPrompt },
@@ -252,7 +262,7 @@ export class PromptsService {
         prompt_id: meta.promptId,
         prompt_fallback: meta.fallbackFile,
       },
-      promptId: meta.promptId,
+      langfusePrompt: langfusePrompt,
       promptName: meta.promptName,
       promptVersion: meta.promptVersion,
     });

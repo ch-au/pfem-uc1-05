@@ -31,24 +31,16 @@ export class LangfuseService {
 
   /**
    * Get a prompt from Langfuse
-   * Returns null if Langfuse is not available
+   * Returns the actual prompt object for linking to generations
    */
-  async getPrompt(
-    name: string,
-    version?: number
-  ): Promise<{ prompt: string; config: any; id?: string; version?: number } | null> {
+  async getPrompt(name: string, version?: number): Promise<any> {
     if (!this.isEnabled || !this.langfuse) {
       return null;
     }
 
     try {
       const prompt = await this.langfuse.getPrompt(name, version);
-      return {
-        prompt: prompt.prompt,
-        config: prompt.config,
-        id: (prompt as any)?.id,
-        version: (prompt as any)?.version,
-      };
+      return prompt;
     } catch (error) {
       console.error(`Failed to fetch prompt "${name}" from Langfuse:`, error);
       return null;
@@ -112,7 +104,7 @@ export class LangfuseService {
       model: string;
       input: any;
       metadata?: Record<string, any>;
-      langfusePrompt?: { prompt: string; config: any; id?: string; version?: number } | null;
+      langfusePrompt?: any;
       promptName?: string;
       promptVersion?: string | number;
     }
@@ -121,21 +113,13 @@ export class LangfuseService {
       return null;
     }
 
-    // Convert version to number if provided
-    const version = config.promptVersion && typeof config.promptVersion === 'string' && config.promptVersion !== 'fallback'
-      ? Number(config.promptVersion)
-      : typeof config.promptVersion === 'number' 
-      ? config.promptVersion
-      : undefined;
-
+    // Pass the actual Langfuse prompt object directly if available
     return trace.generation({
       name: config.name,
       model: config.model,
       input: config.input,
       metadata: config.metadata,
-      prompt: config.promptName
-        ? { name: config.promptName, version }
-        : undefined,
+      prompt: config.langfusePrompt ? config.langfusePrompt : undefined,
     });
   }
 
