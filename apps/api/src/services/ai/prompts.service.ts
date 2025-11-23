@@ -21,11 +21,10 @@ const __dirname = dirname(__filename);
 export class PromptsService {
   /**
    * Load prompt template from Langfuse or local fallback using YAML config
+   * Handles two formats:
+   * 1. Chat prompts: Only "SYSTEM INSTRUCTION: ..." (no separator)
+   * 2. Chat prompts with templates: "SYSTEM INSTRUCTION: ...\n\n---\n\nUSER PROMPT: ..."
    * Returns: { system, user, config, meta }
-   * - system: The prompt template (either from Langfuse or local file)
-   * - user: Empty string (user content comes from method parameters, not the template)
-   * - config: Prompt configuration from YAML
-   * - meta: Metadata about the prompt source
    */
   private async loadPromptTemplate(promptKey: string): Promise<{ 
     system: string; 
@@ -53,16 +52,11 @@ export class PromptsService {
         if (promptData && promptData.prompt) {
           console.log(`✅ Loaded prompt "${promptKey}" from Langfuse (${config.langfuse_name})`);
           
-          // Langfuse prompts are text prompts that become the system prompt
-          // Remove "SYSTEM INSTRUCTION:" prefix if present
-          const systemPrompt = promptData.prompt
-            .replace(/^SYSTEM INSTRUCTION:\s*/i, '')
-            .trim();
+          const result = this.parsePromptTemplate(promptData.prompt);
           
-          if (systemPrompt) {
+          if (result) {
             return { 
-              system: systemPrompt, 
-              user: '', // User content comes from method parameters
+              ...result,
               config,
               meta: {
                 source: 'langfuse',
@@ -88,31 +82,62 @@ export class PromptsService {
       const content = await readFile(filePath, 'utf-8');
       console.log(`📁 Loaded prompt "${promptKey}" from local fallback (${config.fallback_file})`);
 
-      // Local prompts are text prompts that become the system prompt
-      // Remove "SYSTEM INSTRUCTION:" prefix if present
-      const systemPrompt = content
-        .replace(/^SYSTEM INSTRUCTION:\s*/i, '')
-        .trim();
-
-      if (!systemPrompt) {
-        throw new Error(`Invalid prompt format in ${config.fallback_file} - no content found`);
+      const result = this.parsePromptTemplate(content);
+      
+      if (result) {
+        return { 
+          ...result,
+          config,
+          meta: {
+            source: 'local',
+            promptName: config.langfuse_name,
+            promptLabel: config.langfuse_label,
+            promptVersion: config.langfuse_label || 'fallback',
+            fallbackFile: config.fallback_file,
+          },
+        };
       }
 
-      return { 
-        system: systemPrompt, 
-        user: '', // User content comes from method parameters
-        config,
-        meta: {
-          source: 'local',
-          promptName: config.langfuse_name,
-          promptLabel: config.langfuse_label,
-          promptVersion: config.langfuse_label || 'fallback',
-          fallbackFile: config.fallback_file,
-        },
-      };
+      throw new Error(`Invalid prompt format in ${config.fallback_file} - no content found`);
     } catch (error) {
       throw new Error(`Failed to load prompt "${promptKey}" from both Langfuse and local fallback: ${error}`);
     }
+  }
+
+  /**
+   * Parse prompt template - handles two formats:
+   * 1. Simple text: "SYSTEM INSTRUCTION: ..." -> becomes system prompt
+   * 2. Chat template: "SYSTEM INSTRUCTION: ...\n\n---\n\nUSER PROMPT: ..." -> split into system and user
+   */
+  private parsePromptTemplate(content: string): { system: string; user: string } | null {
+    // Check if this is a chat template with USER PROMPT section
+    if (content.includes('---') && content.includes('USER PROMPT:')) {
+      const parts = content.split('---');
+      if (parts.length >= 2) {
+        const systemPart = parts[0]
+          .replace(/^SYSTEM INSTRUCTION:\s*/i, '')
+          .trim();
+        
+        const userPart = parts[1]
+          .replace(/^USER PROMPT:\s*/i, '')
+          .trim();
+        
+        if (systemPart && userPart) {
+          return { system: systemPart, user: userPart };
+        }
+      }
+    }
+    
+    // Otherwise treat entire content as system prompt
+    const systemPrompt = content
+      .replace(/^SYSTEM INSTRUCTION:\s*/i, '')
+      .trim();
+    
+    if (systemPrompt) {
+      return { system: systemPrompt, user: '' };
+    }
+    
+    return null;
   }
 
   /**
@@ -309,15 +334,22 @@ export class PromptsService {
     const promptKey = 'quiz-question-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
     // Compile system prompt with variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
       schemaContext: input.schemaContext,
     });
 
-    // Construct user prompt from input parameters
-    const userPrompt = `Category: ${input.category}\nDifficulty: ${input.difficulty}\nNumber of Questions: ${input.count}\n\nPrevious Questions (to avoid duplicates):\n${JSON.stringify(input.previousQuestions, null, 2)}`;
+    // Compile user prompt from template (or construct if template is empty)
+    const userPrompt = userTemplate 
+      ? this.compileTemplate(userTemplate, {
+          category: input.category,
+          difficulty: input.difficulty,
+          count: String(input.count),
+          previousQuestions: JSON.stringify(input.previousQuestions, null, 2),
+        })
+      : `Category: ${input.category}\nDifficulty: ${input.difficulty}\nNumber of Questions: ${input.count}\n\nPrevious Questions (to avoid duplicates):\n${JSON.stringify(input.previousQuestions, null, 2)}`;
 
     // Create trace
     const trace = langfuseService.createTrace('quiz-question-generation', {
@@ -397,13 +429,20 @@ export class PromptsService {
     const promptKey = 'quiz-answer-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
     // Compile system prompt
     const systemPrompt = systemTemplate;
     
-    // Construct user prompt from input parameters
-    const userPrompt = `Question: ${input.question}\nDifficulty: ${input.difficulty}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}`;
+    // Compile user prompt from template (or construct if template is empty)
+    const userPrompt = userTemplate
+      ? this.compileTemplate(userTemplate, {
+          question: input.question,
+          difficulty: input.difficulty,
+          sqlQuery: input.sqlQuery,
+          sqlResult: JSON.stringify(input.sqlResult, null, 2),
+        })
+      : `Question: ${input.question}\nDifficulty: ${input.difficulty}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}`;
 
     // Create trace
     const trace = langfuseService.createTrace('quiz-answer-generation', {
