@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>AI_FLOW_DIAGRAM</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css" />
+</head>
+<body>
+<h1 id="fsv-mainz-05-archive---ai-integration-flow">FSV Mainz 05 Archive
+- AI Integration Flow</h1>
+<p><strong>Focus:</strong> Where AI/Prompts are used and what they
+accomplish</p>
+<p>Last Updated: November 10, 2025</p>
+<hr />
+<h2 id="system-overview">System Overview</h2>
+<p>The FSV Mainz 05 Archive uses AI at strategic points to transform
+structured data into natural language interactions. The system has
+<strong>2 main user flows</strong>: <strong>Chat</strong> and
+<strong>Quiz</strong>.</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                        USER INTERFACES                           │
+├─────────────────────────────────────────────────────────────────┤
+│  [Chat Interface] ───────────┐  [Quiz Interface]                │
+│  &quot;Wie viele Spiele hat       │  &quot;Start 10-round quiz&quot;           │
+│   Jürgen Klopp gewonnen?&quot;    │  Multiple choice questions       │
+└──────────────┬───────────────┴──────────────┬───────────────────┘
+               │                               │
+               ▼                               ▼
+     ┌─────────────────┐              ┌─────────────────┐
+     │  CHAT SERVICE   │              │  QUIZ SERVICE   │
+     │  chat.service   │              │  quiz.service   │
+     └────────┬────────┘              └────────┬────────┘
+              │                                │
+              │                                │
+     ┌────────▼────────┐              ┌───────▼────────┐
+     │  🤖 AI LAYER 🤖 │              │  🤖 AI LAYER 🤖│
+     │  prompts.service│              │  prompts.service│
+     └────────┬────────┘              └────────┬───────┘
+              │                                │
+              ▼                                ▼
+     ┌─────────────────┐              ┌─────────────────┐
+     │  PostgreSQL DB  │◄─────────────┤  PostgreSQL DB  │
+     │  3,956 matches  │              │  Quiz questions │
+     └─────────────────┘              └─────────────────┘</code></pre>
+<hr />
+<h2 id="flow-1-chat-system-natural-language-sql-answer">🎯 FLOW 1: Chat
+System (Natural Language → SQL → Answer)</h2>
+<h3 id="user-journey">User Journey</h3>
+<pre><code>User Question → AI SQL Generation → Query Execution → AI Answer Formatting → Natural Response</code></pre>
+<h3 id="detailed-flow-with-ai-integration-points">Detailed Flow with AI
+Integration Points</h3>
+<pre><code>┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. USER INPUT                                                             │
+├──────────────────────────────────────────────────────────────────────────┤
+│  User: &quot;Wie viele Spiele hat Jürgen Klopp als Trainer gewonnen?&quot;        │
+│  Language: German (natural language)                                      │
+│  Context: Last 6 messages from conversation history                      │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 2. 🤖 AI STEP 1: SQL GENERATION                                          │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Prompt: chat-sql-generator.txt                                          │
+│  Model: qwen/qwen-2.5-72b-instruct (via OpenRouter)                     │
+│                                                                           │
+│  INPUTS:                                                                  │
+│  ├─ userQuestion: &quot;Wie viele Spiele hat Jürgen Klopp...&quot;                │
+│  ├─ conversationHistory: [last 6 messages]                              │
+│  └─ schemaContext: Full database schema (tables, columns, relationships)│
+│                                                                           │
+│  WHAT AI DOES:                                                           │
+│  ├─ Understand user intent from German natural language                 │
+│  ├─ Map question to database schema                                     │
+│  ├─ Generate syntactically correct PostgreSQL query                     │
+│  ├─ Determine confidence level (0-100)                                  │
+│  └─ Identify if clarification is needed                                 │
+│                                                                           │
+│  OUTPUT FORMAT (JSON):                                                   │
+│  {                                                                        │
+│    &quot;sql&quot;: &quot;SELECT c.name, COUNT(DISTINCT m.match_id)...&quot;,              │
+│    &quot;confidence&quot;: 95,                                                     │
+│    &quot;needsClarification&quot;: null,                                          │
+│    &quot;explanation&quot;: &quot;Query counts wins where Klopp was coach...&quot;          │
+│  }                                                                        │
+│                                                                           │
+│  PROMPT ENGINEERING FOCUS:                                               │
+│  • Schema awareness (knows teams, matches, coaches tables)               │
+│  • German language understanding                                         │
+│  • Handling ambiguity (player vs coach, wins vs draws)                  │
+│  • Date/time period recognition                                         │
+│  • Team name normalization (Mainz 05, FSV Mainz, etc.)                 │
+│                                                                           │
+│  OBSERVABILITY:                                                          │
+│  └─ Tracked in Langfuse: trace &quot;chat-sql-generation&quot;                    │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 3. VALIDATION &amp; CLARIFICATION CHECK                                      │
+├──────────────────────────────────────────────────────────────────────────┤
+│  IF confidence &lt; threshold OR needsClarification:                        │
+│    → Return clarification question to user                               │
+│    → &quot;Meinst du Klopp als Spieler oder als Trainer?&quot;                    │
+│  ELSE:                                                                    │
+│    → Continue to SQL execution                                           │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 4. SQL EXECUTION (NO AI)                                                 │
+├──────────────────────────────────────────────────────────────────────────┤
+│  postgres.service.executeUserQuery(sql)                                 │
+│                                                                           │
+│  Security:                                                               │
+│  ├─ Read-only transaction (BEGIN TRANSACTION READ ONLY)                 │
+│  ├─ 10-second timeout                                                    │
+│  └─ Row limit (max 1000 results)                                        │
+│                                                                           │
+│  Metrics Collected:                                                      │
+│  ├─ Execution time (ms)                                                 │
+│  └─ Row count                                                            │
+│                                                                           │
+│  EXAMPLE OUTPUT:                                                         │
+│  [                                                                        │
+│    { name: &quot;JÜRGEN KLOPP&quot;, win_count: 185, total_matches: 431 },       │
+│    ...                                                                    │
+│  ]                                                                        │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 5. 🤖 AI STEP 2: ANSWER FORMATTING                                       │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Prompt: chat-answer-formatter.txt                                      │
+│  Model: qwen/qwen-2.5-72b-instruct (via OpenRouter)                     │
+│                                                                           │
+│  INPUTS:                                                                  │
+│  ├─ userQuestion: Original question                                     │
+│  ├─ sqlQuery: Generated SQL                                             │
+│  ├─ sqlResult: Query result rows                                        │
+│  └─ resultMetadata: { rowCount: 1, executionTimeMs: 45 }               │
+│                                                                           │
+│  WHAT AI DOES:                                                           │
+│  ├─ Convert tabular data to natural German language                     │
+│  ├─ Add context and insights                                            │
+│  ├─ Highlight interesting facts                                         │
+│  ├─ Suggest visualizations                                              │
+│  └─ Generate follow-up questions                                        │
+│                                                                           │
+│  OUTPUT FORMAT (JSON):                                                   │
+│  {                                                                        │
+│    &quot;answer&quot;: &quot;Jürgen Klopp hat als Trainer von Mainz 05...&quot;,           │
+│    &quot;highlights&quot;: [                                                       │
+│      &quot;185 Siege in 431 Spielen (42.9% Siegquote)&quot;,                     │
+│      &quot;Längste Amtszeit: 2001-2008&quot;                                      │
+│    ],                                                                     │
+│    &quot;suggestedVisualization&quot;: &quot;bar_chart&quot;,                               │
+│    &quot;followUpQuestions&quot;: [                                               │
+│      &quot;Wie schnitt Klopp im Vergleich zu anderen Trainern ab?&quot;,         │
+│      &quot;In welcher Saison hatte Klopp die meisten Siege?&quot;                │
+│    ]                                                                      │
+│  }                                                                        │
+│                                                                           │
+│  PROMPT ENGINEERING FOCUS:                                               │
+│  • German language fluency                                               │
+│  • Mainz 05 fan tone (enthusiastic but professional)                    │
+│  • Statistical accuracy (no hallucination)                              │
+│  • Contextual enrichment (e.g., &quot;in der 2. Bundesliga&quot;)                │
+│  • Smart follow-ups (related but different questions)                   │
+│                                                                           │
+│  OBSERVABILITY:                                                          │
+│  └─ Tracked in Langfuse: trace &quot;chat-answer-formatting&quot;                │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 6. RESPONSE TO USER                                                      │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Display formatted answer with:                                          │
+│  ✓ Natural language response                                            │
+│  ✓ Key highlights (bullet points)                                       │
+│  ✓ Suggested follow-up questions (chips)                                │
+│  ✓ Optional visualization                                               │
+│                                                                           │
+│  Metadata saved to database:                                            │
+│  ├─ SQL query (for debugging)                                           │
+│  ├─ Execution time                                                      │
+│  ├─ Confidence score                                                    │
+│  └─ Langfuse trace ID (for analysis)                                    │
+└──────────────────────────────────────────────────────────────────────────┘</code></pre>
+<hr />
+<h2 id="flow-2-quiz-system-generate-questions-validate-answers">🎯 FLOW
+2: Quiz System (Generate Questions &amp; Validate Answers)</h2>
+<h3 id="user-journey-1">User Journey</h3>
+<pre><code>Quiz Start → AI Question Generation → User Answers → AI Answer Validation → Scores</code></pre>
+<h3 id="detailed-flow-with-ai-integration-points-1">Detailed Flow with
+AI Integration Points</h3>
+<pre><code>┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. QUIZ CREATION REQUEST                                                 │
+├──────────────────────────────────────────────────────────────────────────┤
+│  User selects:                                                           │
+│  ├─ Topic: &quot;FSV Mainz 05 Geschichte&quot; or &quot;Spielerstatistiken&quot;           │
+│  ├─ Difficulty: easy / medium / hard                                    │
+│  ├─ Number of rounds: 5-20                                              │
+│  └─ Player names: [&quot;Anna&quot;, &quot;Max&quot;]                                       │
+│                                                                           │
+│  Database creates:                                                       │
+│  └─ quiz_games record (status: &quot;creating&quot;)                              │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 2. 🤖 AI STEP 1: QUESTION GENERATION (per round)                        │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Prompt: quiz-question-generator.txt                                    │
+│  Model: qwen/qwen-2.5-72b-instruct (via OpenRouter)                     │
+│  Frequency: Called N times (N = number of rounds)                        │
+│                                                                           │
+│  INPUTS:                                                                  │
+│  ├─ category: &quot;statistics&quot; | &quot;history&quot; | &quot;players&quot; | &quot;matches&quot;         │
+│  ├─ difficulty: &quot;easy&quot; | &quot;medium&quot; | &quot;hard&quot;                              │
+│  ├─ schemaContext: Database schema understanding                        │
+│  └─ previousQuestions: [already generated questions] (avoid duplicates) │
+│                                                                           │
+│  WHAT AI DOES:                                                           │
+│  ├─ Create interesting, factual question about Mainz 05                 │
+│  ├─ Generate 4 answer options (1 correct, 3 plausible distractors)     │
+│  ├─ Ensure question is answerable from database                         │
+│  ├─ Match difficulty level                                              │
+│  └─ Avoid repetition with previous questions                            │
+│                                                                           │
+│  OUTPUT FORMAT (JSON):                                                   │
+│  {                                                                        │
+│    &quot;question_text&quot;: &quot;Wer erzielte das erste Tor im neuen Stadion?&quot;,    │
+│    &quot;options&quot;: [                                                          │
+│      { &quot;text&quot;: &quot;André Schürrle&quot;, &quot;is_correct&quot;: true },                 │
+│      { &quot;text&quot;: &quot;Mohamed Zidan&quot;, &quot;is_correct&quot;: false },                 │
+│      { &quot;text&quot;: &quot;Eugen Polanski&quot;, &quot;is_correct&quot;: false },                │
+│      { &quot;text&quot;: &quot;Lewis Holtby&quot;, &quot;is_correct&quot;: false }                   │
+│    ],                                                                     │
+│    &quot;explanation&quot;: &quot;Schürrle erzielte das Tor in der 12. Minute...&quot;,    │
+│    &quot;category&quot;: &quot;history&quot;,                                               │
+│    &quot;difficulty&quot;: &quot;medium&quot;,                                              │
+│    &quot;points&quot;: 100                                                         │
+│  }                                                                        │
+│                                                                           │
+│  PROMPT ENGINEERING FOCUS:                                               │
+│  • Difficulty calibration:                                               │
+│    - Easy: &quot;Wer ist der aktuelle Trainer?&quot; (common knowledge)           │
+│    - Medium: &quot;Wie viele Tore schoss Schürrle 2009/10?&quot; (stats)         │
+│    - Hard: &quot;Gegen wen spielte Mainz am 15.03.1997?&quot; (deep history)     │
+│  • Plausible distractors (wrong answers must seem reasonable)           │
+│  • Factual accuracy (verifiable from database)                          │
+│  • Variety (mixing player stats, match history, records)                │
+│  • German language (natural phrasing)                                    │
+│                                                                           │
+│  OBSERVABILITY:                                                          │
+│  └─ Tracked in Langfuse: trace &quot;quiz-question-generation&quot;              │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 3. QUESTION STORAGE &amp; DISPLAY                                            │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Database saves:                                                         │
+│  ├─ quiz_rounds (game_id, round_number, status)                        │
+│  └─ quiz_questions (question_text, correct_answer_id)                  │
+│                                                                           │
+│  Frontend displays:                                                      │
+│  ├─ Question text                                                       │
+│  ├─ 4 multiple choice options                                           │
+│  ├─ Timer (if timed mode)                                               │
+│  └─ Round progress (3/10)                                               │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 4. USER SUBMITS ANSWER                                                   │
+├──────────────────────────────────────────────────────────────────────────┤
+│  User clicks option: &quot;André Schürrle&quot;                                   │
+│  Backend receives:                                                       │
+│  ├─ game_id                                                             │
+│  ├─ player_name                                                         │
+│  ├─ selected_answer_id                                                  │
+│  └─ time_taken_ms                                                       │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 5. 🤖 AI STEP 2: ANSWER VALIDATION &amp; EXPLANATION                        │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Prompt: quiz-answer-generator.txt                                      │
+│  Model: qwen/qwen-2.5-72b-instruct (via OpenRouter)                     │
+│                                                                           │
+│  INPUTS:                                                                  │
+│  ├─ question: Original question object                                  │
+│  ├─ userAnswer: Selected option                                         │
+│  ├─ correctAnswer: Correct option                                       │
+│  └─ isCorrect: boolean                                                  │
+│                                                                           │
+│  WHAT AI DOES:                                                           │
+│  ├─ Generate contextual explanation                                     │
+│  ├─ Add interesting facts                                               │
+│  ├─ Provide encouragement (if wrong) or praise (if correct)            │
+│  └─ Link to related history/stats                                       │
+│                                                                           │
+│  OUTPUT FORMAT (JSON):                                                   │
+│  {                                                                        │
+│    &quot;explanation&quot;: &quot;Richtig! Schürrle erzielte das erste Tor...&quot;,       │
+│    &quot;additionalInfo&quot;: &quot;Schürrle spielte von 2009-2011 bei Mainz...&quot;,    │
+│    &quot;funFact&quot;: &quot;Dieses Spiel war vor 32.000 Zuschauern!&quot;,              │
+│    &quot;relatedStat&quot;: &quot;Schürrle: 27 Tore in 65 Spielen&quot;                   │
+│  }                                                                        │
+│                                                                           │
+│  PROMPT ENGINEERING FOCUS:                                               │
+│  • Encouraging tone (even when answer is wrong)                          │
+│  • Educational value (teach something new)                               │
+│  • Mainz 05 trivia (interesting context)                                │
+│  • German language (conversational)                                      │
+│                                                                           │
+│  OBSERVABILITY:                                                          │
+│  └─ Tracked in Langfuse: trace &quot;quiz-answer-generation&quot;                │
+└────────────────────────────────┬─────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 6. SCORING &amp; FEEDBACK                                                    │
+├──────────────────────────────────────────────────────────────────────────┤
+│  Calculate points:                                                       │
+│  ├─ Base points (100 for easy, 200 for medium, 300 for hard)           │
+│  ├─ Time bonus (faster = more points)                                  │
+│  └─ Streak multiplier (consecutive correct answers)                     │
+│                                                                           │
+│  Update database:                                                        │
+│  ├─ quiz_answers (player_name, is_correct, points_earned)              │
+│  └─ quiz_rounds (status: &quot;completed&quot;)                                   │
+│                                                                           │
+│  Display to user:                                                        │
+│  ├─ ✓ / ✗ Correct or Wrong                                             │
+│  ├─ Points earned                                                       │
+│  ├─ AI-generated explanation                                            │
+│  └─ Current score                                                       │
+└──────────────────────────────────────────────────────────────────────────┘</code></pre>
+<hr />
+<h2 id="technical-architecture-ai-components">🔧 Technical Architecture:
+AI Components</h2>
+<h3 id="prompt-management-system">1. Prompt Management System</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│ PROMPTS SERVICE (apps/api/src/services/ai/prompts.service.ts)  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Responsibilities:                                               │
+│  ├─ Load prompt templates from Langfuse or local fallback       │
+│  ├─ Compile templates with variables (schema, user input)       │
+│  ├─ Create Langfuse traces for observability                   │
+│  ├─ Call OpenRouter API                                         │
+│  └─ Log generation metrics (latency, tokens, cost)             │
+│                                                                  │
+│  Prompt Sources (priority order):                               │
+│  1. Langfuse (remote, versioned, A/B testable)                 │
+│  2. Local fallback (prompts/fallback/*.txt)                    │
+│                                                                  │
+│  Prompt Template Format:                                        │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ SYSTEM INSTRUCTION:                                       │  │
+│  │ You are an expert SQL generator for FSV Mainz 05...      │  │
+│  │ {{schemaContext}}                                         │  │
+│  │                                                            │  │
+│  │ ---                                                        │  │
+│  │                                                            │  │
+│  │ USER PROMPT:                                              │  │
+│  │ User question: {{userQuestion}}                           │  │
+│  │ Conversation history: {{conversationHistory}}             │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  Available Prompts:                                             │
+│  ├─ chat-sql-generator.txt (Question → SQL)                    │
+│  ├─ chat-answer-formatter.txt (SQL Result → Natural Language)  │
+│  ├─ quiz-question-generator.txt (Generate quiz questions)      │
+│  └─ quiz-answer-generator.txt (Explain quiz answers)           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="llm-integration-openrouter">2. LLM Integration (OpenRouter)</h3>
+<pre><code>┌──────────────────────────────────────────────────────────────────┐
+│ OPENROUTER SERVICE (apps/api/src/services/ai/openrouter.service)│
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  Model: qwen/qwen-2.5-72b-instruct                              │
+│  Why: Best German language support + JSON mode + cost-effective  │
+│                                                                   │
+│  Configuration:                                                   │
+│  ├─ Temperature: 0.1 (low for factual accuracy)                 │
+│  ├─ Max tokens: 2000                                             │
+│  ├─ Response format: JSON (structured output)                    │
+│  └─ Timeout: 30 seconds                                          │
+│                                                                   │
+│  API Features Used:                                              │
+│  ├─ System instructions (role context)                           │
+│  ├─ JSON schema validation (type safety)                         │
+│  └─ Streaming (future: real-time responses)                      │
+│                                                                   │
+│  Error Handling:                                                 │
+│  ├─ Retry logic (3 attempts with exponential backoff)           │
+│  ├─ Fallback to cached responses                                │
+│  └─ Graceful degradation (return error message to user)         │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="observability-langfuse">3. Observability (Langfuse)</h3>
+<pre><code>┌──────────────────────────────────────────────────────────────────┐
+│ LANGFUSE SERVICE (apps/api/src/services/ai/langfuse.service)    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  Purpose: Track AI performance, costs, and quality               │
+│                                                                   │
+│  Tracked Metrics:                                                │
+│  ├─ Latency per generation (ms)                                 │
+│  ├─ Token usage (input + output)                                │
+│  ├─ Cost per request ($)                                        │
+│  ├─ User feedback (thumbs up/down)                              │
+│  └─ Error rates                                                  │
+│                                                                   │
+│  Trace Structure:                                                │
+│  Trace (chat-sql-generation)                                    │
+│    └─ Generation (openrouter-sql-generation)                    │
+│        ├─ Input: { system, user }                               │
+│        ├─ Output: { sql, confidence }                           │
+│        ├─ Latency: 450ms                                        │
+│        └─ Tokens: { input: 1200, output: 150 }                 │
+│                                                                   │
+│  Use Cases:                                                      │
+│  ├─ Debug low-confidence SQL generations                        │
+│  ├─ A/B test different prompt versions                          │
+│  ├─ Monitor cost per user interaction                           │
+│  └─ Identify and fix hallucinations                             │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘</code></pre>
+<hr />
+<h2 id="prompt-engineering-guidelines">🎓 Prompt Engineering
+Guidelines</h2>
+<h3 id="what-makes-a-good-prompt-in-this-system">What Makes a Good
+Prompt in This System?</h3>
+<h4 id="schema-awareness">1. <strong>Schema Awareness</strong></h4>
+<pre><code>❌ BAD: &quot;You are a SQL generator.&quot;
+✅ GOOD: &quot;You are a SQL generator with access to FSV Mainz 05 archive.
+         Key tables: teams, players, matches, goals, coaches.
+         Team ID 1 = FSV Mainz 05 (home team).
+         All dates are in ISO format (YYYY-MM-DD).&quot;</code></pre>
+<h4 id="german-language-context">2. <strong>German Language
+Context</strong></h4>
+<pre><code>❌ BAD: &quot;Answer the user&#39;s question.&quot;
+✅ GOOD: &quot;Answer in German (informal &#39;du&#39; form, enthusiastic Mainz fan tone).
+         Use &#39;05er&#39; slang when appropriate.
+         Example: &#39;Die Nullfünfer haben...&#39; not &#39;FSV Mainz 05 hat...&#39;&quot;</code></pre>
+<h4 id="factual-grounding">3. <strong>Factual Grounding</strong></h4>
+<pre><code>❌ BAD: &quot;Make up interesting facts.&quot;
+✅ GOOD: &quot;CRITICAL: Only use data from the SQL result. DO NOT hallucinate.
+         If data is missing, say &#39;Diese Information ist nicht verfügbar.&#39;
+         Verify all numbers match the query result exactly.&quot;</code></pre>
+<h4 id="output-structure">4. <strong>Output Structure</strong></h4>
+<pre><code>❌ BAD: &quot;Generate a question.&quot;
+✅ GOOD: &quot;Generate a question in this EXACT JSON format:
+         {
+           &#39;question_text&#39;: string (German, ends with &#39;?&#39;),
+           &#39;options&#39;: array of 4 objects with &#39;text&#39; and &#39;is_correct&#39;,
+           &#39;explanation&#39;: string (2-3 sentences),
+           &#39;difficulty&#39;: &#39;easy&#39; | &#39;medium&#39; | &#39;hard&#39;
+         }
+         Validate: Exactly 1 correct answer, all options are plausible.&quot;</code></pre>
+<h4 id="difficulty-calibration-quiz">5. <strong>Difficulty Calibration
+(Quiz)</strong></h4>
+<pre><code>EASY prompts should:
+  ├─ Ask about current/recent events (last 2 seasons)
+  ├─ Reference famous players everyone knows
+  └─ Have obvious distractors
+
+MEDIUM prompts should:
+  ├─ Require statistical knowledge (goal counts, win ratios)
+  ├─ Reference historical events (5-10 years ago)
+  └─ Have plausible but incorrect distractors
+
+HARD prompts should:
+  ├─ Deep historical knowledge (20+ years ago)
+  ├─ Obscure statistics (records, specific dates)
+  └─ Very similar distractors (e.g., 27 goals vs 29 goals)</code></pre>
+<hr />
+<h2 id="monitoring-optimization">📊 Monitoring &amp; Optimization</h2>
+<h3 id="key-metrics-to-track">Key Metrics to Track</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│ METRIC                    │ TARGET    │ ALERT THRESHOLD    │
+├───────────────────────────┼───────────┼────────────────────┤
+│ SQL Generation Latency    │ &lt; 500ms   │ &gt; 1000ms          │
+│ SQL Execution Latency     │ &lt; 100ms   │ &gt; 500ms           │
+│ Answer Format Latency     │ &lt; 800ms   │ &gt; 1500ms          │
+│ End-to-End Chat Latency   │ &lt; 2s      │ &gt; 5s              │
+│ SQL Confidence Score      │ &gt; 80%     │ &lt; 60%             │
+│ Quiz Question Uniqueness  │ 100%      │ &lt; 95% (duplicates)│
+│ User Satisfaction         │ &gt; 80%     │ &lt; 70% (thumbs up) │
+│ Cost per Chat Interaction │ &lt; $0.005  │ &gt; $0.02           │
+│ SQL Error Rate            │ &lt; 5%      │ &gt; 15%             │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="optimization-strategies">Optimization Strategies</h3>
+<h4 id="when-sql-confidence-is-low">When SQL Confidence is Low:</h4>
+<ol type="1">
+<li><strong>Schema Context Too Large?</strong>
+<ul>
+<li>Reduce to relevant tables only based on question</li>
+<li>Use semantic search to find relevant schema parts</li>
+</ul></li>
+<li><strong>Ambiguous Questions?</strong>
+<ul>
+<li>Add examples of ambiguous vs clear questions to prompt</li>
+<li>Include clarification decision tree</li>
+</ul></li>
+<li><strong>Poor Prompt?</strong>
+<ul>
+<li>A/B test variations in Langfuse</li>
+<li>Add more few-shot examples</li>
+</ul></li>
+</ol>
+<h4 id="when-answers-hallucinate">When Answers Hallucinate:</h4>
+<ol type="1">
+<li><strong>Prompt Too Creative?</strong>
+<ul>
+<li>Lower temperature (0.1 → 0.0)</li>
+<li>Add “DO NOT ADD INFORMATION NOT IN RESULT” in bold</li>
+</ul></li>
+<li><strong>Result Format Unclear?</strong>
+<ul>
+<li>Show exact SQL result format in prompt</li>
+<li>Add example transformations</li>
+</ul></li>
+</ol>
+<hr />
+<h2 id="future-ai-enhancements">🚀 Future AI Enhancements</h2>
+<h3 id="planned-improvements">Planned Improvements</h3>
+<h4 id="semantic-search-for-schema">1. <strong>Semantic Search for
+Schema</strong></h4>
+<pre><code>Current: Send full schema to LLM (8000 tokens)
+Future:  Embed schema chunks, retrieve top 5 relevant tables (1000 tokens)
+Benefit: 50% faster, 70% cheaper</code></pre>
+<h4 id="query-cache-with-semantic-matching">2. <strong>Query Cache with
+Semantic Matching</strong></h4>
+<pre><code>Current: Every question generates new SQL
+Future:  Check if similar question was asked before
+         &quot;Wie viele Tore hat Schürrle geschossen?&quot;
+         ≈ &quot;Schürrle Tore gesamt?&quot;
+         → Use cached SQL, just update parameters
+Benefit: 90% faster for common questions</code></pre>
+<h4 id="multi-step-reasoning-for-complex-questions">3.
+<strong>Multi-Step Reasoning for Complex Questions</strong></h4>
+<pre><code>Question: &quot;Wer hat die meisten Tore in Spielen geschossen,
+           die wir mit mehr als 2 Toren Unterschied gewonnen haben?&quot;
+
+Current: Single prompt → complex SQL (often fails)
+
+Future:  Chain of Thought
+         Step 1: &quot;Find matches won by 2+ goals&quot;
+         Step 2: &quot;Find goal scorers in those matches&quot;
+         Step 3: &quot;Aggregate and rank&quot;
+         → Generate sub-queries → Combine</code></pre>
+<h4 id="user-intent-classification">4. <strong>User Intent
+Classification</strong></h4>
+<pre><code>Before generating SQL, classify intent:
+├─ statistics (COUNT, AVG, MAX) → Use optimized stat queries
+├─ history (specific match/date) → Use indexed lookups
+├─ comparison (player A vs B) → Use materialized views
+└─ exploration (open-ended) → Guide with follow-ups</code></pre>
+<h4 id="personalized-difficulty">5. <strong>Personalized
+Difficulty</strong></h4>
+<pre><code>Quiz: Track user performance
+├─ If 80%+ correct → Increase difficulty automatically
+├─ If &lt; 50% correct → Decrease difficulty
+└─ Learn user preferences (prefers player stats vs history)</code></pre>
+<hr />
+<h2 id="file-reference">📁 File Reference</h2>
+<h3 id="key-files-for-ai-integration">Key Files for AI Integration</h3>
+<pre><code>apps/api/src/
+├── services/
+│   ├── chat/
+│   │   └── chat.service.ts           # Main chat flow (2 AI calls)
+│   ├── quiz/
+│   │   └── quiz.service.ts           # Quiz flow (2 AI calls per round)
+│   └── ai/
+│       ├── prompts.service.ts        # Prompt loading &amp; execution
+│       ├── openrouter.service.ts     # LLM API calls
+│       └── langfuse.service.ts       # Observability tracking
+│
+prompts/fallback/
+├── chat-sql-generator.txt            # Question → SQL
+├── chat-answer-formatter.txt         # SQL Result → Natural Language
+├── quiz-question-generator.txt       # Generate quiz questions
+└── quiz-answer-generator.txt         # Explain quiz answers</code></pre>
+<hr />
+<h2 id="summary-where-ai-is-used">✅ Summary: Where AI is Used</h2>
+<table>
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 25%" />
+<col style="width: 31%" />
+<col style="width: 26%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>User Flow</strong></th>
+<th><strong>AI Step</strong></th>
+<th><strong>Purpose</strong></th>
+<th><strong>Prompt</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chat</td>
+<td>SQL Generation</td>
+<td>Natural language → SQL query</td>
+<td>chat-sql-generator</td>
+</tr>
+<tr>
+<td>Chat</td>
+<td>Answer Formatting</td>
+<td>SQL result → Natural German response</td>
+<td>chat-answer-formatter</td>
+</tr>
+<tr>
+<td>Quiz (per round)</td>
+<td>Question Generation</td>
+<td>Create interesting quiz question</td>
+<td>quiz-question-generator</td>
+</tr>
+<tr>
+<td>Quiz (per answer)</td>
+<td>Answer Explanation</td>
+<td>Explain correct/incorrect answer</td>
+<td>quiz-answer-generator</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total AI Calls per User Interaction:</strong> - Chat:
+<strong>2 AI calls</strong> (SQL gen + Answer format) - Quiz: <strong>2N
+AI calls</strong> (N rounds × 2 per round)</p>
+<p><strong>No AI Used For:</strong> - SQL execution (database query) -
+User authentication - Session management - Scoring calculation - Data
+parsing/ingestion</p>
+<hr />
+<p><strong>End of Document</strong></p>
+</body>
+</html>
