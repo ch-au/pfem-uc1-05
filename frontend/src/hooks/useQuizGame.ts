@@ -35,6 +35,9 @@ export const useQuizGame = () => {
       const newGameId = await quizService.createGame(gameRequest);
       setGameId(newGameId);
       
+      // Wait for questions to finish generating
+      await waitForQuestionGeneration(newGameId);
+      
       // Start the game
       const state = await quizService.startGame(newGameId);
       setGameState(state);
@@ -51,6 +54,36 @@ export const useQuizGame = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const waitForQuestionGeneration = async (gameId: string, maxWaitTime = 120000) => {
+    const startTime = Date.now();
+    const pollInterval = 1000; // Check every 1 second
+
+    while (Date.now() - startTime < maxWaitTime) {
+      try {
+        const progress = await quizService.getGenerationProgress(gameId);
+        
+        if (progress.status === 'completed') {
+          return; // Generation completed successfully
+        }
+        
+        if (progress.status === 'failed') {
+          throw new Error(`Question generation failed: ${progress.progress.error_message || 'Unknown error'}`);
+        }
+        
+        // Still generating, wait before checking again
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      } catch (err) {
+        // If we get a 404, generation jobs might not be created yet, keep waiting
+        if ((err as any)?.response?.status !== 404) {
+          throw err;
+        }
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+    }
+
+    throw new Error('Question generation took too long');
   };
 
   const loadQuestion = async () => {

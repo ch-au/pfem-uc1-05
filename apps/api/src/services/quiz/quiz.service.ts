@@ -121,6 +121,19 @@ export class QuizService {
     );
 
     if (!round) {
+      // Check if questions are still generating
+      const generationStatus = await postgresService.queryOne<{ status: string; total: number; completed: number }>(
+        `SELECT 
+           COALESCE((SELECT status FROM quiz_generation_jobs WHERE game_id = $1 ORDER BY updated_at DESC LIMIT 1), 'pending') as status,
+           (SELECT COUNT(*) FROM quiz_generation_jobs WHERE game_id = $1) as total,
+           (SELECT COUNT(*) FROM quiz_generation_jobs WHERE game_id = $1 AND status = 'round_created') as completed`,
+        [gameId]
+      );
+
+      if (generationStatus && generationStatus.total > 0 && generationStatus.completed < generationStatus.total) {
+        throw new Error(`Questions are still being generated. Progress: ${generationStatus.completed}/${generationStatus.total} completed`);
+      }
+
       throw new Error('Question not found for current round');
     }
 

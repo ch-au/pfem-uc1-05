@@ -108,6 +108,25 @@ export interface QuizNextRoundResponse {
   current_round?: number;
 }
 
+export interface QuizGenerationProgressResponse {
+  game_id: string;
+  status: 'generating' | 'completed' | 'failed';
+  progress: {
+    game_id: string;
+    total_rounds: number;
+    completed_rounds: number;
+    current_round?: number;
+    current_status?: string;
+    error_message?: string;
+    rounds: Array<{
+      round_number: number;
+      status: string;
+      question_preview?: string;
+      error_message?: string;
+    }>;
+  };
+}
+
 export interface ApiError {
   detail: string;
 }

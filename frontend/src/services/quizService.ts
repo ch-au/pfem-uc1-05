@@ -7,6 +7,7 @@ import type {
   QuizAnswerResponse,
   QuizLeaderboardResponse,
   QuizNextRoundResponse,
+  QuizGenerationProgressResponse,
 } from '../types/api';
 
 const api = axios.create({
@@ -115,6 +116,14 @@ export const quizService = {
     const response = await api.get<{ games: QuizGameState[]; total: number }>(
       `/quiz/games/completed?${params.toString()}`
     );
+    return response.data;
+  },
+
+  /**
+   * Get quiz generation progress
+   */
+  async getGenerationProgress(gameId: string): Promise<QuizGenerationProgressResponse> {
+    const response = await api.get<QuizGenerationProgressResponse>(`/quiz/game/${gameId}/progress`);
     return response.data;
   },
 };
