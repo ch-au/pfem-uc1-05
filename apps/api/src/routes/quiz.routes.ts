@@ -24,6 +24,14 @@ export async function quizRoutes(fastify: FastifyInstance) {
       const body = CreateGameSchema.parse(request.body);
 
       const game = await quizService.createGame(body);
+      fastify.log.info(
+        {
+          gameId: game.game_id,
+          generationJobId: game.generation_job_id,
+          generationStatus: game.generation_status,
+        },
+        'quiz game created and generation enqueued'
+      );
 
       return reply.code(201).send(game);
     } catch (error: any) {
@@ -149,6 +157,16 @@ export async function quizRoutes(fastify: FastifyInstance) {
       const { gameId } = request.params;
 
       const progress = await quizService.getGenerationProgress(gameId);
+      fastify.log.info(
+        {
+          gameId,
+          status: progress.status,
+          completed: progress.progress.completed_rounds,
+          total: progress.progress.total_rounds,
+          currentStatus: progress.progress.current_status,
+        },
+        'quiz generation progress'
+      );
 
       return reply.send(progress);
     } catch (error: any) {

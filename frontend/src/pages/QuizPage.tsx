@@ -165,6 +165,22 @@ export const QuizPage: React.FC = () => {
             message={statusMessage}
           />
         )}
+        {generationProgress && (
+          <div className={styles.statusInline} style={{ marginBottom: '1rem' }}>
+            <div className={styles.spinner} aria-hidden />
+            <div>
+              <div className={styles.statusTitle}>Quiz wird vorbereitet</div>
+              <div className={styles.statusText}>
+                Runde {generationProgress.completed_rounds}/{generationProgress.total_rounds}
+              </div>
+              {generationProgress.current_status && (
+                <div className={styles.progressStatus}>
+                  {statusLabels[generationProgress.current_status] ?? generationProgress.current_status}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {error && (
           <Alert
             variant="error"

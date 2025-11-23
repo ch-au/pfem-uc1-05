@@ -71,7 +71,7 @@ export const useQuizGame = () => {
   const waitForQuestionGeneration = async (
     gameId: string,
     onProgress?: (message: string) => void,
-    maxWaitTime = 120000
+    maxWaitTime = 180000
   ) => {
     const startTime = Date.now();
     const pollInterval = 1000; // Check every 1 second
@@ -93,12 +93,14 @@ export const useQuizGame = () => {
         // Update progress message based on current round status
         const activeRound = progress.progress.current_round;
         const currentStatus = progress.progress.current_status;
+        const completed = progress.progress.completed_rounds;
+        const total = progress.progress.total_rounds;
         if (currentStatus === 'sql_generated') {
-          onProgress?.(`Fragen werden generiert (Runde ${activeRound})...`);
+          onProgress?.(`Fragen werden generiert (Runde ${activeRound}/${total})... (${completed} fertig)`);
         } else if (currentStatus === 'answer_verified') {
-          onProgress?.(`Antworten werden geprüft (Runde ${activeRound})...`);
+          onProgress?.(`Antworten werden geprüft (Runde ${activeRound}/${total})... (${completed} fertig)`);
         } else {
-          onProgress?.('Quiz wird vorbereitet...');
+          onProgress?.(`Quiz wird vorbereitet... (${completed}/${total} Runden fertig)`);
         }
         
         // Still generating, wait before checking again

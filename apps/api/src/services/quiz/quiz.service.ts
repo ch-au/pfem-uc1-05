@@ -336,7 +336,9 @@ export class QuizService {
     // 3. Generate questions with SQL queries (with buffer for failures)
     const bufferMultiplier = 1.5; // Generate 50% more questions as buffer
     const questionsToGenerate = Math.ceil(config.numRounds * bufferMultiplier);
-    console.log(`🎯 Generating ${questionsToGenerate} questions (${config.numRounds} needed + buffer)...`);
+    console.log(
+      `🎯 Generating ${questionsToGenerate} questions (${config.numRounds} needed + buffer) for game ${gameId} (category=${config.category}, difficulty=${config.difficulty})`
+    );
     const questionGeneration = await promptsService.executeQuizQuestionGenerator({
       category: config.category,
       difficulty: config.difficulty,
