@@ -45,30 +45,43 @@ export class PromptsService {
           config.langfuse_name,
           config.langfuse_label ? undefined : undefined // TODO: Support version numbers
         );
-        if (promptData) {
+        if (promptData && promptData.prompt) {
           console.log(`✅ Loaded prompt "${promptKey}" from Langfuse (${config.langfuse_name})`);
-          // Parse prompt (format: "SYSTEM INSTRUCTION:\n...\n\nUSER PROMPT:\n...")
+          
+          // Parse prompt (format: "SYSTEM INSTRUCTION: ...\n\n---\n\nUSER PROMPT: ...")
           const parts = promptData.prompt.split('---');
-          if (parts.length === 2) {
-            const systemPart = parts[0].split('USER PROMPT:')[0].replace('SYSTEM INSTRUCTION:', '').trim();
-            const userPart = parts[1].trim();
-            return { 
-              system: systemPart, 
-              user: userPart, 
-              config,
-              meta: {
-                source: 'langfuse',
-                promptName: config.langfuse_name,
-                promptLabel: config.langfuse_label,
-                promptVersion: promptData.version ?? (promptData as any)?.config?.version,
-                promptId: promptData.id,
-                fallbackFile: config.fallback_file,
-              },
-            };
+          if (parts.length >= 2) {
+            // Extract system part and remove the "SYSTEM INSTRUCTION:" prefix
+            const systemPart = parts[0]
+              .replace('SYSTEM INSTRUCTION:', '')
+              .trim();
+            
+            // Extract user part and remove the "USER PROMPT:" prefix
+            const userPart = parts[1]
+              .replace('USER PROMPT:', '')
+              .trim();
+            
+            if (systemPart && userPart) {
+              return { 
+                system: systemPart, 
+                user: userPart, 
+                config,
+                meta: {
+                  source: 'langfuse',
+                  promptName: config.langfuse_name,
+                  promptLabel: config.langfuse_label,
+                  promptVersion: (promptData as any)?.version ?? (promptData as any)?.config?.version,
+                  promptId: (promptData as any)?.id,
+                  fallbackFile: config.fallback_file,
+                },
+              };
+            }
           }
+          console.warn(`⚠️  Prompt from Langfuse has invalid format (could not parse), falling back to local`);
         }
       } catch (error) {
-        console.warn(`⚠️  Failed to load prompt "${promptKey}" from Langfuse, falling back to local`);
+        console.warn(`⚠️  Failed to load prompt "${promptKey}" from Langfuse:`, error);
+        console.warn(`    Falling back to local prompt`);
       }
     }
 
@@ -79,14 +92,23 @@ export class PromptsService {
       const content = await readFile(filePath, 'utf-8');
       console.log(`📁 Loaded prompt "${promptKey}" from local fallback (${config.fallback_file})`);
 
-      // Parse local file format
+      // Parse local file format (same as Langfuse: "SYSTEM INSTRUCTION: ...\n\n---\n\nUSER PROMPT: ...")
       const parts = content.split('---');
-      if (parts.length !== 2) {
-        throw new Error(`Invalid prompt format in ${config.fallback_file}`);
+      if (parts.length < 2) {
+        throw new Error(`Invalid prompt format in ${config.fallback_file} - missing '---' separator`);
       }
 
-      const systemPart = parts[0].split('USER PROMPT:')[0].replace('SYSTEM INSTRUCTION:', '').trim();
-      const userPart = parts[1].trim();
+      const systemPart = parts[0]
+        .replace('SYSTEM INSTRUCTION:', '')
+        .trim();
+      
+      const userPart = parts[1]
+        .replace('USER PROMPT:', '')
+        .trim();
+
+      if (!systemPart || !userPart) {
+        throw new Error(`Invalid prompt format in ${config.fallback_file} - missing content`);
+      }
 
       return { 
         system: systemPart, 
