@@ -103,6 +103,43 @@ export class LangfuseService {
   }
 
   /**
+   * Create a generation with explicit prompt object linking
+   */
+  createGenerationWithPrompt(
+    trace: LangfuseTraceClient | null,
+    config: {
+      name: string;
+      model: string;
+      input: any;
+      metadata?: Record<string, any>;
+      langfusePrompt?: { prompt: string; config: any; id?: string; version?: number } | null;
+      promptName?: string;
+      promptVersion?: string | number;
+    }
+  ): LangfuseGenerationClient | null {
+    if (!trace) {
+      return null;
+    }
+
+    // Convert version to number if provided
+    const version = config.promptVersion && typeof config.promptVersion === 'string' && config.promptVersion !== 'fallback'
+      ? Number(config.promptVersion)
+      : typeof config.promptVersion === 'number' 
+      ? config.promptVersion
+      : undefined;
+
+    return trace.generation({
+      name: config.name,
+      model: config.model,
+      input: config.input,
+      metadata: config.metadata,
+      prompt: config.promptName
+        ? { name: config.promptName, version }
+        : undefined,
+    });
+  }
+
+  /**
    * End a generation with output and usage stats
    * Note: Latency is calculated automatically by Langfuse from start/end timestamps
    */
