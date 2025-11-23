@@ -64,18 +64,29 @@ export class PostgresService {
    * Includes safety checks and timeouts
    */
   async executeUserQuery(sql: string): Promise<{ rows: any[]; executionTimeMs: number }> {
+    console.log(`🔍 [SQL EXECUTION] Starting user query execution...`);
+    console.log(`   Query (first 200 chars): ${sql.substring(0, 200)}...`);
+    
     const { sql: safeSql } = validateAndNormalizeSql(sql);
+    console.log(`   ✓ SQL validation passed`);
 
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN READ ONLY');
       await client.query('SET LOCAL statement_timeout = 5000');
+      console.log(`   ✓ Transaction started (READ ONLY, 5s timeout)`);
 
       const start = Date.now();
+      console.log(`   ⏳ Executing query...`);
       const result = await client.query(safeSql);
       const executionTimeMs = Date.now() - start;
 
       await client.query('COMMIT');
+      console.log(`   ✓ Query executed successfully in ${executionTimeMs}ms`);
+      console.log(`   ✓ Returned ${result.rows.length} row(s)`);
+      if (result.rows.length > 0) {
+        console.log(`   First row: ${JSON.stringify(result.rows[0]).substring(0, 150)}...`);
+      }
 
       return {
         rows: result.rows,
@@ -83,10 +94,12 @@ export class PostgresService {
       };
     } catch (error) {
       await client.query('ROLLBACK');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`   ❌ SQL Execution Failed: ${errorMsg}`);
+      
       if (error instanceof SqlValidationError) {
         throw error;
       }
-      console.error('Database query error:', error);
       throw error;
     } finally {
       client.release();

@@ -460,6 +460,10 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
+    console.log(`🎯 [ANSWER GENERATOR] Starting answer generation...`);
+    console.log(`   Question: "${input.question.substring(0, 80)}..."`);
+    console.log(`   SQL Result rows: ${Array.isArray(input.sqlResult) ? input.sqlResult.length : 'N/A'}`);
+    
     const promptKey = 'quiz-answer-generator';
 
     // Load prompt template with config
@@ -532,12 +536,18 @@ export class PromptsService {
 
     // End generation (latency calculated automatically by Langfuse)
     langfuseService.endGeneration(generation, data, usage);
+    console.log(`   ✓ Answer generation complete:`);
+    console.log(`     Correct: "${data.correctAnswer}"`);
+    console.log(`     Wrong options: ${data.incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
+    console.log(`     Evidence score: ${data.evidenceScore}`);
 
     // End trace with output (only the correct answer)
     langfuseService.endTrace(trace, data.correctAnswer);
 
     // Flush to Langfuse
     await langfuseService.flush();
+    console.log(`   ✓ Langfuse trace flushed`);
+    console.log(`🎯 [ANSWER GENERATOR] ✅ Complete\n`);
 
     return {
       result: data,

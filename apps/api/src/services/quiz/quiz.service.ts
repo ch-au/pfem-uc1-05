@@ -340,7 +340,7 @@ export class QuizService {
     const bufferMultiplier = 1.5; // Generate 50% more questions as buffer
     const questionsToGenerate = Math.ceil(config.numRounds * bufferMultiplier);
     console.log(
-      `🎯 Generating ${questionsToGenerate} questions (${config.numRounds} needed + buffer) for game ${gameId} (category=${config.category}, difficulty=${config.difficulty})`
+      `\n${'='.repeat(80)}\n🎯 QUIZ GENERATION START\n${'='.repeat(80)}\nGenerating ${questionsToGenerate} questions (${config.numRounds} needed + buffer)\nCategory: ${config.category} | Difficulty: ${config.difficulty}\nGame ID: ${gameId}\n${'='.repeat(80)}\n`
     );
     const questionGeneration = await promptsService.executeQuizQuestionGenerator({
       category: config.category,
@@ -364,6 +364,9 @@ export class QuizService {
 
       while (!questionCreated && retryCount < maxRetries) {
         try {
+          console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questionGeneration.result.questions.length}`);
+          console.log(`   Question: "${generatedQuestion.questionText.substring(0, 80)}..."`);
+          
           // Step 1: Update job status - SQL generated
           await postgresService.query(
             `UPDATE quiz_generation_jobs
@@ -371,11 +374,14 @@ export class QuizService {
              WHERE game_id = $3 AND round_number = $4`,
             [generatedQuestion.questionText, generatedQuestion.sqlQueryNeeded, gameId, roundNumber]
           );
-          console.log(`  Round ${roundNumber}: Generated SQL query`);
+          console.log(`   ✓ Step 1: SQL Query Generated`);
+          console.log(`     SQL: ${generatedQuestion.sqlQueryNeeded.substring(0, 120)}...`);
 
           // Step 2: Execute SQL to get correct answer
+          console.log(`   ⏳ Step 2: Executing SQL Query...`);
           const { rows } = await postgresService.executeUserQuery(generatedQuestion.sqlQueryNeeded);
-          console.log(`  Round ${roundNumber}: Executed SQL, got ${rows.length} result(s)`);
+          console.log(`   ✓ Step 2: SQL Executed Successfully - Got ${rows.length} result row(s)`);
+          console.log(`     First result: ${JSON.stringify(rows[0]).substring(0, 100)}...`);
 
           // Validate results
           if (rows.length === 0) {
@@ -383,6 +389,7 @@ export class QuizService {
           }
 
           // Step 3: Generate alternative answers based on SQL result
+          console.log(`   ⏳ Step 3: Generating Answer Alternatives...`);
           const answerGeneration = await promptsService.executeQuizAnswerGenerator({
             question: generatedQuestion.questionText,
             sqlQuery: generatedQuestion.sqlQueryNeeded,
@@ -391,6 +398,9 @@ export class QuizService {
           });
 
           const { correctAnswer, incorrectAnswers, explanation, evidenceScore } = answerGeneration.result;
+          console.log(`   ✓ Step 3: Answer Generated`);
+          console.log(`     Correct: "${correctAnswer}"`);
+          console.log(`     Wrong: ${incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
 
           // Step 4: Update job status - answer verified
           await postgresService.query(
@@ -400,7 +410,7 @@ export class QuizService {
              WHERE game_id = $5 AND round_number = $6`,
             [JSON.stringify(rows), correctAnswer, JSON.stringify(incorrectAnswers), explanation, gameId, roundNumber]
           );
-          console.log(`  Round ${roundNumber}: Verified answer - "${correctAnswer}"`);
+          console.log(`   ✓ Step 4: Saved to Database`);
 
           // Step 5: Save question to database
           const allAnswers = [correctAnswer, ...incorrectAnswers];
@@ -447,30 +457,40 @@ export class QuizService {
              WHERE game_id = $1 AND round_number = $2`,
             [gameId, roundNumber]
           );
-          console.log(`  ✅ Round ${roundNumber}: Complete`);
+          console.log(`   ✓ Step 5: Question Saved to Database`);
+          console.log(`\n✅ ROUND ${roundNumber} COMPLETE\n`);
 
           questionCreated = true;
           roundNumber++;
         } catch (error) {
           // Handle errors - log and skip this question
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const errorStack = error instanceof Error ? error.stack : '';
+          
+          console.error(`\n❌ ROUND ${roundNumber} ERROR (Attempt ${retryCount + 1}/${maxRetries})`);
+          console.error(`   Error: ${errorMessage}`);
+          if (errorStack) {
+            console.error(`   Stack: ${errorStack.substring(0, 200)}`);
+          }
+          
           await postgresService.query(
             `UPDATE quiz_generation_jobs
              SET status = 'failed', error_message = $1, updated_at = CURRENT_TIMESTAMP
              WHERE game_id = $2 AND round_number = $3`,
             [errorMessage, gameId, roundNumber]
           );
-          console.warn(`  ⚠️  Round ${roundNumber}: Question failed - ${errorMessage}`);
           
           retryCount++;
           if (retryCount >= maxRetries) {
-            console.warn(`  ⏭️  Skipping question after ${maxRetries} retries, moving to next question`);
+            console.warn(`   ⏭️  Skipping question after ${maxRetries} retries, moving to next question\n`);
             questionIndex++;
             
             // If we've run out of questions, we need to generate more or fail
             if (questionIndex >= questionGeneration.result.questions.length) {
               throw new Error(`Failed to generate ${config.numRounds} valid questions. Only ${roundNumber - 1} succeeded.`);
             }
+          } else {
+            console.log(`   🔄 Retrying...\n`);
           }
         }
       }
