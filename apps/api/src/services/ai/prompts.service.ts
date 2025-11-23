@@ -371,9 +371,8 @@ export class PromptsService {
           category: input.category,
           difficulty: input.difficulty,
           count: String(input.count),
-          previousQuestions: JSON.stringify(input.previousQuestions, null, 2),
         })
-      : `Category: ${input.category}\nDifficulty: ${input.difficulty}\nNumber of Questions: ${input.count}\n\nPrevious Questions (to avoid duplicates):\n${JSON.stringify(input.previousQuestions, null, 2)}`;
+      : `Category: ${input.category}\nDifficulty: ${input.difficulty}\nNumber of Questions: ${input.count}`;
 
     // Create trace with input
     const trace = langfuseService.createTrace('quiz-question-generation', {
