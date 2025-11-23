@@ -70,6 +70,8 @@ export interface QuestionGeneratorInput {
   previousQuestions: string[];
   count: number;
   schemaContext: string;
+  rounds: number;
+  numberOfPlayers: number;
 }
 
 export interface QuestionGeneratorOutput {
