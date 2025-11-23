@@ -21,6 +21,11 @@ const __dirname = dirname(__filename);
 export class PromptsService {
   /**
    * Load prompt template from Langfuse or local fallback using YAML config
+   * Returns: { system, user, config, meta }
+   * - system: The prompt template (either from Langfuse or local file)
+   * - user: Empty string (user content comes from method parameters, not the template)
+   * - config: Prompt configuration from YAML
+   * - meta: Metadata about the prompt source
    */
   private async loadPromptTemplate(promptKey: string): Promise<{ 
     system: string; 
@@ -43,41 +48,32 @@ export class PromptsService {
       try {
         const promptData = await langfuseService.getPrompt(
           config.langfuse_name,
-          config.langfuse_label ? undefined : undefined // TODO: Support version numbers
+          config.langfuse_label ? undefined : undefined
         );
         if (promptData && promptData.prompt) {
           console.log(`✅ Loaded prompt "${promptKey}" from Langfuse (${config.langfuse_name})`);
           
-          // Parse prompt (format: "SYSTEM INSTRUCTION: ...\n\n---\n\nUSER PROMPT: ...")
-          const parts = promptData.prompt.split('---');
-          if (parts.length >= 2) {
-            // Extract system part and remove the "SYSTEM INSTRUCTION:" prefix
-            const systemPart = parts[0]
-              .replace('SYSTEM INSTRUCTION:', '')
-              .trim();
-            
-            // Extract user part and remove the "USER PROMPT:" prefix
-            const userPart = parts[1]
-              .replace('USER PROMPT:', '')
-              .trim();
-            
-            if (systemPart && userPart) {
-              return { 
-                system: systemPart, 
-                user: userPart, 
-                config,
-                meta: {
-                  source: 'langfuse',
-                  promptName: config.langfuse_name,
-                  promptLabel: config.langfuse_label,
-                  promptVersion: (promptData as any)?.version ?? (promptData as any)?.config?.version,
-                  promptId: (promptData as any)?.id,
-                  fallbackFile: config.fallback_file,
-                },
-              };
-            }
+          // Langfuse prompts are text prompts that become the system prompt
+          // Remove "SYSTEM INSTRUCTION:" prefix if present
+          const systemPrompt = promptData.prompt
+            .replace(/^SYSTEM INSTRUCTION:\s*/i, '')
+            .trim();
+          
+          if (systemPrompt) {
+            return { 
+              system: systemPrompt, 
+              user: '', // User content comes from method parameters
+              config,
+              meta: {
+                source: 'langfuse',
+                promptName: config.langfuse_name,
+                promptLabel: config.langfuse_label,
+                promptVersion: (promptData as any)?.version ?? (promptData as any)?.config?.version,
+                promptId: (promptData as any)?.id,
+                fallbackFile: config.fallback_file,
+              },
+            };
           }
-          console.warn(`⚠️  Prompt from Langfuse has invalid format (could not parse), falling back to local`);
         }
       } catch (error) {
         console.warn(`⚠️  Failed to load prompt "${promptKey}" from Langfuse:`, error);
@@ -92,27 +88,19 @@ export class PromptsService {
       const content = await readFile(filePath, 'utf-8');
       console.log(`📁 Loaded prompt "${promptKey}" from local fallback (${config.fallback_file})`);
 
-      // Parse local file format (same as Langfuse: "SYSTEM INSTRUCTION: ...\n\n---\n\nUSER PROMPT: ...")
-      const parts = content.split('---');
-      if (parts.length < 2) {
-        throw new Error(`Invalid prompt format in ${config.fallback_file} - missing '---' separator`);
-      }
-
-      const systemPart = parts[0]
-        .replace('SYSTEM INSTRUCTION:', '')
-        .trim();
-      
-      const userPart = parts[1]
-        .replace('USER PROMPT:', '')
+      // Local prompts are text prompts that become the system prompt
+      // Remove "SYSTEM INSTRUCTION:" prefix if present
+      const systemPrompt = content
+        .replace(/^SYSTEM INSTRUCTION:\s*/i, '')
         .trim();
 
-      if (!systemPart || !userPart) {
-        throw new Error(`Invalid prompt format in ${config.fallback_file} - missing content`);
+      if (!systemPrompt) {
+        throw new Error(`Invalid prompt format in ${config.fallback_file} - no content found`);
       }
 
       return { 
-        system: systemPart, 
-        user: userPart, 
+        system: systemPrompt, 
+        user: '', // User content comes from method parameters
         config,
         meta: {
           source: 'local',
@@ -151,17 +139,15 @@ export class PromptsService {
     const promptKey = 'chat-sql-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
-    // Compile with variables
+    // Compile system prompt with variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
       schemaContext: input.schemaContext,
     });
 
-    const userPrompt = this.compileTemplate(userTemplate, {
-      conversationHistory: JSON.stringify(input.conversationHistory, null, 2),
-      userQuestion: input.userQuestion,
-    });
+    // Construct user prompt from input parameters
+    const userPrompt = `Conversation History:\n${JSON.stringify(input.conversationHistory, null, 2)}\n\nUser Question:\n${input.userQuestion}`;
 
     // Create trace
     const trace = langfuseService.createTrace('chat-sql-generation', {
@@ -239,17 +225,13 @@ export class PromptsService {
     const promptKey = 'chat-answer-formatter';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
-    // Compile with variables
+    // Compile system prompt
     const systemPrompt = systemTemplate;
-    const userPrompt = this.compileTemplate(userTemplate, {
-      userQuestion: input.userQuestion,
-      sqlQuery: input.sqlQuery,
-      sqlResult: JSON.stringify(input.sqlResult, null, 2),
-      rowCount: String(input.resultMetadata.rowCount),
-      executionTimeMs: String(input.resultMetadata.executionTimeMs),
-    });
+    
+    // Construct user prompt from input parameters
+    const userPrompt = `User Question:\n${input.userQuestion}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}\n\nResult Metadata:\n- Row Count: ${input.resultMetadata.rowCount}\n- Execution Time: ${input.resultMetadata.executionTimeMs}ms`;
 
     // Create trace
     const trace = langfuseService.createTrace('chat-answer-formatting', {
@@ -327,19 +309,15 @@ export class PromptsService {
     const promptKey = 'quiz-question-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
-    // Compile with variables
+    // Compile system prompt with variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
       schemaContext: input.schemaContext,
     });
 
-    const userPrompt = this.compileTemplate(userTemplate, {
-      category: input.category,
-      difficulty: input.difficulty,
-      count: String(input.count),
-      previousQuestions: JSON.stringify(input.previousQuestions, null, 2),
-    });
+    // Construct user prompt from input parameters
+    const userPrompt = `Category: ${input.category}\nDifficulty: ${input.difficulty}\nNumber of Questions: ${input.count}\n\nPrevious Questions (to avoid duplicates):\n${JSON.stringify(input.previousQuestions, null, 2)}`;
 
     // Create trace
     const trace = langfuseService.createTrace('quiz-question-generation', {
@@ -419,16 +397,13 @@ export class PromptsService {
     const promptKey = 'quiz-answer-generator';
 
     // Load prompt template with config
-    const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    const { system: systemTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
-    // Compile with variables
+    // Compile system prompt
     const systemPrompt = systemTemplate;
-    const userPrompt = this.compileTemplate(userTemplate, {
-      question: input.question,
-      difficulty: input.difficulty,
-      sqlQuery: input.sqlQuery,
-      sqlResult: JSON.stringify(input.sqlResult, null, 2),
-    });
+    
+    // Construct user prompt from input parameters
+    const userPrompt = `Question: ${input.question}\nDifficulty: ${input.difficulty}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}`;
 
     // Create trace
     const trace = langfuseService.createTrace('quiz-answer-generation', {
