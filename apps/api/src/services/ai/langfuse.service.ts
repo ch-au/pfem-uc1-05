@@ -71,15 +71,13 @@ export class LangfuseService {
 
   /**
    * End a trace with output
+   * Note: Langfuse SDK manages trace lifecycle automatically, so this is a no-op
+   * Traces are flushed periodically based on flushInterval config
    */
-  endTrace(trace: LangfuseTraceClient | null, output?: any): void {
-    if (!trace) {
-      return;
-    }
-
-    trace.end({
-      output,
-    });
+  endTrace(_trace: LangfuseTraceClient | null, _output?: any): void {
+    // Traces are automatically managed by Langfuse SDK
+    // No explicit end call needed
+    return;
   }
 
   /**
@@ -106,11 +104,6 @@ export class LangfuseService {
       model: config.model,
       input: config.input,
       metadata: config.metadata,
-      prompt: config.promptId
-        ? { id: config.promptId }
-        : config.promptName
-        ? { name: config.promptName, version: config.promptVersion }
-        : undefined,
     });
   }
 
