@@ -161,10 +161,14 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
+    console.log(`\n🔍 [SQL GENERATOR] Starting SQL generation...`);
+    console.log(`   Question: "${input.userQuestion}"`);
+    
     const promptKey = 'chat-sql-generator';
 
     // Load prompt template with config
     const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    console.log(`   ✓ Loaded prompt template from ${meta.source}`);
 
     // Compile system prompt with Kontext variable
     const systemPrompt = this.compileTemplate(systemTemplate, {
@@ -177,6 +181,8 @@ export class PromptsService {
           Frage: input.userQuestion,
         })
       : `AKTUELLE FRAGE:\n${input.userQuestion}`;
+    
+    console.log(`   ✓ Prompts compiled`);
 
     // Create trace with input (only user question, not full conversation)
     const trace = langfuseService.createTrace('chat-sql-generation', {
@@ -218,32 +224,52 @@ export class PromptsService {
       promptVersion: meta.promptVersion,
     });
 
-    // Call OpenRouter with config from YAML
-    const { data, usage } = await openRouterService.generateJSON<SQLGeneratorOutput>(
-      userPrompt,
-      {
-        model: model,
-        systemInstruction: systemPrompt,
-        temperature: config.llm_config.temperature,
-        maxOutputTokens: config.llm_config.max_tokens,
-        responseFormat: config.llm_config.response_format,
+    try {
+      console.log(`   ⏳ Calling LLM for SQL generation...`);
+      
+      // Call OpenRouter with config from YAML
+      const { data, usage } = await openRouterService.generateJSON<SQLGeneratorOutput>(
+        userPrompt,
+        {
+          model: model,
+          systemInstruction: systemPrompt,
+          temperature: config.llm_config.temperature,
+          maxOutputTokens: config.llm_config.max_tokens,
+          responseFormat: config.llm_config.response_format,
+        }
+      );
+
+      console.log(`   ✓ SQL Generation complete:`);
+      console.log(`     SQL: ${data.sql ? data.sql.substring(0, 100) + '...' : '<NONE>'}`);
+      console.log(`     Confidence: ${data.confidence}`);
+      console.log(`     Needs clarification: ${data.needsClarification || '<NONE>'}`);
+
+      // End generation (latency calculated automatically by Langfuse)
+      langfuseService.endGeneration(generation, data, usage);
+
+      // End trace with output (only the SQL query, not the full response object)
+      langfuseService.endTrace(trace, data.sql);
+
+      // Flush to Langfuse
+      await langfuseService.flush();
+      console.log(`   ✓ Langfuse trace flushed`);
+      console.log(`🔍 [SQL GENERATOR] ✅ Complete\n`);
+
+      return {
+        result: data,
+        traceId: trace?.id,
+        generationId: generation?.id,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error(`\n❌ [SQL GENERATOR] FAILED`);
+      console.error(`   Error: ${errorMessage}`);
+      if (errorStack) {
+        console.error(`   Stack: ${errorStack.substring(0, 300)}`);
       }
-    );
-
-    // End generation (latency calculated automatically by Langfuse)
-    langfuseService.endGeneration(generation, data, usage);
-
-    // End trace with output (only the SQL query, not the full response object)
-    langfuseService.endTrace(trace, data.sql);
-
-    // Flush to Langfuse
-    await langfuseService.flush();
-
-    return {
-      result: data,
-      traceId: trace?.id,
-      generationId: generation?.id,
-    };
+      throw error;
+    }
   }
 
   /**
