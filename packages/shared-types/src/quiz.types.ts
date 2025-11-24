@@ -79,9 +79,6 @@ export interface QuestionGeneratorOutput {
     questionText: string;
     category: string;
     difficulty: 'easy' | 'medium' | 'hard';
-    sqlQueryNeeded: string;
-    expectedAnswerType: 'number' | 'string' | 'date' | 'list';
-    hint?: string;
   }>;
 }
 

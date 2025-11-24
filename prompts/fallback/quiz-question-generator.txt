@@ -28,37 +28,14 @@ KATEGORIEN:
 - statistics: Rekorde, Zahlen, ungewöhnliche Fakten
 
 FRAGEN-QUALITÄT-KRITERIEN:
-✓ Muss eindeutig über SQL beantwortbar sein
+✓ Muss eindeutig beantwortbar sein (eine klare richtige Antwort)
 ✓ Keine Meinungsfragen ("Wer war der beste Spieler?")
 ✓ Keine zu offensichtlichen Fragen
 ✓ Interessante/überraschende Fakten bevorzugen
 ✓ Bei Zahlen: Konkrete Werte die vergleichbar sind
 ✓ Bei Namen: Bekannte Spieler bevorzugen
 ✓ Zeitliche Eingrenzung wenn nötig
-
-SQL QUERY ANFORDERUNGEN:
-⚠️ ABSOLUT KRITISCH - NUR SELECT-STATEMENTS ERLAUBT:
-- Du DARFST NUR "SELECT" verwenden - das ist ZWINGEND!
-- VERBOTEN: INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, WITH, CTE
-- VERBOTEN: Jegliche Datenänderung oder Schema-Änderung
-- Wenn du unsicher bist: Verwende nur einfache SELECT FROM WHERE
-
-Beispiele ERLAUBTER Queries:
-✓ SELECT COUNT(*) FROM goals WHERE team_id = 1
-✓ SELECT p.name FROM players p JOIN goals g ON p.player_id = g.player_id WHERE g.team_id = 1 ORDER BY g.minute LIMIT 1
-✓ SELECT SUM(home_score) FROM matches WHERE home_team_id = 1
-
-Beispiele VERBOTENER Queries:
-✗ INSERT INTO players VALUES (...)
-✗ UPDATE matches SET home_score = ...
-✗ WITH cte AS (SELECT ...) SELECT FROM cte
-✗ CREATE TEMPORARY TABLE ...
-
-Zusätzliche Anforderungen:
-- Muss ein eindeutiges Ergebnis liefern (nicht mehrere mögliche Antworten)
-- Nutze COUNT, SUM, MAX, MIN für Zahlen-Fragen
-- Nutze ORDER BY + LIMIT 1 für "beste/meiste/höchste" Fragen
-- Vermeide DISTINCT wenn möglich (kann zu ORDER BY Problemen führen)
+✓ Fragen sollten aus der Datenbank beantwortbar sein (Statistiken, Fakten, historische Ereignisse)
 
 OUTPUT-FORMAT:
 Gib NUR valides JSON zurück (keine Markdown-Blöcke):
@@ -67,21 +44,17 @@ Gib NUR valides JSON zurück (keine Markdown-Blöcke):
     {
       "questionText": "Wer erzielte das schnellste Tor in der Bundesliga-Geschichte von Mainz 05?",
       "category": "statistics",
-      "difficulty": "hard",
-      "sqlQueryNeeded": "SELECT p.name, g.minute, g.stoppage FROM goals g JOIN players p ON g.player_id = p.player_id WHERE g.team_id = 1 ORDER BY (g.minute + COALESCE(g.stoppage, 0)) ASC LIMIT 1;",
-      "expectedAnswerType": "string",
-      "hint": "Es geschah in den ersten 90 Sekunden"
+      "difficulty": "hard"
     },
     {
       "questionText": "Wie viele Bundesliga-Tore erzielte Mainz 05 in der Saison 2015-16?",
       "category": "seasons",
-      "difficulty": "medium",
-      "sqlQueryNeeded": "SELECT COUNT(*) FROM goals g JOIN matches m ON g.match_id = m.match_id JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id JOIN seasons s ON sc.season_id = s.season_id JOIN competitions c ON sc.competition_id = c.competition_id WHERE s.label = '2015-16' AND c.name = 'Bundesliga' AND g.team_id = 1;",
-      "expectedAnswerType": "number",
-      "hint": null
+      "difficulty": "medium"
     }
   ]
 }
+
+WICHTIG: Die SQL-Abfrage wird in einem separaten Schritt generiert. Hier nur die Fragen erstellen!
 
 ---
 
