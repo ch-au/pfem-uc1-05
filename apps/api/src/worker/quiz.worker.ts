@@ -34,6 +34,7 @@ async function processGame(game: PendingGame): Promise<void> {
       category: game.category_name,
       difficulty: game.difficulty,
       numRounds: game.num_rounds,
+      numberOfPlayers: 1,
     },
     { ensureJobs: false }
   );
