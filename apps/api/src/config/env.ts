@@ -12,8 +12,8 @@ dotenv.config({ path: join(rootDir, '.env') });
 const envSchema = z.object({
   // Server
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  API_PORT: z.string().default('8000').transform(Number),
-  API_HOST: z.string().default('localhost'),
+  API_PORT: z.string().default('5000').transform(Number),
+  API_HOST: z.string().default('0.0.0.0'),
 
   // Database
   DATABASE_URL: z.string().url('Database URL is required'),
