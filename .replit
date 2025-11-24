@@ -25,13 +25,13 @@ args = "frontend"
 name = "backend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd apps/api && npm run dev"
-waitForPort = 8000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd apps/api && API_PORT=8000 npm run dev"
+waitForPort = 8000
 
 [[workflows.workflow]]
 name = "frontend"
@@ -52,7 +52,6 @@ externalPort = 80
 [[ports]]
 localPort = 8000
 externalPort = 8000
-exposeLocalhost = true
 
 [[ports]]
 localPort = 37231
@@ -64,5 +63,5 @@ externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["node", "apps/api/dist/server.js"]
-build = ["pnpm", "install", "--frozen-lockfile", "&&", "pnpm", "run", "build"]
+run = ["sh", "-c", "NODE_ENV=production API_PORT=5000 API_HOST=0.0.0.0 node apps/api/dist/server.js"]
+build = ["sh", "-c", "pnpm install --frozen-lockfile && pnpm run build"]

@@ -184,14 +184,25 @@ This installs all dependencies and builds both frontend (`@fsv/web`) and backend
 
 **Production Run**:
 ```bash
-node apps/api/dist/server.js
+NODE_ENV=production API_PORT=5000 API_HOST=0.0.0.0 node apps/api/dist/server.js
 ```
-Starts a single Fastify server on port 8000 that:
+Starts a single Fastify server on port 5000 that:
+- Binds to `0.0.0.0:5000` (required for Replit Autoscale)
 - Serves API endpoints at `/api/*`
 - Serves built frontend static files from `frontend/dist` at `/`
 - Provides SPA fallback routing for client-side navigation
 
+**Development Mode**:
+- **Backend**: Runs on `0.0.0.0:8000` (via `API_PORT=8000` environment variable)
+- **Frontend**: Runs on `0.0.0.0:5000` with Vite dev server
+- API requests are proxied from frontend (5000) to backend (8000)
+
 **Deployment Target**: Autoscale (stateless web application)
+
+**Port Configuration**:
+- **Development**: Backend on 8000, Frontend on 5000
+- **Production**: Single server on 5000 serving both API and frontend
+- **Default settings**: API_HOST=`0.0.0.0` (Autoscale-compatible), API_PORT=`5000`
 
 **Key Deployment Decision**: In production, the Fastify API server uses `@fastify/static` to serve the built React frontend, eliminating the need for a separate frontend server. This simplifies deployment, reduces resource usage, and ensures consistent routing.
 
