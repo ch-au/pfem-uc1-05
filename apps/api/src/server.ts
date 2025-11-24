@@ -1,5 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { env } from './config/env.js';
 import { chatRoutes } from './routes/chat.routes.js';
 import { quizRoutes } from './routes/quiz.routes.js';
@@ -7,6 +10,9 @@ import { healthRoutes } from './routes/health.routes.js';
 import { postgresService } from './services/database/postgres.service.js';
 import { langfuseService } from './services/ai/langfuse.service.js';
 import { promptsConfig } from './config/prompts.config.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Create Fastify instance
 const fastify = Fastify({
@@ -35,6 +41,30 @@ await fastify.register(cors, {
 await fastify.register(healthRoutes);
 await fastify.register(chatRoutes, { prefix: '/api' });
 await fastify.register(quizRoutes, { prefix: '/api' });
+
+// Serve static frontend files in production
+if (env.NODE_ENV === 'production') {
+  const frontendDistPath = join(__dirname, '../../../frontend/dist');
+  
+  await fastify.register(fastifyStatic, {
+    root: frontendDistPath,
+    prefix: '/',
+  });
+
+  // SPA fallback - serve index.html for all non-API routes
+  fastify.setNotFoundHandler(async (_request, reply) => {
+    // Don't intercept API routes - let them 404 naturally
+    if (_request.url.startsWith('/api/')) {
+      reply.code(404).send({ error: 'Not Found', statusCode: 404 });
+      return;
+    }
+    
+    // Serve index.html for client-side routing
+    return reply.sendFile('index.html');
+  });
+  
+  fastify.log.info(`📦 Serving frontend from: ${frontendDistPath}`);
+}
 
 // Global error handler
 fastify.setErrorHandler((error, _request, reply) => {
