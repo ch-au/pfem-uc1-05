@@ -67,7 +67,7 @@ if (env.NODE_ENV === 'production') {
 }
 
 // Global error handler
-fastify.setErrorHandler((error, _request, reply) => {
+fastify.setErrorHandler((error: Error & { statusCode?: number }, _request, reply) => {
   fastify.log.error(error);
 
   const statusCode = error.statusCode ?? 500;
@@ -90,7 +90,7 @@ const gracefulShutdown = async () => {
     await fastify.close();
     fastify.log.info('Shutdown complete');
     process.exit(0);
-  } catch (error) {
+  } catch (error: unknown) {
     fastify.log.error({ error }, 'Error during shutdown');
     process.exit(1);
   }
@@ -115,7 +115,7 @@ const start = async () => {
     fastify.log.info(`🤖 Default Model (YAML): ${config.defaults.default_model}`);
     fastify.log.info(`🔧 Fallback Model (.env): ${env.OPENROUTER_MODEL}`);
     fastify.log.info(`📡 Langfuse: ${langfuseService.isActive() ? 'Enabled' : 'Disabled (using local prompts)'}`);
-  } catch (error) {
+  } catch (error: unknown) {
     fastify.log.error(error);
     process.exit(1);
   }
