@@ -129,6 +129,12 @@ export class ChatService {
         followUpQuestions,
       } = answerFormatting.result;
 
+      // Validate that we have an answer
+      if (!answer || typeof answer !== 'string' || answer.trim() === '') {
+        console.error('⚠️  LLM returned invalid answer:', answerFormatting.result);
+        throw new Error('Invalid answer format received from LLM');
+      }
+
       // 7. Save assistant message
       const assistantMessage = await this.saveMessage({
         session_id,

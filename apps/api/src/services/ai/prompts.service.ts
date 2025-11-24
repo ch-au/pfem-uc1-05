@@ -367,6 +367,7 @@ export class PromptsService {
         }
       );
       console.log(`   ✓ Answer formatted successfully`);
+      console.log(`   📝 LLM Response:`, JSON.stringify(data, null, 2));
 
       // End generation (latency calculated automatically by Langfuse)
       langfuseService.endGeneration(generation, data, usage);
