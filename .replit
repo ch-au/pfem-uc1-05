@@ -64,5 +64,5 @@ externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["sh", "-c", "node apps/api/dist/server.js & npx vite preview --config frontend/vite.config.ts --outDir frontend/dist --host 0.0.0.0 --port 5000 --strictPort"]
-build = ["sh", "-c", "pnpm install --frozen-lockfile && pnpm run build"]
+run = ["node", "apps/api/dist/server.js"]
+build = ["pnpm", "install", "--frozen-lockfile", "&&", "pnpm", "run", "build"]

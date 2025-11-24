@@ -172,23 +172,28 @@ HTML Files → BeautifulSoup → Parse Entities → Validate → Batch Insert �
 **Package Manager**: pnpm@10.12.4 (specified in `package.json`)
 
 **Monorepo Structure**: Turborepo with pnpm workspaces
-- `apps/api/`: Node.js/Fastify backend
-- `frontend/`: React/Vite frontend
+- `apps/api/`: Node.js/Fastify backend (serves both API and frontend in production)
+- `frontend/` (workspace: `@fsv/web`): React/Vite frontend
 - `packages/*`: Shared packages
 
 **Build Process**:
 ```bash
 pnpm install --frozen-lockfile && pnpm run build
 ```
-This installs all dependencies and builds both frontend and backend using Turborepo.
+This installs all dependencies and builds both frontend (`@fsv/web`) and backend (`@fsv/api`) using Turborepo.
 
 **Production Run**:
 ```bash
-node apps/api/dist/server.js & npx vite preview --config frontend/vite.config.ts --outDir frontend/dist --host 0.0.0.0 --port 5000 --strictPort
+node apps/api/dist/server.js
 ```
-Starts the API server and serves the built frontend on port 5000.
+Starts a single Fastify server on port 8000 that:
+- Serves API endpoints at `/api/*`
+- Serves built frontend static files from `frontend/dist` at `/`
+- Provides SPA fallback routing for client-side navigation
 
 **Deployment Target**: Autoscale (stateless web application)
+
+**Key Deployment Decision**: In production, the Fastify API server uses `@fastify/static` to serve the built React frontend, eliminating the need for a separate frontend server. This simplifies deployment, reduces resource usage, and ensures consistent routing.
 
 ## Error Handling & Observability
 
