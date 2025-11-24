@@ -256,97 +256,118 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
+    console.log(`\n💬 [CHAT ANSWER FORMATTER] Starting answer formatting...`);
+    console.log(`   Question: "${input.userQuestion.substring(0, 80)}..."`);
+    console.log(`   SQL Result rows: ${input.sqlResult.length}`);
+
     const promptKey = 'chat-answer-formatter';
 
     // Load prompt template with config
     const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+    console.log(`   ✓ Loaded prompt template`);
 
-    // Compile system prompt - inject the SQL context into the system prompt
+    // Compile system prompt with German variable names
     const systemPrompt = this.compileTemplate(systemTemplate, {
-      userQuestion: input.userQuestion,
-      sqlQuery: input.sqlQuery,
-      sqlResult: JSON.stringify(input.sqlResult, null, 2),
-      rowCount: String(input.resultMetadata.rowCount),
-      executionTimeMs: String(input.resultMetadata.executionTimeMs),
+      FRAGE: input.userQuestion,
+      SQL: input.sqlQuery,
+      ANTWORT: JSON.stringify(input.sqlResult, null, 2),
+      VORHERIGE_KONVERSATION: '', // TODO: Add conversation history if available
     });
+    console.log(`   ✓ System prompt compiled`);
     
-    // Use user template or provide a minimal user prompt
+    // Use user template or provide the fixed user prompt
     const userPrompt = userTemplate 
       ? this.compileTemplate(userTemplate, {
-          userQuestion: input.userQuestion,
-          sqlQuery: input.sqlQuery,
-          sqlResult: JSON.stringify(input.sqlResult, null, 2),
-          rowCount: String(input.resultMetadata.rowCount),
-          executionTimeMs: String(input.resultMetadata.executionTimeMs),
+          FRAGE: input.userQuestion,
+          SQL: input.sqlQuery,
+          ANTWORT: JSON.stringify(input.sqlResult, null, 2),
+          VORHERIGE_KONVERSATION: '',
         })
-      : `Formuliere eine hilfreiche, informative Antwort auf Deutsch. Antworte NUR mit JSON.`;
+      : `Generiere eine Antwort für den Chat mit dem Nutzer`;
 
-    // Create trace with input (only the user question, not the SQL query)
-    const trace = langfuseService.createTrace('chat-answer-formatting', {
-      input: input.userQuestion,
-      metadata: {
-        prompt_key: promptKey,
-        prompt_source: meta.source,
-        prompt_name: meta.promptName,
-        prompt_label: meta.promptLabel,
-        prompt_version: meta.promptVersion,
-        prompt_fallback: meta.fallbackFile,
-      },
-    });
+    try {
+      // Create trace with input (only the user question)
+      const trace = langfuseService.createTrace('chat-answer-formatting', {
+        input: input.userQuestion,
+        metadata: {
+          prompt_key: promptKey,
+          prompt_source: meta.source,
+          prompt_name: meta.promptName,
+          prompt_label: meta.promptLabel,
+          prompt_version: meta.promptVersion,
+          prompt_fallback: meta.fallbackFile,
+        },
+      });
+      console.log(`   ✓ Langfuse trace created`);
 
-    // Get model from config (prompt-specific or default)
-    const model = promptsConfig.getModelForPrompt(promptKey);
+      // Get model from config (prompt-specific or default)
+      const model = promptsConfig.getModelForPrompt(promptKey);
 
-    // Fetch the prompt object from Langfuse to link it to the generation
-    const langfusePrompt = await langfuseService.getPrompt(meta.promptName,
-      meta.promptVersion && meta.promptVersion !== 'fallback' ? Number(meta.promptVersion) : undefined
-    );
+      // Fetch the prompt object from Langfuse to link it to the generation
+      const langfusePrompt = await langfuseService.getPrompt(meta.promptName,
+        meta.promptVersion && meta.promptVersion !== 'fallback' ? Number(meta.promptVersion) : undefined
+      );
+      console.log(`   ✓ Langfuse prompt fetched`);
 
-    // Create generation with direct prompt link
-    const generation = langfuseService.createGenerationWithPrompt(trace, {
-      name: 'Answer Formatting',
-      model: model,
-      input: { system: systemPrompt, user: userPrompt },
-      metadata: {
-        prompt_key: promptKey,
-        prompt_source: meta.source,
-        prompt_name: meta.promptName,
-        prompt_label: meta.promptLabel,
-        prompt_version: meta.promptVersion,
-        prompt_id: meta.promptId,
-        prompt_fallback: meta.fallbackFile,
-      },
-      langfusePrompt: langfusePrompt,
-      promptName: meta.promptName,
-      promptVersion: meta.promptVersion,
-    });
-
-    // Call OpenRouter with config from YAML
-    const { data, usage } = await openRouterService.generateJSON<AnswerFormatterOutput>(
-      userPrompt,
-      {
+      // Create generation with direct prompt link
+      const generation = langfuseService.createGenerationWithPrompt(trace, {
+        name: 'Answer Formatting',
         model: model,
-        systemInstruction: systemPrompt,
-        temperature: config.llm_config.temperature,
-        maxOutputTokens: config.llm_config.max_tokens,
-        responseFormat: config.llm_config.response_format,
+        input: { system: systemPrompt, user: userPrompt },
+        metadata: {
+          prompt_key: promptKey,
+          prompt_source: meta.source,
+          prompt_name: meta.promptName,
+          prompt_label: meta.promptLabel,
+          prompt_version: meta.promptVersion,
+          prompt_id: meta.promptId,
+          prompt_fallback: meta.fallbackFile,
+        },
+        langfusePrompt: langfusePrompt,
+        promptName: meta.promptName,
+        promptVersion: meta.promptVersion,
+      });
+      console.log(`   ✓ Generation started (calling LLM...)`);
+
+      // Call OpenRouter with config from YAML
+      const { data, usage } = await openRouterService.generateJSON<AnswerFormatterOutput>(
+        userPrompt,
+        {
+          model: model,
+          systemInstruction: systemPrompt,
+          temperature: config.llm_config.temperature,
+          maxOutputTokens: config.llm_config.max_tokens,
+          responseFormat: config.llm_config.response_format,
+        }
+      );
+      console.log(`   ✓ Answer formatted successfully`);
+
+      // End generation (latency calculated automatically by Langfuse)
+      langfuseService.endGeneration(generation, data, usage);
+
+      // End trace with output (only the formatted answer)
+      langfuseService.endTrace(trace, data.answer);
+
+      // Flush to Langfuse
+      await langfuseService.flush();
+      console.log(`   ✓ Langfuse trace flushed`);
+      console.log(`💬 [CHAT ANSWER FORMATTER] ✅ Complete\n`);
+      
+      return {
+        result: data,
+        traceId: trace?.id,
+        generationId: generation?.id,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error(`\n❌ [CHAT ANSWER FORMATTER] FAILED`);
+      console.error(`   Error: ${errorMessage}`);
+      if (errorStack) {
+        console.error(`   Stack: ${errorStack.substring(0, 300)}`);
       }
-    );
-
-    // End generation (latency calculated automatically by Langfuse)
-    langfuseService.endGeneration(generation, data, usage);
-
-    // End trace with output (only the formatted answer)
-    langfuseService.endTrace(trace, data.answer);
-
-    // Flush to Langfuse
-    await langfuseService.flush();
-
-    return {
-      result: data,
-      traceId: trace?.id,
-      generationId: generation?.id,
-    };
+      throw error;
+    }
   }
 
   /**
