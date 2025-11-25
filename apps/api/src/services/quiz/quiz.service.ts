@@ -367,19 +367,35 @@ export class QuizService {
           console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questionGeneration.result.questions.length}`);
           console.log(`   Question: "${generatedQuestion.questionText.substring(0, 80)}..."`);
           
-          // Step 1: Update job status - SQL generated
+          // Step 1: Generate SQL query for the question (using chat-sql-generator)
+          console.log(`   ⏳ Step 1: Generating SQL Query...`);
+          const sqlGeneration = await promptsService.executeChatSQLGenerator({
+            userQuestion: generatedQuestion.questionText,
+            conversationHistory: [],
+            schemaContext: getSchemaContext(),
+          });
+
+          const { sql, confidence, needsClarification } = sqlGeneration.result;
+
+          // Check if SQL was successfully generated
+          if (needsClarification || !sql) {
+            throw new Error(`SQL generation failed: ${needsClarification || 'No SQL query generated'}`);
+          }
+
+          console.log(`   ✓ Step 1: SQL Query Generated (confidence: ${confidence})`);
+          console.log(`     SQL: ${sql.substring(0, 120)}...`);
+
+          // Update job status - SQL generated
           await postgresService.query(
             `UPDATE quiz_generation_jobs
              SET status = 'sql_generated', generated_question_text = $1, generated_sql = $2, updated_at = CURRENT_TIMESTAMP
              WHERE game_id = $3 AND round_number = $4`,
-            [generatedQuestion.questionText, generatedQuestion.sqlQueryNeeded, gameId, roundNumber]
+            [generatedQuestion.questionText, sql, gameId, roundNumber]
           );
-          console.log(`   ✓ Step 1: SQL Query Generated`);
-          console.log(`     SQL: ${generatedQuestion.sqlQueryNeeded.substring(0, 120)}...`);
 
-          // Step 2: Execute SQL to get correct answer
+          // Step 2: Execute SQL to get correct answer (with field metadata)
           console.log(`   ⏳ Step 2: Executing SQL Query...`);
-          const { rows } = await postgresService.executeUserQuery(generatedQuestion.sqlQueryNeeded);
+          const { rows, fields } = await postgresService.executeUserQuery(sql);
           console.log(`   ✓ Step 2: SQL Executed Successfully - Got ${rows.length} result row(s)`);
           console.log(`     First result: ${JSON.stringify(rows[0]).substring(0, 100)}...`);
 
@@ -388,11 +404,30 @@ export class QuizService {
             throw new Error('SQL query returned no results');
           }
 
+          // Infer answer type from SQL result metadata (first column type)
+          let answerType: 'number' | 'string' | 'date' | 'list' = 'string'; // default fallback
+          if (fields && fields.length > 0) {
+            const firstFieldType = fields[0].dataTypeID;
+            // PostgreSQL data type IDs (common ones)
+            // 23 = int4, 20 = int8, 21 = int2, 700 = float4, 701 = float8, 1700 = numeric
+            // 1082 = date, 1114 = timestamp, 1184 = timestamptz
+            // 25 = text, 1043 = varchar, 1042 = char
+            // 1007 = _int4 (int array), 1009 = _text (text array)
+            if ([23, 20, 21, 700, 701, 1700].includes(firstFieldType)) {
+              answerType = 'number';
+            } else if ([1082, 1114, 1184].includes(firstFieldType)) {
+              answerType = 'date';
+            } else if ([1007, 1009, 1016, 1231].includes(firstFieldType)) {
+              answerType = 'list';
+            }
+          }
+          console.log(`   📊 Inferred answer type from SQL: ${answerType}`);
+
           // Step 3: Generate alternative answers based on SQL result
           console.log(`   ⏳ Step 3: Generating Answer Alternatives...`);
           const answerGeneration = await promptsService.executeQuizAnswerGenerator({
             question: generatedQuestion.questionText,
-            sqlQuery: generatedQuestion.sqlQueryNeeded,
+            sqlQuery: sql,
             sqlResult: rows,
             difficulty: config.difficulty,
           });
@@ -434,8 +469,8 @@ export class QuizService {
               config.category,
               config.category,
               evidenceScore,
-              generatedQuestion.sqlQueryNeeded,
-              generatedQuestion.expectedAnswerType,
+              sql,
+              answerType,
               answerGeneration.traceId ?? null,
             ]
           );

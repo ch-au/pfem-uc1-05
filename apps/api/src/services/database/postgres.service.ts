@@ -67,7 +67,7 @@ export class PostgresService {
    * Execute SQL query for data retrieval (for AI-generated queries)
    * Includes safety checks and timeouts
    */
-  async executeUserQuery(sql: string): Promise<{ rows: any[]; executionTimeMs: number }> {
+  async executeUserQuery(sql: string): Promise<{ rows: any[]; executionTimeMs: number; fields?: any[] }> {
     console.log(`🔍 [SQL EXECUTION] Starting user query execution...`);
     console.log(`   Query (first 200 chars): ${sql.substring(0, 200)}...`);
     
@@ -95,6 +95,7 @@ export class PostgresService {
       return {
         rows: result.rows,
         executionTimeMs,
+        fields: result.fields,
       };
     } catch (error) {
       await client.query('ROLLBACK');
