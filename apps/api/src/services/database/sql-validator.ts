@@ -82,8 +82,22 @@ const extractTables = (sql: string): string[] => {
     cteNames.add(multiCteMatch[1].toLowerCase());
   }
   
+  // Remove function calls to avoid false positives (e.g., EXTRACT(YEAR FROM column))
+  let cleanedSql = sql;
+  
+  // Remove common date/time functions that use FROM keyword
+  const functionPatterns = [
+    /\bEXTRACT\s*\([^)]+\bFROM\s+[^)]+\)/gi,
+    /\bSUBSTRING\s*\([^)]+\bFROM\s+[^)]+\)/gi,
+    /\bTRIM\s*\([^)]+\bFROM\s+[^)]+\)/gi,
+  ];
+  
+  for (const pattern of functionPatterns) {
+    cleanedSql = cleanedSql.replace(pattern, '');
+  }
+  
   // Extract table names from FROM/JOIN clauses
-  const matches = [...sql.matchAll(/\b(from|join)\s+([a-zA-Z0-9_\.]+)/gi)];
+  const matches = [...cleanedSql.matchAll(/\b(from|join)\s+([a-zA-Z0-9_\.]+)/gi)];
   return matches
     .map((m) => {
       const raw = m[2];
