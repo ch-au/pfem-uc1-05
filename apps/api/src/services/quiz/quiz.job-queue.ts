@@ -43,14 +43,17 @@ export class QuizJobQueue {
     if (job) {
       job.status = 'running';
       job.startedAt = new Date();
+      console.log(`🏃 Starting quiz generation job ${job.id}`);
     }
 
     try {
       await next.run();
       if (job) {
         job.status = 'succeeded';
+        console.log(`✅ Quiz generation job ${job.id} succeeded`);
       }
     } catch (error: any) {
+      console.error(`❌ Quiz generation job ${job?.id} failed:`, error);
       if (job) {
         job.status = 'failed';
         job.error = error?.message ?? 'Unknown error';
