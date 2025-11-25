@@ -12,7 +12,10 @@ CREATE TABLE IF NOT EXISTS public.quiz_games (
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'abandoned')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP WITH TIME ZONE
+    completed_at TIMESTAMP WITH TIME ZONE,
+    game_mode TEXT DEFAULT 'classic',
+    category_id UUID,
+    player_names JSONB
 );
 
 CREATE TABLE IF NOT EXISTS public.quiz_questions (
@@ -64,8 +67,14 @@ CREATE TABLE IF NOT EXISTS public.chat_messages (
     session_id UUID NOT NULL REFERENCES public.chat_sessions(session_id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     content TEXT NOT NULL,
-    metadata JSONB, -- SQL queries, sources, confidence scores
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    metadata JSONB, -- Full metadata JSON
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    langfuse_trace_id TEXT,
+    sql_query TEXT,
+    sql_execution_time_ms INTEGER,
+    sql_result_count INTEGER,
+    confidence_score NUMERIC(5, 2),
+    visualization_type TEXT
 );
 
 -- Indexes for performance
