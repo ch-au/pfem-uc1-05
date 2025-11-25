@@ -25,6 +25,7 @@ const HAS_FETCH_FIRST = /\bfetch\s+(first|next)\s+\d+\s+rows\b/i;
 // Tables/views that AI queries are allowed to read
 const ALLOWED_TABLES = new Set(
   [
+    // Football data tables
     'teams',
     'players',
     'matches',
@@ -32,13 +33,24 @@ const ALLOWED_TABLES = new Set(
     'cards',
     'match_lineups',
     'match_substitutions',
+    'match_coaches',
+    'match_referees',
+    'match_notes',
     'seasons',
     'season_competitions',
+    'season_matchdays',
+    'season_squads',
     'competitions',
     'coaches',
     'coach_careers',
-    'match_coaches',
     'player_careers',
+    'player_aliases',
+    'referees',
+    // Materialized views (if any)
+    'mainz_match_results',
+    'player_career_stats',
+    'season_performance',
+    'competition_statistics',
     // Quiz / chat support tables
     'quiz_categories',
     'quiz_games',
@@ -53,14 +65,33 @@ const ALLOWED_TABLES = new Set(
 );
 
 // Rough extractor for table names in FROM/JOIN clauses
+// Excludes CTE names defined in WITH clauses
 const extractTables = (sql: string): string[] => {
+  // Extract CTE names from WITH clauses
+  const cteNames = new Set<string>();
+  const ctePattern = /\bwith\s+(?:recursive\s+)?([a-zA-Z0-9_]+)/gi;
+  let cteMatch;
+  while ((cteMatch = ctePattern.exec(sql)) !== null) {
+    cteNames.add(cteMatch[1].toLowerCase());
+  }
+  
+  // Also extract subsequent CTE names after commas in WITH clause
+  const multiCtePattern = /,\s*([a-zA-Z0-9_]+)\s+as\s*\(/gi;
+  let multiCteMatch;
+  while ((multiCteMatch = multiCtePattern.exec(sql)) !== null) {
+    cteNames.add(multiCteMatch[1].toLowerCase());
+  }
+  
+  // Extract table names from FROM/JOIN clauses
   const matches = [...sql.matchAll(/\b(from|join)\s+([a-zA-Z0-9_\.]+)/gi)];
-  return matches.map((m) => {
-    const raw = m[2];
-    // Strip schema prefix if present (e.g., public.table)
-    const parts = raw.split('.');
-    return parts[parts.length - 1].toLowerCase();
-  });
+  return matches
+    .map((m) => {
+      const raw = m[2];
+      // Strip schema prefix if present (e.g., public.table)
+      const parts = raw.split('.');
+      return parts[parts.length - 1].toLowerCase();
+    })
+    .filter((tableName) => !cteNames.has(tableName)); // Filter out CTE names
 };
 
 export class SqlValidationError extends Error {
