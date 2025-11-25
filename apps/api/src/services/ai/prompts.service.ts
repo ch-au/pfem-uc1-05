@@ -592,8 +592,9 @@ export class PromptsService {
       // End generation (latency calculated automatically by Langfuse)
       langfuseService.endGeneration(generation, data, usage);
       console.log(`   ✓ Answer generation complete:`);
+      console.log(`   📦 DEBUG - Raw LLM response:`, JSON.stringify(data, null, 2));
       console.log(`     Correct: "${data.correctAnswer}"`);
-      console.log(`     Wrong options: ${data.incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
+      console.log(`     Wrong options: ${data.incorrectAnswers?.map(a => `"${a}"`).join(', ') || 'UNDEFINED'}`);
       console.log(`     Evidence score: ${data.evidenceScore}`);
 
       // End trace with output (only the correct answer)
