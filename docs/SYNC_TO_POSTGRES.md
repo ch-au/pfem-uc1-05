@@ -15,12 +15,17 @@ The FSV Mainz 05 archive is parsed into a local SQLite database (`fsv_archive_co
 - 3,956 matches (including 668 profirest matches)
 - 9,916 players (1,910 with full names)
 - 585 teams
-- 566 coaches
+- 566 coaches (77 with full names)
 
-⚠️ **PostgreSQL Sync**: Not yet implemented
-- The sync script at `database/sync_to_postgres.py` is a template
-- Schema differences between SQLite and PostgreSQL need to be resolved
-- Manual sync recommended for now
+✅ **PostgreSQL Sync**: **SYNCED** (as of ~2025-11-10)
+- ✅ 3,956 matches synced (including 668 profirest matches)
+- ✅ 8,312 goals synced
+- ✅ 5,768 cards synced
+- ✅ All teams, players, coaches synced
+- ⚠️ Coach full names: Only 22/77 synced (55 pending)
+- ⚠️ Player full names: 1,669/1,910 synced (241 pending)
+
+**Last Verified:** 2025-11-25 via `check_pg_status.py`
 
 ## Manual Sync Process
 
@@ -135,13 +140,27 @@ psql $DATABASE_URL -f archive_dump_postgres.sql
 - **Transactions**: Wrap sync in transactions for rollback capability
 - **Backup first**: Always backup PostgreSQL database before sync
 
-## Next Steps
+## Verification
+
+Run this script to check sync status:
+
+```bash
+python3 check_pg_status.py
+```
+
+Output shows:
+- Table counts comparison (SQLite vs PostgreSQL)
+- Profirest match count
+- Players/coaches with full names
+
+## Pending Items
 
 1. ✅ SQLite database complete with profirest matches
-2. ⏳ Resolve PostgreSQL schema differences
-3. ⏳ Complete sync_to_postgres.py implementation
-4. ⏳ Test sync with subset of data
-5. ⏳ Run full sync to production
+2. ✅ Matches synced to PostgreSQL (3,956 including profirest)
+3. ✅ Goals, cards, lineups synced
+4. ⏳ **Sync remaining 55 coach full names** - Run `python database/sync_now.py`
+5. ⏳ **Sync remaining 241 player full names**
+6. ⏳ Investigate player count discrepancy (SQLite: 9,916 vs PG: 9,955)
 
 ## Support
 

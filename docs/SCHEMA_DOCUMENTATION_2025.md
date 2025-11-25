@@ -1,7 +1,9 @@
 # FSV Mainz 05 Database - Schema Documentation
 **Database:** Neon PostgreSQL Cloud + SQLite (Parser Output)
 **Version:** November 2025
-**Last Updated:** 2025-11-09
+**Last Updated:** 2025-11-25
+**Last Synced:** ~2025-11-10 (Profirest matches included)
+**Sync Status:** ✅ Core data synced, ⚠️ Name enrichment pending
 **Status:** ✅ Production Ready
 
 ---
