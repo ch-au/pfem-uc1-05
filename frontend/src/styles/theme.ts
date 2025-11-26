@@ -6,43 +6,45 @@
 export const theme = {
   colors: {
     // Mainz 05 Brand Colors
-    mainzRed: '#C8191E',
-    mainzRedDark: '#A01418',
-    mainzRedLight: '#E53E3E',
+    mainzRed: '#C3141F', // Official Mainz 05 Red
+    mainzRedDark: '#9E1019',
+    mainzRedLight: '#D42E39',
     mainzWhite: '#FFFFFF',
+    mainzBlack: '#1A1A1A', // Dark charcoal for text
+    mainzGold: '#D4AF37', // Accent for trophies/wins
     
     // Neutral Colors
-    grayLight: '#F5F5F5',
+    grayLight: '#F3F4F6',
     gray: '#6B7280',
     grayDark: '#374151',
     grayNavigation: '#E5E5E5',
     
     // Status Colors
     success: '#10B981',
-    error: '#EF4444',
+    error: '#C3141F', // Use brand red for errors
     warning: '#F59E0B',
     info: '#3B82F6',
     
     // Overlays
-    overlayDark: 'rgba(0, 0, 0, 0.4)',
+    overlayDark: 'rgba(0, 0, 0, 0.6)',
     overlayLight: 'rgba(255, 255, 255, 0.9)',
   },
   
   typography: {
     fontFamily: {
-      sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      sans: ['Inter', 'Roboto', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       mono: ['Monaco', 'Courier New', 'monospace'],
     },
     fontSize: {
       xs: '0.75rem',    // 12px
       sm: '0.875rem',   // 14px
-      base: '0.9375rem', // 15px
-      lg: '1rem',       // 16px
-      xl: '1.125rem',   // 18px
-      '2xl': '1.25rem', // 20px
-      '3xl': '1.5rem',  // 24px
-      '4xl': '2rem',    // 32px
-      '5xl': '2.5rem',  // 40px
+      base: '1rem',     // 16px (Bumped up slightly for readability)
+      lg: '1.125rem',   // 18px
+      xl: '1.25rem',    // 20px
+      '2xl': '1.5rem',  // 24px
+      '3xl': '1.875rem',// 30px
+      '4xl': '2.25rem', // 36px
+      '5xl': '3rem',    // 48px
     },
     fontWeight: {
       normal: 400,
@@ -50,12 +52,19 @@ export const theme = {
       semibold: 600,
       bold: 700,
       extrabold: 800,
+      black: 900,
     },
     lineHeight: {
-      tight: 1.25,
+      tight: 1.2,
       normal: 1.5,
       relaxed: 1.75,
     },
+    letterSpacing: {
+      tight: '-0.02em',
+      normal: '0',
+      wide: '0.02em',
+      wider: '0.05em', // For uppercase buttons/headers
+    }
   },
   
   spacing: {
@@ -75,26 +84,28 @@ export const theme = {
   
   borderRadius: {
     none: '0',
-    sm: '0.375rem',   // 6px
+    sm: '0.25rem',    // 4px (Sharper look)
     md: '0.5rem',     // 8px
     lg: '0.75rem',    // 12px
     xl: '1rem',       // 16px
-    '2xl': '1.25rem', // 20px
+    '2xl': '1.5rem',  // 24px
     full: '9999px',
   },
   
   shadows: {
     sm: '0 1px 2px rgba(0, 0, 0, 0.05)',
-    md: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    lg: '0 10px 15px rgba(0, 0, 0, 0.1)',
-    xl: '0 20px 25px rgba(0, 0, 0, 0.1)',
-    inner: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
+    md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+    card: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    cardHover: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
   },
   
   transitions: {
-    default: 'all 0.2s ease-in-out',
-    fast: 'all 0.15s ease-in-out',
-    slow: 'all 0.3s ease-in-out',
+    default: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    fast: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+    slow: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   
   breakpoints: {
@@ -117,9 +128,3 @@ export const theme = {
 } as const;
 
 export type Theme = typeof theme;
-
-
-
-
-
-

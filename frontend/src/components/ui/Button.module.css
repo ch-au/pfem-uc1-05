@@ -4,69 +4,99 @@
   justify-content: center;
   gap: 0.5rem;
   font-family: inherit;
-  font-weight: 600;
+  font-weight: 700;
   border: none;
-  border-radius: 0.75rem;
+  /* Swag: Reduced border radius for sportier look */
+  border-radius: 4px; 
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   position: relative;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  overflow: hidden;
 }
 
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  filter: grayscale(1);
 }
 
 .button--primary {
-  background: linear-gradient(135deg, #C8191E 0%, #A01418 100%);
-  color: #FFFFFF;
-  box-shadow: 0 2px 4px rgba(200, 25, 30, 0.3);
+  background: var(--mainz-red);
+  color: var(--mainz-white);
+  box-shadow: 0 4px 6px rgba(195, 20, 31, 0.2);
+  /* Add a subtle shine effect */
 }
 
 .button--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #A01418 0%, #8B1115 100%);
-  box-shadow: 0 4px 6px rgba(200, 25, 30, 0.4);
-  transform: translateY(-1px);
+  background: var(--mainz-red-dark);
+  box-shadow: 0 6px 12px rgba(195, 20, 31, 0.3);
+  transform: translateY(-2px);
 }
 
 .button--primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(200, 25, 30, 0.3);
+  background: var(--mainz-red-dark);
+}
+
+/* Add a pseudo-element for a diagonal shine animation on hover */
+.button--primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: 0.5s;
+}
+
+.button--primary:hover::after {
+  left: 100%;
 }
 
 .button--secondary {
-  background: #FFFFFF;
-  color: #C8191E;
-  border: 2px solid #C8191E;
+  background: var(--mainz-white);
+  color: var(--mainz-red);
+  border: 2px solid var(--mainz-red);
 }
 
 .button--secondary:hover:not(:disabled) {
-  background: rgba(200, 25, 30, 0.05);
-  transform: translateY(-1px);
+  background: var(--mainz-red);
+  color: var(--mainz-white);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .button--ghost {
   background: transparent;
-  color: #374151;
+  color: var(--gray-dark);
 }
 
 .button--ghost:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.05);
+  color: var(--mainz-red);
 }
 
 .button--sm {
   padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 .button--md {
-  padding: 0.875rem 1.5rem;
-  font-size: 0.9375rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
 }
 
 .button--lg {
-  padding: 1rem 2rem;
+  padding: 1rem 2.5rem;
   font-size: 1rem;
 }
 
@@ -91,9 +121,3 @@
     transform: rotate(360deg);
   }
 }
-
-
-
-
-
-

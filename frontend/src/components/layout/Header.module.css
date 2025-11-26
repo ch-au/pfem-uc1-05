@@ -2,38 +2,56 @@
   position: sticky;
   top: 0;
   z-index: 1030;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .utilityBar {
-  background: #E5E5E5;
+  background: var(--mainz-black); /* Dark charcoal */
   padding: 0.5rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .utilityContent {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  gap: 1.5rem;
+  gap: 2rem;
   align-items: center;
+  justify-content: flex-end; /* Align to right like official site */
 }
 
 .utilityItem {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #CCCCCC;
   cursor: pointer;
-  transition: color 0.2s ease-in-out;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease-in-out;
 }
 
 .utilityItem:hover {
-  color: #C8191E;
+  color: var(--mainz-white);
 }
 
 .mainNav {
-  background: #C8191E;
-  color: #FFFFFF;
-  padding: 1rem 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--mainz-red);
+  color: var(--mainz-white);
+  padding: 0.75rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add a subtle texture/gradient to the header for depth */
+.mainNav::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,0.1) 0%, transparent 100%);
+  pointer-events: none;
 }
 
 .navContent {
@@ -42,43 +60,83 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative; /* Ensure content is above background */
+  z-index: 1;
 }
 
 .logoSection {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.logo {
-  font-size: 2.5rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
+.logoContainer {
+  background: var(--mainz-white);
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.logoImage {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.titleContainer {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.clubName {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.9;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .appTitle {
-  font-size: 1rem;
-  font-weight: 500;
-  opacity: 0.95;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.profileButton {
+  color: var(--mainz-white) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.profileButton:hover {
+  background: var(--mainz-white) !important;
+  color: var(--mainz-red) !important;
 }
 
 @media (min-width: 768px) {
   .mainNav {
-    padding: 1.25rem 2rem;
+    padding: 1rem 2rem;
   }
 
-  .logo {
-    font-size: 3rem;
+  .logoContainer {
+    width: 64px;
+    height: 64px;
+  }
+
+  .logoImage {
+    width: 56px;
+    height: 56px;
   }
 
   .appTitle {
-    font-size: 1.125rem;
+    font-size: 1.75rem;
   }
 }
-
-
-
-
-
-
