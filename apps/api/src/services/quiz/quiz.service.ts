@@ -536,8 +536,20 @@ export class QuizService {
     }
 
     // Check if we generated enough questions
-    if (roundNumber <= config.numRounds) {
-      throw new Error(`Only generated ${roundNumber - 1} questions out of ${config.numRounds} requested`);
+    const generatedCount = roundNumber - 1;
+    const minimumRequired = Math.max(1, Math.floor(config.numRounds * 0.6)); // Accept at least 60% success
+    
+    if (generatedCount < minimumRequired) {
+      throw new Error(`Only generated ${generatedCount} questions out of ${config.numRounds} requested (minimum ${minimumRequired} required)`);
+    }
+    
+    // If we generated fewer than requested but still enough, update the game's num_rounds
+    if (generatedCount < config.numRounds) {
+      console.warn(`⚠️  Generated ${generatedCount}/${config.numRounds} questions. Adjusting game to use available questions.`);
+      await postgresService.query(
+        `UPDATE public.quiz_games SET num_rounds = $1 WHERE game_id = $2`,
+        [generatedCount, gameId]
+      );
     }
   }
 
