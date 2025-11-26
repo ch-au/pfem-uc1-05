@@ -22,6 +22,7 @@ export const useChatbotWindow = (): UseChatbotWindowReturn => {
     messages,
     isLoading,
     error,
+    style,
     setSessionId,
     addMessage,
     setMessages,
@@ -100,7 +101,7 @@ export const useChatbotWindow = (): UseChatbotWindowReturn => {
       setTimeout(() => scrollToBottom(), 100);
 
       try {
-        const response = await chatService.sendMessage(sessionId, content.trim());
+        const response = await chatService.sendMessage(sessionId, content.trim(), style);
 
         const assistantMessage: ChatMessage = {
           role: 'assistant',
@@ -127,7 +128,7 @@ export const useChatbotWindow = (): UseChatbotWindowReturn => {
         setLoading(false);
       }
     },
-    [sessionId, isLoading, addMessage, setLoading, setError]
+    [sessionId, isLoading, style, addMessage, setLoading, setError]
   );
 
   const scrollToBottom = useCallback(() => {

@@ -52,7 +52,7 @@ export class ChatService {
    * Process a chat message (main flow)
    */
   async processMessage(request: ChatMessageRequest): Promise<ChatMessageResponse> {
-    const { session_id, content } = request;
+    const { session_id, content, style = 'Hochdeutsch' } = request;
 
     // 1. Verify session exists
     const session = await this.getSession(session_id);
@@ -120,6 +120,7 @@ export class ChatService {
           rowCount: rows.length,
           executionTimeMs,
         },
+        style,
       });
 
       const {

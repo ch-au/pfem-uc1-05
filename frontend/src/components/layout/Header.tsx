@@ -10,15 +10,6 @@ export interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onProfileClick }) => {
   return (
     <header className={styles.header}>
-      {/* Top Utility Bar (Optional, for extra swag/links later) */}
-      <div className={styles.utilityBar}>
-        <div className={styles.utilityContent}>
-          <span className={styles.utilityItem}>TICKETS</span>
-          <span className={styles.utilityItem}>SHOP</span>
-          <span className={styles.utilityItem}>FANWELT</span>
-        </div>
-      </div>
-
       <div className={styles.mainNav}>
         <div className={styles.navContent}>
           <div className={styles.logoSection}>

@@ -298,6 +298,7 @@ export class PromptsService {
       SQL: input.sqlQuery,
       ANTWORT: JSON.stringify(input.sqlResult, null, 2),
       VORHERIGE_KONVERSATION: '', // TODO: Add conversation history if available
+      STYLE: input.style || 'Hochdeutsch',
     });
     console.log(`   ✓ System prompt compiled`);
     

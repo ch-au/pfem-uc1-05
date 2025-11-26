@@ -1,8 +1,11 @@
 // Chat API types
 
+export type ChatStyle = 'Hochdeutsch' | 'Meenzerisch';
+
 export interface ChatMessageRequest {
   session_id: string;
   content: string;
+  style?: ChatStyle;
 }
 
 export interface ChatMessageResponse {
@@ -61,6 +64,7 @@ export interface AnswerFormatterInput {
     rowCount: number;
     executionTimeMs: number;
   };
+  style?: ChatStyle;
 }
 
 export interface AnswerFormatterOutput {

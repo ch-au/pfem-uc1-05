@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MoreVertical, X, Download, Settings, HelpCircle, Trash2 } from 'lucide-react';
 import { IconButton } from '../ui/IconButton';
+import { useChatStore, type ChatStyle } from '../../store/chatStore';
 import styles from './ChatHeader.module.css';
 
 export interface ChatHeaderProps {
@@ -19,6 +20,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onOpenHelp,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { style, setStyle } = useChatStore();
+  const isMeenzerisch = style === 'Meenzerisch';
+
+  const handleStyleToggle = () => {
+    setStyle(isMeenzerisch ? 'Hochdeutsch' : 'Meenzerisch');
+  };
 
   const getStatusLabel = () => {
     if (isConnected) return 'Online';
@@ -49,6 +56,19 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
       </div>
 
       <div className={styles.controls}>
+        <div className={styles.styleToggle}>
+          <span className={styles.styleLabel}>Meenzerisch</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isMeenzerisch}
+            className={`${styles.toggle} ${isMeenzerisch ? styles.toggleActive : ''}`}
+            onClick={handleStyleToggle}
+          >
+            <span className={styles.toggleThumb} />
+          </button>
+        </div>
+
         <div className={styles.status}>
           <span className={`${styles.statusDot} ${getStatusClass()}`} />
           <span className={styles.statusLabel}>{getStatusLabel()}</span>

@@ -5,6 +5,7 @@ import { z } from 'zod';
 const ChatMessageRequestSchema = z.object({
   session_id: z.string().uuid(),
   content: z.string().min(1).max(5000),
+  style: z.enum(['Hochdeutsch', 'Meenzerisch']).default('Hochdeutsch'),
 });
 
 export async function chatRoutes(fastify: FastifyInstance) {

@@ -92,6 +92,63 @@
   gap: 1rem;
 }
 
+/* Meenzerisch Toggle */
+.styleToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: #F9FAFB;
+  border-radius: 9999px;
+  border: 1px solid #E5E7EB;
+}
+
+.styleLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6B7280;
+}
+
+.toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: #D1D5DB;
+  border: none;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0;
+}
+
+.toggle:hover {
+  background: #9CA3AF;
+}
+
+.toggleActive {
+  background: #C8191E;
+}
+
+.toggleActive:hover {
+  background: #A01418;
+}
+
+.toggleThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: #FFFFFF;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.toggleActive .toggleThumb {
+  transform: translateX(18px);
+}
+
 .status {
   display: flex;
   align-items: center;
@@ -234,6 +291,14 @@
     padding: 0.5rem;
     border: none;
     background: transparent;
+  }
+
+  .styleToggle {
+    padding: 0.25rem 0.5rem;
+  }
+
+  .styleLabel {
+    display: none;
   }
 
   .menu {

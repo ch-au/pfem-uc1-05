@@ -36,10 +36,11 @@ export const chatService = {
   /**
    * Send a message and get a response
    */
-  async sendMessage(sessionId: string, message: string): Promise<ChatResponse> {
+  async sendMessage(sessionId: string, message: string, style: string = 'Hochdeutsch'): Promise<ChatResponse> {
     const response = await api.post<ChatResponse>('/chat/message', {
       session_id: sessionId,
       content: message,
+      style,
     });
     return response.data;
   },
