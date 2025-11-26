@@ -49,12 +49,25 @@ def parse_minute(text: str) -> Tuple[Optional[int], Optional[int]]:
 def read_html(path: Path) -> Optional[BeautifulSoup]:
     if not path.exists():
         return None
+    logger = logging.getLogger("HTMLLoader")
     try:
-        with path.open("r", encoding="latin-1", errors="ignore") as handle:
-            return BeautifulSoup(handle.read(), "lxml")
+        raw = path.read_bytes()
     except OSError as exc:
-        logging.getLogger("HTMLLoader").warning("Failed to read %s: %s", path, exc)
+        logger.warning("Failed to read %s: %s", path, exc)
         return None
+
+    # Try UTF-8 first (newer files), fall back to latin-1 (older files)
+    for enc in ("utf-8", "latin-1"):
+        try:
+            text = raw.decode(enc)
+            return BeautifulSoup(text, "lxml")
+        except Exception:
+            continue
+
+    # Last resort: ignore errors to still parse something
+    text = raw.decode("latin-1", errors="ignore")
+    logger.debug("Decoded %s with latin-1 (ignore errors) after utf-8 fallback", path)
+    return BeautifulSoup(text, "lxml")
 
 
 CARD_ICON_MAP = {
@@ -91,6 +104,8 @@ class GoalEvent:
     scorer: str
     assist: Optional[str]
     team_role: str  # "home" or "away"
+    scorer_profile_url: Optional[str] = None
+    assist_profile_url: Optional[str] = None
     is_penalty: bool = False
     is_own_goal: bool = False
 
@@ -129,6 +144,11 @@ class DatabaseManager:
         self.coach_cache: Dict[str, int] = {}
         self.referee_cache: Dict[str, int] = {}
         self.player_cache: Dict[str, int] = {}
+        self.player_profile_cache: Dict[str, int] = {}
+        self.team_profile_cache: Dict[str, int] = {}
+        self.coach_profile_cache: Dict[str, int] = {}
+        self.current_season: Optional[str] = None
+        self.player_creation_stats: Dict[str, Dict[str, int]] = {}
 
     def create_schema(self) -> None:
         cursor = self.conn.cursor()
@@ -522,6 +542,22 @@ class DatabaseManager:
             name_clean = MAINZ_TEAM_KEY
         
         normalized = normalize_name(name_clean)
+        normalized_profile_url = profile_url.replace("../", "") if profile_url else None
+
+        # Look up by profile_url first (preferred unique key)
+        if normalized_profile_url:
+            if normalized_profile_url in self.team_profile_cache:
+                return self.team_profile_cache[normalized_profile_url]
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT team_id, name FROM teams WHERE profile_url = ?", (normalized_profile_url,))
+            row = cursor.fetchone()
+            if row:
+                team_id = row[0]
+                existing_name = row[1]
+                self.team_profile_cache[normalized_profile_url] = team_id
+                self.team_cache[normalize_name(existing_name)] = team_id
+                return team_id
+
         if normalized in self.team_cache:
             return self.team_cache[normalized]
         cursor = self.conn.cursor()
@@ -529,17 +565,27 @@ class DatabaseManager:
         row = cursor.fetchone()
         if row:
             team_id = row[0]
+            # attach profile_url if provided
+            if normalized_profile_url:
+                cursor.execute(
+                    "UPDATE teams SET profile_url = COALESCE(profile_url, ?) WHERE team_id = ?",
+                    (normalized_profile_url, team_id),
+                )
+                self.conn.commit()
+                self.team_profile_cache[normalized_profile_url] = team_id
         else:
             cursor.execute(
                 """
                 INSERT INTO teams (name, normalized_name, team_type, profile_url)
                 VALUES (?, ?, ?, ?)
                 """,
-                (name_clean, normalized, team_type, profile_url),
+                (name_clean, normalized, team_type, normalized_profile_url),
             )
             team_id = cursor.lastrowid
             self.conn.commit()
         self.team_cache[normalized] = team_id
+        if normalized_profile_url:
+            self.team_profile_cache[normalized_profile_url] = team_id
         return team_id
 
     def get_or_create_competition(self, name: str, level: str, gender: str = "male") -> int:
@@ -568,6 +614,22 @@ class DatabaseManager:
         if not name:
             return None
         normalized = normalize_name(name)
+        normalized_profile_url = profile_url.replace("../", "") if profile_url else None
+
+        # Prefer lookup by profile_url if available
+        if normalized_profile_url:
+            if normalized_profile_url in self.coach_profile_cache:
+                return self.coach_profile_cache[normalized_profile_url]
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT coach_id, name FROM coaches WHERE profile_url = ?", (normalized_profile_url,))
+            row = cursor.fetchone()
+            if row:
+                coach_id = row[0]
+                existing_name = row[1]
+                self.coach_profile_cache[normalized_profile_url] = coach_id
+                self.coach_cache[normalize_name(existing_name)] = coach_id
+                return coach_id
+
         if normalized in self.coach_cache:
             return self.coach_cache[normalized]
         cursor = self.conn.cursor()
@@ -575,17 +637,27 @@ class DatabaseManager:
         row = cursor.fetchone()
         if row:
             coach_id = row[0]
+            # fill missing profile URL if we have one now
+            if normalized_profile_url:
+                cursor.execute(
+                    "UPDATE coaches SET profile_url = COALESCE(profile_url, ?) WHERE coach_id = ?",
+                    (normalized_profile_url, coach_id),
+                )
+                self.conn.commit()
+                self.coach_profile_cache[normalized_profile_url] = coach_id
         else:
             cursor.execute(
                 """
                 INSERT INTO coaches (name, normalized_name, profile_url)
                 VALUES (?, ?, ?)
                 """,
-                (name, normalized, profile_url),
+                (name, normalized, normalized_profile_url),
             )
             coach_id = cursor.lastrowid
             self.conn.commit()
         self.coach_cache[normalized] = coach_id
+        if normalized_profile_url:
+            self.coach_profile_cache[normalized_profile_url] = coach_id
         return coach_id
 
     def get_or_create_referee(self, name: Optional[str], profile_url: Optional[str]) -> Optional[int]:
@@ -618,6 +690,9 @@ class DatabaseManager:
             raise ValueError("Player name cannot be empty")
         
         name_clean = name.strip()
+
+        # Entferne führende Rückennummern (z.B. "20 Helgi" -> "Helgi")
+        name_clean = re.sub(r"^\d+\s+", "", name_clean)
         
         # Bereinige Namen mit "?" am Anfang (Platzhalter für unbekannten Vornamen)
         # z.B. "? SANDER" -> "SANDER"
@@ -651,10 +726,12 @@ class DatabaseManager:
         name_clean = re.sub(r'^(FE|ET|HE),\s*', '', name_clean, flags=re.IGNORECASE)
         name_clean = name_clean.strip()
         
-        # WICHTIG: Filtere Assist-Texte mit " an " - das sind keine Spielernamen!
-        # z.B. "Liebers an Klopp" -> sollte nicht als Spieler erstellt werden
+        # Assist-Konstruktionen mit " an " auflösen, behalte den Teil nach dem letzten "an"
+        # z.B. "Liebers an Klopp" -> "Klopp"
         if ' an ' in name_clean.lower():
-            raise ValueError(f"Invalid player name (assist text): {name_clean}")
+            parts = re.split(r'\s+an\s+', name_clean, flags=re.IGNORECASE)
+            if len(parts) > 1 and parts[-1].strip():
+                name_clean = parts[-1].strip()
         
         if not name_clean or name_clean == "-":
             raise ValueError("Player name cannot be empty after cleaning")
@@ -680,8 +757,36 @@ class DatabaseManager:
             )
         
         normalized = normalize_name(name_clean)
+        normalized_profile_url = profile_url.replace("../", "") if profile_url else None
+
+        # 1) Look up by profile_url first (leading identifier)
+        if normalized_profile_url:
+            if normalized_profile_url in self.player_profile_cache:
+                return self.player_profile_cache[normalized_profile_url]
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT player_id, normalized_name, name FROM players WHERE profile_url = ?", (normalized_profile_url,))
+            row = cursor.fetchone()
+            if row:
+                player_id = row[0]
+                existing_normalized = row[1]
+                existing_name = row[2]
+                self.player_profile_cache[normalized_profile_url] = player_id
+                # Add alias if incoming name differs
+                if normalize_name(existing_name) != normalized:
+                    self.add_player_alias(player_id, name_clean)
+                self.player_cache[existing_normalized] = player_id
+                return player_id
+
+        # 2) Lookup by normalized name cache
         if normalized in self.player_cache:
-            return self.player_cache[normalized]
+            pid = self.player_cache[normalized]
+            # fill missing profile if we have one now
+            if normalized_profile_url:
+                cursor = self.conn.cursor()
+                cursor.execute("UPDATE players SET profile_url = COALESCE(profile_url, ?) WHERE player_id = ?", (normalized_profile_url, pid))
+                self.conn.commit()
+                self.player_profile_cache[normalized_profile_url] = pid
+            return pid
 
         cursor = self.conn.cursor()
 
@@ -691,6 +796,14 @@ class DatabaseManager:
         if row:
             player_id = row[0]
             self.player_cache[normalized] = player_id
+            # attach profile URL if available and missing
+            if normalized_profile_url:
+                cursor.execute(
+                    "UPDATE players SET profile_url = COALESCE(profile_url, ?) WHERE player_id = ?",
+                    (normalized_profile_url, player_id),
+                )
+                self.conn.commit()
+                self.player_profile_cache[normalized_profile_url] = player_id
             return player_id
 
         # Second try: if this is a surname only (no space), check if a full name exists
@@ -725,12 +838,40 @@ class DatabaseManager:
             INSERT INTO players (name, normalized_name, profile_url)
             VALUES (?, ?, ?)
             """,
-            (name_clean, normalized, profile_url),
+            (name_clean, normalized, normalized_profile_url),
         )
         player_id = cursor.lastrowid
         self.conn.commit()
         self.player_cache[normalized] = player_id
+        if normalized_profile_url:
+            self.player_profile_cache[normalized_profile_url] = player_id
+
+        # Track creation stats per season
+        if self.current_season:
+            stats = self.player_creation_stats.setdefault(
+                self.current_season, {"with_url": 0, "without_url": 0}
+            )
+            if normalized_profile_url:
+                stats["with_url"] += 1
+            else:
+                stats["without_url"] += 1
         return player_id
+
+    def add_player_alias(self, player_id: int, alias: str) -> None:
+        """Store a cleaned alias for an existing player to audit name variants."""
+        if not alias or not alias.strip():
+            return
+
+        normalized_alias = normalize_name(alias)
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO player_aliases (player_id, alias, normalized_alias)
+            VALUES (?, ?, ?)
+            """,
+            (player_id, alias.strip(), normalized_alias),
+        )
+        self.conn.commit()
 
     # ----- insert helpers --------------------------------------------------
 
@@ -1637,17 +1778,27 @@ class ComprehensiveFSVParser:
 
                             for goal in goals:
                                 team_id = home_team_id if goal.team_role == "home" else away_team_id
+                                raw_scorer = goal.scorer
+                                scorer_name, scorer_url = self.resolve_player_name(goal.scorer, goal.scorer_profile_url)
                                 try:
-                                    player_id = self.db.get_or_create_player(goal.scorer, None)
+                                    player_id = self.db.get_or_create_player(scorer_name, scorer_url)
                                 except ValueError as e:
-                                    self.logger.warning("Skipping invalid goal scorer: %s (%s)", goal.scorer, e)
+                                    self.logger.warning("Skipping invalid goal scorer: %s (%s)", scorer_name, e)
                                     continue
+                                # Track alias if we resolved a fuller name
+                                if normalize_name(raw_scorer) != normalize_name(scorer_name):
+                                    self.db.add_player_alias(player_id, raw_scorer)
                                 assist_id = None
                                 if goal.assist:
+                                    raw_assist = goal.assist
+                                    assist_name, assist_url = self.resolve_player_name(goal.assist, goal.assist_profile_url)
                                     try:
-                                        assist_id = self.db.get_or_create_player(goal.assist, None)
+                                        assist_id = self.db.get_or_create_player(assist_name, assist_url)
                                     except ValueError as e:
-                                        self.logger.warning("Skipping invalid goal assist: %s (%s)", goal.assist, e)
+                                        self.logger.warning("Skipping invalid goal assist: %s (%s)", assist_name, e)
+                                    else:
+                                        if normalize_name(raw_assist) != normalize_name(assist_name):
+                                            self.db.add_player_alias(assist_id, raw_assist)
                                 # Collect goal data for batch insert
                                 goals_batch.append((
                                     match_id, team_id, player_id, assist_id,
@@ -2044,7 +2195,7 @@ class ComprehensiveFSVParser:
                 month_num = month_map.get(month_name, '01')
                 date_iso = f"{year}-{month_num}-01"  # Use first day of month for approximate dates
             else:
-                return None  # Can't parse date
+                date_iso = None  # Accept missing dates in friendlies
         else:
             # Convert DD.MM.YYYY to YYYY-MM-DD
             date_parts = date_match.group(1).split('.')
@@ -2189,7 +2340,8 @@ class ComprehensiveFSVParser:
         # Try to parse substitutions
         substitutions = []
         # Look for substitution patterns: "46. Bader für Dutiné"
-        sub_pattern = re.compile(r'(\d+)\.\s+(.+?)\s+f[üu]r\s+(.+)')
+        # Stop each match at the next minute marker (e.g., "46." or "90+1.") or end of string
+        sub_pattern = re.compile(r'(\d+)\.\s+(.+?)\s+f[üu]r\s+(.+?)(?=\s+\d+\.\s+|$)')
         all_text = match_block.get_text(" ", strip=True)
         for match in sub_pattern.finditer(all_text):
             minute = int(match.group(1))
@@ -2240,6 +2392,27 @@ class ComprehensiveFSVParser:
         raise ValueError(f"No parseable matches in {detail_path}")
 
     # ---------------------------------------------------------------- detail parsing
+    def _extract_profirest_side_by_side_blocks(self, soup: BeautifulSoup) -> List[BeautifulSoup]:
+        """
+        Some profirest files show multiple matches side-by-side in a single wide table
+        (e.g., 1982-83/profirest01.html). We pick each <td> that contains a score line.
+        """
+        blocks: List[BeautifulSoup] = []
+        # Look for wide tables (width ~100% or 50%) that contain multiple td columns
+        for table in soup.find_all("table", attrs={"width": re.compile(r"^(100%|50%)")}):
+            candidate_blocks = []
+            for td in table.find_all("td"):
+                header = td.find("b")
+                if not header:
+                    continue
+                header_text = normalize_whitespace(header.get_text(" ", strip=True))
+                if re.search(r"\d+:\d+", header_text) and ("FSV" in header_text or "Mainz" in header_text):
+                    candidate_blocks.append(td)
+            if candidate_blocks:
+                blocks.extend(candidate_blocks)
+                break  # first matching table is enough
+        return blocks
+
     def parse_match_detail(self, detail_path: Path, overview_info: Dict[str, Optional[str]], season_path: Path):
         soup = read_html(detail_path)
         if soup is None:
@@ -2252,6 +2425,16 @@ class ComprehensiveFSVParser:
             # This is a multi-match file - parse each match separately
             self.logger.debug("Detected multi-match file with %d matches: %s", len(match_blocks), detail_path.name)
             return self.parse_profirest_file(match_blocks, overview_info, detail_path)
+        else:
+            # Fallback: side-by-side layout (wide table with two TDs)
+            alt_blocks = self._extract_profirest_side_by_side_blocks(soup)
+            if alt_blocks:
+                self.logger.debug(
+                    "Detected side-by-side profirest layout with %d matches: %s",
+                    len(alt_blocks),
+                    detail_path.name,
+                )
+                return self.parse_profirest_file(alt_blocks, overview_info, detail_path)
 
         header = soup.find("b")
         header_text = normalize_whitespace(header.get_text(" ", strip=True)) if header else ""
@@ -2302,6 +2485,48 @@ class ComprehensiveFSVParser:
                 second_block = all_tables[reserve_indices[1]]
                 team_blocks = [first_block, second_block]
             else:
+                # Fallback for stacked table layouts (mid-90s): collect all player anchors
+                def collect_players(blocks):
+                    players = {}
+                    for blk in blocks:
+                        for cell in blk.find_all("td"):
+                            anchor = cell.find("a", href=re.compile(r"spieler/"))
+                            if not anchor:
+                                continue
+                            name = normalize_whitespace(anchor.get_text(" ", strip=True))
+                            if not name:
+                                continue
+                            profile_url = anchor.get("href", "").replace("../", "")
+                            # Infer starters vs reserves: check if this table text contains "Reserve"
+                            table_text = normalize_whitespace(cell.find_parent("table").get_text(" ", strip=True))
+                            is_reserve = "reserve" in table_text.lower()
+                            if name not in players:
+                                players[name] = PlayerAppearance(
+                                    name=name,
+                                    shirt_number=None,
+                                    is_starter=not is_reserve,
+                                    profile_url=profile_url,
+                                )
+                            else:
+                                if profile_url and not players[name].profile_url:
+                                    players[name].profile_url = profile_url
+                                if is_reserve:
+                                    players[name].is_starter = False
+                    return players
+
+                all_tables = soup.find_all("table")
+                if len(all_tables) >= 2:
+                    home_players = collect_players(all_tables[: len(all_tables) // 2])
+                    away_players = collect_players(all_tables[len(all_tables) // 2 :])
+                    home_lineups = {"players": home_players, "substitutions": []}
+                    away_lineups = {"players": away_players, "substitutions": []}
+                    goals = self.parse_goal_table(soup, metadata)
+                    cards = []
+                    cards.extend(self.gather_card_events(home_players, "home"))
+                    cards.extend(self.gather_card_events(away_players, "away"))
+                    substitutions = []
+                    lineups = {"home": home_players, "away": away_players}
+                    return metadata, lineups, substitutions, goals, cards
                 raise ValueError(f"Unexpected match layout in {detail_path}")
 
         first_block, second_block = team_blocks[:2]
@@ -2607,7 +2832,11 @@ class ComprehensiveFSVParser:
             score_home = int(score_match.group(1))
             score_away = int(score_match.group(2))
             scorer_info = score_match.group(3)
-            
+
+            anchors = cell.find_all("a", href=re.compile(r"../spieler/"))
+            scorer_profile_url = anchors[0].get("href", "").replace("../", "") if anchors else None
+            assist_profile_url = anchors[1].get("href", "").replace("../", "") if len(anchors) > 1 else None
+
             # Filtere Fehlertext-Präfixe - entferne sie aber behalte den Rest
             scorer_info = re.sub(r'^(FE|ET|HE),\s*', '', scorer_info, flags=re.IGNORECASE).strip()
             
@@ -2670,6 +2899,8 @@ class ComprehensiveFSVParser:
                     score_away=score_away,
                     scorer=scorer_name,
                     assist=assist,
+                    scorer_profile_url=scorer_profile_url,
+                    assist_profile_url=assist_profile_url if assist else None,
                     team_role=team_role,
                 )
             )
@@ -2900,28 +3131,30 @@ class ComprehensiveFSVParser:
 
         position_group = None
         for cell in parent_table.find_all("td"):
-            for raw_entry in cell.stripped_strings:
-                entry = normalize_whitespace(raw_entry)
-                if not entry:
+            # Update position group headings
+            for bold in cell.find_all("b"):
+                label = normalize_whitespace(bold.get_text(" ", strip=True)).upper()
+                if label in {"TOR", "ABWEHR", "MITTELFELD", "ANGRIFF", "SPIELAUFBAU"}:
+                    position_group = label
+
+            for anchor in cell.find_all("a", href=re.compile(r"spieler/")):
+                name = normalize_whitespace(anchor.get_text(" ", strip=True))
+                profile_url = anchor.get("href", "").replace("../", "") if anchor.get("href") else None
+
+                # Extract shirt number from surrounding line (e.g., "1 Lasse Finn Rieß")
+                line_text = normalize_whitespace(anchor.parent.get_text(" ", strip=True))
+                shirt_number = None
+                m = re.match(r"^(\d+)\s+", line_text)
+                if m:
+                    shirt_number = int(m.group(1))
+
+                if not name or not re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", name):
                     continue
-                upper_entry = entry.upper()
-                if "WEITERE EINGESETZTE SPIELER" in upper_entry or "TRAINER" in upper_entry:
-                    return
-                if upper_entry in {"TOR", "ABWEHR", "MITTELFELD", "ANGRIFF"}:
-                    position_group = upper_entry
-                    continue
-                if entry.endswith(":") or position_group is None:
-                    continue
-                cleaned_entry = re.sub(r"\(.*?\)", "", entry).strip()
-                if not cleaned_entry:
-                    continue
-                number_match = re.match(r"^(\d+)\s+(.*)", cleaned_entry)
-                shirt_number = int(number_match.group(1)) if number_match else None
-                name = number_match.group(2).strip() if number_match else cleaned_entry
-                if not name:
-                    continue
+                # If no position_group seen yet (e.g., photo captions), tag as "UNSPECIFIED"
+                effective_group = position_group or "UNSPECIFIED"
+
                 try:
-                    player_id = self.db.get_or_create_player(name, None)
+                    player_id = self.db.get_or_create_player(name, profile_url)
                 except ValueError as e:
                     self.logger.warning("Skipping invalid squad player: %s (%s)", name, e)
                     continue
@@ -2931,7 +3164,7 @@ class ComprehensiveFSVParser:
                     (season_competition_id, player_id, position_group, shirt_number, status)
                     VALUES (?, ?, ?, ?, ?)
                     """,
-                    (season_competition_id, player_id, position_group, shirt_number, "primary"),
+                    (season_competition_id, player_id, effective_group, shirt_number, "primary"),
                 )
         self.db.conn.commit()
 
@@ -2998,8 +3231,12 @@ class ComprehensiveFSVParser:
     def run(self) -> None:
         self.logger.info("Starting archive parse from %s → %s", self.base_path, self.db.db_path)
         for season in self.iter_seasons():
+            self.db.current_season = season
             self.parse_season(season)
         
+        # Stop counting creations by season for profile enrichment
+        self.db.current_season = None
+
         # Parse all player profiles to enrich player data
         self.logger.info("Enriching player profiles from spieler/ directory...")
         self.enrich_all_player_profiles()
@@ -3040,6 +3277,12 @@ class ComprehensiveFSVParser:
         if self.stats['warnings']:
             self.logger.warning(f"\nWarnings: {len(self.stats['warnings'])}")
         
+        # Per-season player creation stats (URL vs no URL)
+        if self.db.player_creation_stats:
+            self.logger.info("\nPlayer creations per season (with_url / without_url):")
+            for season in sorted(self.db.player_creation_stats.keys()):
+                stats = self.db.player_creation_stats[season]
+                self.logger.info(f"  {season}: {stats['with_url']} with URL, {stats['without_url']} without URL")
         self.logger.info("=" * 80)
     
     def enrich_all_player_profiles(self) -> None:
@@ -3069,27 +3312,11 @@ class ComprehensiveFSVParser:
             profile_name = normalize_whitespace(header.get_text(" ", strip=True))
             normalized = normalize_name(profile_name)
             
-            # Find matching player(s) in database by normalized name
-            cursor = self.db.conn.cursor()
-            cursor.execute(
-                "SELECT player_id, name FROM players WHERE normalized_name = ?",
-                (normalized,)
-            )
-            matches = cursor.fetchall()
-            
-            if not matches:
-                # Try partial match (e.g., "Brosinski" for "DANIEL BROSINSKI")
-                cursor.execute(
-                    "SELECT player_id, name FROM players WHERE normalized_name LIKE ?",
-                    (f"%{normalized}%",)
-                )
-                matches = cursor.fetchall()
-            
-            if matches:
-                # Enrich all matching players with profile data
-                for player_id, existing_name in matches:
-                    self._enrich_player_from_profile(player_id, profile_name, player_file, soup)
-                    enriched += 1
+            relative_url = str(player_file.relative_to(self.base_path))
+            # Ensure player exists keyed by profile URL (leading identifier)
+            player_id = self.db.get_or_create_player(profile_name, relative_url)
+            self._enrich_player_from_profile(player_id, profile_name, player_file, soup)
+            enriched += 1
         
         self.logger.info("Enriched %d player records from %d profile files", enriched, len(player_files))
     
@@ -3193,19 +3420,11 @@ class ComprehensiveFSVParser:
             profile_name = normalize_whitespace(header.get_text(" ", strip=True))
             normalized = normalize_name(profile_name)
             
-            # Find matching coach(es) in database
-            cursor = self.db.conn.cursor()
-            cursor.execute(
-                "SELECT coach_id, name FROM coaches WHERE normalized_name LIKE ?",
-                (f"%{normalized.split()[-1] if normalized else ''}%",)  # Match by last name
-            )
-            matches = cursor.fetchall()
-            
-            if matches:
-                # Enrich all matching coaches
-                for coach_id, existing_name in matches:
-                    self._enrich_coach_from_profile(coach_id, profile_name, coach_file, soup)
-                    enriched += 1
+            relative_url = str(coach_file.relative_to(self.base_path))
+            coach_id = self.db.get_or_create_coach(profile_name, relative_url)
+            if coach_id:
+                self._enrich_coach_from_profile(coach_id, profile_name, coach_file, soup)
+                enriched += 1
         
         self.logger.info("Enriched %d coach records from %d profile files", enriched, len(coach_files))
     
@@ -3347,6 +3566,13 @@ class ComprehensiveFSVParser:
             - Otherwise: ("Klopp", None)
         """
         if not profile_url:
+            # Fallback: try to find a unique profile file by normalized stem
+            normalized = normalize_name(name)
+            profile_path = self.player_file_index.get(normalized)
+            if profile_path:
+                fallback_url = str(profile_path.relative_to(self.base_path))
+                full_name = self.get_full_name_from_profile(fallback_url) or name
+                return (full_name, fallback_url)
             return (name, None)
 
         # Normalize profile URL

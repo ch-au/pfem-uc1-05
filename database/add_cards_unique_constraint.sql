@@ -26,3 +26,4 @@ WHERE minute IS NULL;
 
 
 
+

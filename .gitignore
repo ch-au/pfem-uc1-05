@@ -31,6 +31,8 @@ ENV/
 *.sqlite
 *.sqlite3
 *.db-journal
+database/backups/
+*.sql.backup
 
 # Environment variables
 .env

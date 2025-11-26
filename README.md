@@ -1,52 +1,45 @@
-# FSV Mainz 05 Database & Archive
-**Status:** ✅ Production Ready | **Last Updated:** 2025-11-09
+# FSV Mainz 05 Archive
 
-A comprehensive database of **FSV Mainz 05** football data from **1905-2025** (3,305 matches, 10,094 players) with FastAPI backend, React frontend, and natural language SQL querying.
+A comprehensive database of **FSV Mainz 05** football history from **1905-2025** with natural language querying, semantic search, and a React frontend.
 
-**🎯 New here? Start with:** [QUICK_START.md](QUICK_START.md)
+**Status:** Production Ready | **Last Updated:** 2025-11-26
 
-## 🗂️ Structure
+---
 
-```
-05app/
-├── app.py                    # FastAPI app
-├── final_agent.py            # LLM-driven SQL agent
-├── config.py                 # Configuration via env vars
-├── prompts.yaml              # Editable prompts (YAML)
-├── frontend/                 # React + TypeScript frontend
-├── comprehensive_fsv_parser.py  # Main parser with validation
-├── data_cleansing/           # Data quality scripts
-├── tests/                    # Test scripts
-├── docs/                     # Documentation
-└── archive/                  # Archived/legacy files
-```
+## Database Stats
 
-## 🚀 Quick Start
+| Metric | Count |
+|--------|-------|
+| Matches | 3,956 |
+| Players | 9,916 |
+| Coaches | 566 |
+| Teams | 585 |
+| Goals | 8,312 |
+| Cards | 5,768 |
+| Seasons | 121 (1905-2025) |
 
-### Backend Setup
+**Database:** PostgreSQL 17 (Neon Cloud)
+**Features:** Cohere embeddings, HNSW vector search, materialized views
 
-1) Install dependencies
+---
+
+## Quick Start
+
+### 1. Backend Setup
+
 ```bash
-python3 -m pip install -r requirements.txt
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
+
+# Start server
+uvicorn backend.app:app --reload --port 8000
 ```
 
-2) Configure environment (create `.env` or export directly)
-```bash
-export OPENAI_API_KEY="sk-..."
-export PG_ENABLED=true
-export PG_HOST=your-host
-export PG_PORT=5432
-export PG_DATABASE=fsv05
-export PG_USER=your-user
-export PG_PASSWORD=your-password
-```
-
-3) Start server
-```bash
-uvicorn app:app --reload
-```
-
-### Frontend Setup
+### 2. Frontend Setup
 
 ```bash
 cd frontend
@@ -54,74 +47,149 @@ npm install
 npm run dev
 ```
 
-## 📊 Database & Parser
+### 3. Test Database Connection
+
+```bash
+psql $DATABASE_URL -c "SELECT COUNT(*) FROM matches;"
+```
+
+---
+
+## Project Structure
+
+```
+05app/
+├── backend/
+│   ├── app.py              # FastAPI application
+│   ├── final_agent.py      # LLM SQL agent
+│   ├── chatbot_service.py  # Chat service
+│   └── config.py           # Configuration
+├── frontend/               # React + TypeScript
+├── database/
+│   ├── 001_create_schema.sql
+│   ├── 002_materialized_views.sql
+│   ├── sync_sqlite_to_postgres.py
+│   └── generate_embeddings.py
+├── parsing/
+│   └── comprehensive_fsv_parser.py
+├── docs/                   # Documentation
+│   ├── DATABASE_SCHEMA.md  # Schema reference
+│   ├── DATA_QUALITY_REPORT.md
+│   └── README.md           # Docs index
+├── fsvarchiv/              # Source HTML files
+├── fsv_archive_complete.db # SQLite (parser output)
+└── archive/                # Old files
+```
+
+---
+
+## Key Features
+
+### Semantic Search
+Find players/teams using natural language:
+```sql
+-- Find players similar to "Klopp"
+SELECT name FROM players
+ORDER BY name_embedding <=> (SELECT name_embedding FROM players WHERE name = 'JÜRGEN KLOPP')
+LIMIT 5;
+```
+
+### Pre-computed Statistics
+Fast queries via materialized views:
+```sql
+SELECT name, total_matches, wins, goals, assists
+FROM mv_player_career_stats
+WHERE normalized_name LIKE '%klopp%';
+```
+
+### Chat Interface
+Natural language queries converted to SQL with context-aware responses.
+
+---
+
+## Environment Variables
+
+```bash
+# Database (Neon PostgreSQL)
+DATABASE_URL=postgresql://...
+
+# LLM APIs
+OPENAI_API_KEY=sk-...
+COHERE_API_KEY=...
+
+# Observability (optional)
+LANGFUSE_PUBLIC_KEY=...
+LANGFUSE_SECRET_KEY=...
+```
+
+---
+
+## Database Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `database/001_create_schema.sql` | Create all tables |
+| `database/002_materialized_views.sql` | Create views |
+| `database/sync_sqlite_to_postgres.py` | Sync from SQLite |
+| `database/generate_embeddings.py` | Generate Cohere embeddings |
+| `parsing/comprehensive_fsv_parser.py` | Parse HTML → SQLite |
 
 ### Rebuild Database
 
-To rebuild the SQLite database from the HTML archive:
-
 ```bash
-python archive/scripts/reparse_and_upload.py
+# 1. Parse HTML to SQLite
+python parsing/comprehensive_fsv_parser.py
+
+# 2. Create PostgreSQL schema
+psql $DATABASE_URL -f database/001_create_schema.sql
+
+# 3. Sync data
+python database/sync_sqlite_to_postgres.py
+
+# 4. Generate embeddings
+python database/generate_embeddings.py
+
+# 5. Create materialized views
+psql $DATABASE_URL -f database/002_materialized_views.sql
 ```
 
-This will:
-1. Parse all seasons with improved parser (validation, duplicate prevention)
-2. Upload to PostgreSQL
-3. Apply performance optimizations
+---
 
-### Parser Features
+## Documentation
 
-- ✅ **Automatic league extraction** - Detects league names from HTML (no hardcoded "Bundesliga")
-- ✅ **Competition level detection** - Classifies leagues (first_division, second_division, cup, etc.)
-- ✅ **Duplicate prevention** - Prevents duplicate cards, goals, substitutions, lineups
-- ✅ **European competitions** - Full support for UEFA, Europa League, Intertoto, etc.
-- ✅ **Data validation** - Filters invalid player names (trainers, referees, goal text)
-- ✅ **Unicode support** - Handles names with accents (Á, É, etc.)
-- ✅ **Transaction-based** - Ensures data integrity
+- [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) - Complete schema reference
+- [docs/DATA_QUALITY_REPORT.md](docs/DATA_QUALITY_REPORT.md) - Data quality analysis
+- [docs/CHATBOT_DESIGN.md](docs/CHATBOT_DESIGN.md) - Chat system architecture
+- [docs/CHANGELOG.md](docs/CHANGELOG.md) - Version history
 
-### Data Quality
+---
 
-The parser includes comprehensive validation:
-- Filters trainer names, referee names, goal text
-- Validates name patterns (length, characters)
-- Handles Unicode characters correctly
-- Logs warnings for suspicious entries
+## API Endpoints
 
-See `data_cleansing/` for data quality scripts and analysis.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chat` | POST | Send chat message |
+| `/chat/sessions` | POST | Create session |
+| `/chat/sessions/{id}` | GET | Get session |
+| `/health` | GET | Health check |
 
-## 📚 Documentation
+---
 
-### **Start Here**
-- 📖 [QUICK_START.md](QUICK_START.md) - Get started in 5 minutes
-- 📊 [docs/SCHEMA_DOCUMENTATION_2025.md](docs/SCHEMA_DOCUMENTATION_2025.md) - Complete schema reference (Nov 2025)
-- 🚀 [docs/MATERIALIZED_VIEWS_REFERENCE.md](docs/MATERIALIZED_VIEWS_REFERENCE.md) - Fast query guide
-- 📝 [COMPLETE_SUMMARY.md](COMPLETE_SUMMARY.md) - Full project summary
+## Testing
 
-### **Technical Details**
-- **Parser**: `docs/PARSER_IMPROVEMENTS.md` - Parser documentation
-- **Performance**: `docs/PERFORMANCE_OPTIMIZATION.md` - Optimization guide
-- **Migrations**: `database/migrations/` - Schema migration history
-- **Testing**: `docs/TESTING_GUIDE.md` - How to test
-- **Changelog**: `docs/CHANGELOG.md` - Version history
-
-### **Recent Updates (Nov 2025)**
-- ✅ Fixed duplicate team issue (Bundesliga data now visible)
-- ✅ Added unique constraints (prevent duplicate events)
-- ✅ Added foreign keys (enable table joins)
-- ✅ Created 4 materialized views (100-400x speedup)
-- ✅ Updated parser (recognizes "FSV" = "1. FSV Mainz 05")
-
-## 🧪 Testing
-
-Test the improved parser:
 ```bash
-python tests/test_improved_parser.py --season 2010-11
+# Test API
+pytest tests/
+
+# Test parser
+python tests/test_parser.py
+
+# Verify data
+psql $DATABASE_URL -c "SELECT name, total_matches FROM mv_player_career_stats ORDER BY total_matches DESC LIMIT 10;"
 ```
 
-## 📦 Requirements
+---
 
-See `requirements.txt`.
-
-## 📄 License
+## License
 
 Parses publicly available historical data from the fsv05.de archive.
