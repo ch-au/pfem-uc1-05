@@ -80,7 +80,7 @@ export const useQuizGame = () => {
     while (Date.now() - startTime < maxWaitTime) {
       try {
         const progress = await quizService.getGenerationProgress(gameId);
-        setGenerationProgress(progress.progress);
+        setGenerationProgress(progress?.progress ?? null);
         
         if (progress.status === 'completed') {
           onProgress?.('Quiz wird fertiggestellt...');
@@ -88,14 +88,15 @@ export const useQuizGame = () => {
         }
         
         if (progress.status === 'failed') {
-          throw new Error(`Question generation failed: ${progress.progress.error_message || 'Unknown error'}`);
+          const errorMsg = progress.progress?.error_message || 'Unknown error';
+          throw new Error(`Question generation failed: ${errorMsg}`);
         }
 
-        // Update progress message based on current round status
-        const activeRound = progress.progress.current_round;
-        const currentStatus = progress.progress.current_status;
-        const completed = progress.progress.completed_rounds;
-        const total = progress.progress.total_rounds;
+        // Update progress message based on current round status (handle undefined gracefully)
+        const activeRound = progress.progress?.current_round ?? 0;
+        const currentStatus = progress.progress?.current_status ?? 'pending';
+        const completed = progress.progress?.completed_rounds ?? 0;
+        const total = progress.progress?.total_rounds ?? 1;
         if (currentStatus === 'sql_generated') {
           onProgress?.(`Fragen werden generiert (Runde ${activeRound}/${total})... (${completed} fertig)`);
         } else if (currentStatus === 'answer_verified') {
