@@ -651,7 +651,37 @@ export class PromptsService {
       });
       console.log(`   ✓ Generation started (calling LLM...)`);
 
-      // Call OpenRouter with config from YAML
+      // Define JSON Schema for structured output (enforces exact field names)
+      const answerSchema = {
+        name: 'quiz_answer',
+        strict: true,
+        schema: {
+          type: 'object' as const,
+          properties: {
+            correctAnswer: {
+              type: 'string',
+              description: 'The correct answer to the quiz question',
+            },
+            incorrectAnswers: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of 3 plausible but incorrect answer alternatives',
+            },
+            explanation: {
+              type: 'string',
+              description: 'Brief explanation of why the answer is correct',
+            },
+            evidenceScore: {
+              type: 'number',
+              description: 'Confidence score from 0 to 1 based on SQL evidence',
+            },
+          },
+          required: ['correctAnswer', 'incorrectAnswers', 'explanation', 'evidenceScore'],
+          additionalProperties: false,
+        },
+      };
+
+      // Call OpenRouter with JSON Schema for structured output
       const { data: rawData, usage } = await openRouterService.generateJSON<any>(
         userPrompt,
         {
@@ -659,7 +689,8 @@ export class PromptsService {
           systemInstruction: systemPrompt,
           temperature: config.llm_config.temperature,
           maxOutputTokens: config.llm_config.max_tokens,
-          responseFormat: config.llm_config.response_format,
+          responseFormat: 'json_schema',
+          jsonSchema: answerSchema,
         }
       );
 

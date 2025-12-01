@@ -1,13 +1,24 @@
 import { OpenRouter } from '@openrouter/sdk';
 import { env } from '../../config/env.js';
 
+export interface JsonSchemaDefinition {
+  name: string;
+  strict?: boolean;
+  schema: {
+    type: 'object';
+    properties: Record<string, any>;
+    required?: string[];
+    additionalProperties?: boolean;
+  };
+}
+
 export interface OpenRouterGenerateOptions {
   model?: string;  // Optional: Override default model
   systemInstruction?: string;
   temperature?: number;
   maxOutputTokens?: number;
-  responseFormat?: 'json' | 'text';
-  responseSchema?: Record<string, any>;
+  responseFormat?: 'json' | 'text' | 'json_schema';
+  jsonSchema?: JsonSchemaDefinition;  // Used when responseFormat is 'json_schema'
 }
 
 export interface OpenRouterUsage {
@@ -46,12 +57,29 @@ export class OpenRouterService {
       content: prompt,
     });
 
+    // Build responseFormat based on options
+    let responseFormat: any = undefined;
+    if (options.responseFormat === 'json_schema' && options.jsonSchema) {
+      // Use structured outputs with JSON Schema (enforces exact field names)
+      responseFormat = {
+        type: 'json_schema',
+        jsonSchema: {
+          name: options.jsonSchema.name,
+          strict: options.jsonSchema.strict ?? true,
+          schema: options.jsonSchema.schema,
+        },
+      };
+    } else if (options.responseFormat === 'json') {
+      // Basic JSON mode (no schema enforcement)
+      responseFormat = { type: 'json_object' };
+    }
+
     const response = await this.client.chat.send({
       model: options.model ?? env.OPENROUTER_MODEL,
       messages,
       temperature: options.temperature ?? 0.7,
       maxTokens: options.maxOutputTokens ?? 2000,
-      responseFormat: options.responseFormat === 'json' ? { type: 'json_object' } : undefined,
+      responseFormat,
     });
 
     const content = response.choices[0]?.message?.content;
