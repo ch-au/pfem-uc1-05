@@ -587,20 +587,53 @@ export class QuizService {
       throw new Error('No generation jobs found for this game');
     }
 
+    // Check game status to determine if generation truly failed
+    const game = await postgresService.queryOne<{ status: string }>(
+      `SELECT status FROM public.quiz_games WHERE game_id = $1`,
+      [gameId]
+    );
+
     const completedCount = jobs.filter((j) => j.status === 'round_created').length;
-    const failedJob = jobs.find((j) => j.status === 'failed');
+    const failedJobs = jobs.filter((j) => j.status === 'failed');
     const active = jobs.find((j) => j.status !== 'round_created' && j.status !== 'failed');
+    const pendingJobs = jobs.filter((j) => j.status === 'pending');
+
+    // Determine overall status:
+    // - 'completed' if all required jobs are done (round_created)
+    // - 'failed' only if the game status is 'pending' (still generating) AND all jobs are either failed or round_created AND we don't have enough rounds
+    // - 'generating' if there are still pending/active jobs or we're still retrying
+    let status: 'generating' | 'completed' | 'failed';
+    
+    if (completedCount === jobs.length) {
+      status = 'completed';
+    } else if (game?.status === 'in_progress' || game?.status === 'completed') {
+      // Game has already started, meaning generation succeeded
+      status = 'completed';
+    } else if (active || pendingJobs.length > 0) {
+      // Still generating - either active work or pending jobs remain
+      status = 'generating';
+    } else if (failedJobs.length > 0 && completedCount === 0) {
+      // All jobs failed and none succeeded - true failure
+      status = 'failed';
+    } else {
+      // Some jobs completed, some failed - still consider it generating
+      // The backend will continue with remaining buffer questions
+      status = 'generating';
+    }
+
+    // Only include error message if truly failed
+    const errorMessage = status === 'failed' ? failedJobs[0]?.error_message : undefined;
 
     return {
       game_id: gameId,
-      status: failedJob ? 'failed' : completedCount === jobs.length ? 'completed' : 'generating',
+      status,
       progress: {
         game_id: gameId,
         total_rounds: jobs.length,
         completed_rounds: completedCount,
         current_round: active?.round_number,
         current_status: active?.status,
-        error_message: failedJob?.error_message,
+        error_message: errorMessage,
         rounds: jobs.map((j) => ({
           round_number: j.round_number,
           status: j.status,
