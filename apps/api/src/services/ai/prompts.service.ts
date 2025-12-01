@@ -15,6 +15,79 @@ import type {
   AnswerGeneratorOutput,
 } from '@fsv/shared-types';
 
+/**
+ * Normalize LLM answer generation output to handle both German and English field names.
+ * Maps various field name aliases to the canonical English schema.
+ */
+function normalizeAnswerGeneratorOutput(raw: any): AnswerGeneratorOutput {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error(`Invalid answer generator response: expected object, got ${typeof raw}`);
+  }
+
+  // Field name aliases (German -> English)
+  const correctAnswerAliases = ['correctAnswer', 'correct_answer', 'Richtige_Antwort', 'richtige_antwort', 'answer', 'Antwort'];
+  const incorrectAnswersAliases = ['incorrectAnswers', 'incorrect_answers', 'Falsche_Antworten', 'falsche_antworten', 'wrongAnswers', 'wrong_answers'];
+  const explanationAliases = ['explanation', 'Erklärung', 'erklaerung', 'Erklaerung'];
+  const evidenceScoreAliases = ['evidenceScore', 'evidence_score', 'Bewertung', 'bewertung', 'confidence', 'score'];
+  const optionsAliases = ['options', 'Antwortmöglichkeiten', 'antwortmoeglichkeiten', 'alternatives', 'choices'];
+
+  // Helper to find first matching key
+  const findValue = (obj: any, aliases: string[]): any => {
+    for (const alias of aliases) {
+      if (obj[alias] !== undefined) return obj[alias];
+    }
+    return undefined;
+  };
+
+  // Extract correct answer
+  let correctAnswer = findValue(raw, correctAnswerAliases);
+  
+  // Extract incorrect answers
+  let incorrectAnswers = findValue(raw, incorrectAnswersAliases);
+  
+  // If no incorrectAnswers but we have options array, derive incorrect answers
+  if (!incorrectAnswers && findValue(raw, optionsAliases)) {
+    const options = findValue(raw, optionsAliases);
+    if (Array.isArray(options) && correctAnswer) {
+      // Filter out the correct answer from options to get incorrect ones
+      incorrectAnswers = options.filter((opt: string) => 
+        opt !== correctAnswer && 
+        opt?.toLowerCase?.() !== correctAnswer?.toLowerCase?.()
+      );
+    }
+  }
+
+  // Extract explanation and evidence score
+  const explanation = findValue(raw, explanationAliases) ?? '';
+  const evidenceScore = findValue(raw, evidenceScoreAliases) ?? 0.5;
+
+  // Validate required fields
+  if (!correctAnswer) {
+    console.error('   ⚠️ Missing correctAnswer in LLM response. Raw data:', JSON.stringify(raw, null, 2));
+    throw new Error('LLM response missing correctAnswer field');
+  }
+
+  if (!incorrectAnswers || !Array.isArray(incorrectAnswers) || incorrectAnswers.length === 0) {
+    console.error('   ⚠️ Missing or invalid incorrectAnswers in LLM response. Raw data:', JSON.stringify(raw, null, 2));
+    throw new Error('LLM response missing or invalid incorrectAnswers field');
+  }
+
+  // Ensure we have exactly 3 incorrect answers (pad or trim if needed)
+  if (incorrectAnswers.length < 3) {
+    console.warn(`   ⚠️ Only ${incorrectAnswers.length} incorrect answers provided, expected 3`);
+  }
+  if (incorrectAnswers.length > 3) {
+    incorrectAnswers = incorrectAnswers.slice(0, 3);
+  }
+
+  return {
+    correctAnswer: String(correctAnswer),
+    incorrectAnswers: incorrectAnswers.map((a: any) => String(a)),
+    explanation: String(explanation),
+    evidenceScore: typeof evidenceScore === 'number' ? evidenceScore : parseFloat(evidenceScore) || 0.5,
+  };
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -579,7 +652,7 @@ export class PromptsService {
       console.log(`   ✓ Generation started (calling LLM...)`);
 
       // Call OpenRouter with config from YAML
-      const { data, usage } = await openRouterService.generateJSON<AnswerGeneratorOutput>(
+      const { data: rawData, usage } = await openRouterService.generateJSON<any>(
         userPrompt,
         {
           model: model,
@@ -591,15 +664,19 @@ export class PromptsService {
       );
 
       // End generation (latency calculated automatically by Langfuse)
-      langfuseService.endGeneration(generation, data, usage);
+      langfuseService.endGeneration(generation, rawData, usage);
       console.log(`   ✓ Answer generation complete:`);
-      console.log(`   📦 DEBUG - Raw LLM response:`, JSON.stringify(data, null, 2));
-      console.log(`     Correct: "${data.correctAnswer}"`);
-      console.log(`     Wrong options: ${data.incorrectAnswers?.map(a => `"${a}"`).join(', ') || 'UNDEFINED'}`);
-      console.log(`     Evidence score: ${data.evidenceScore}`);
+      console.log(`   📦 DEBUG - Raw LLM response:`, JSON.stringify(rawData, null, 2));
+
+      // Normalize the LLM response to handle German/English field name variations
+      const normalizedData = normalizeAnswerGeneratorOutput(rawData);
+      
+      console.log(`     Correct: "${normalizedData.correctAnswer}"`);
+      console.log(`     Wrong options: ${normalizedData.incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
+      console.log(`     Evidence score: ${normalizedData.evidenceScore}`);
 
       // End trace with output (only the correct answer)
-      langfuseService.endTrace(trace, data.correctAnswer);
+      langfuseService.endTrace(trace, normalizedData.correctAnswer);
 
       // Flush to Langfuse
       await langfuseService.flush();
@@ -607,7 +684,7 @@ export class PromptsService {
       console.log(`🎯 [ANSWER GENERATOR] ✅ Complete\n`);
 
       return {
-        result: data,
+        result: normalizedData,
         traceId: trace?.id,
         generationId: generation?.id,
       };
