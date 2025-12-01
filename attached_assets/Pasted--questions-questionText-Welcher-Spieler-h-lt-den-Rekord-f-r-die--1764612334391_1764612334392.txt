@@ -1,0 +1,52 @@
+{
+    "questions": [
+        {
+            "questionText": "Welcher Spieler hält den Rekord für die meisten Bundesliga-Einsätze für den 1. FSV Mainz 05?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "Nikolce Noveski"
+        },
+        {
+            "questionText": "Wie viele Bundesliga-Tore erzielte der 1. FSV Mainz 05 in der Saison 2010/11, in der sie den 13. Platz belegten?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "42"
+        },
+        {
+            "questionText": "Welcher Spieler des 1. FSV Mainz 05 erzielte in der Bundesliga-Saison 2015/16 mit 14 Toren die meisten Saisontore für den Verein?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "Yunus Malli"
+        },
+        {
+            "questionText": "Wie oft qualifizierte sich der 1. FSV Mainz 05 bisher für die Gruppenphase der UEFA Europa League?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "Einmal (2016/17)"
+        },
+        {
+            "questionText": "Wer ist der Spieler mit den meisten Torvorlagen in einer Bundesliga-Saison für den 1. FSV Mainz 05?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "Emil Berggreen (9 Vorlagen in 2017/18)"
+        },
+        {
+            "questionText": "Gegen welchen Gegner feierte der 1. FSV Mainz 05 seinen höchsten Bundesliga-Sieg (5:0) im Jahr 2005?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "MSV Duisburg"
+        },
+        {
+            "questionText": "Wie viele Punkte erreichte der 1. FSV Mainz 05 in seiner erfolgreichsten Bundesliga-Saison 2015/16, die mit dem 6. Platz endete?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "50"
+        },
+        {
+            "questionText": "Welcher Torhüter hält den Rekord für die meisten Weißen Westen (Spiele ohne Gegentor) in einer Bundesliga-Saison für Mainz 05?",
+            "category": "statistics",
+            "difficulty": "medium",
+            "answer": "Loris Karius (9 in 2015/16)"
+        }
+    ]
+}

@@ -265,7 +265,7 @@ export class PromptsService {
       const errorStack = error instanceof Error ? error.stack : '';
       console.error(`\n❌ [SQL GENERATOR] FAILED`);
       console.error(`   Error: ${errorMessage}`);
-      if (errorStack) {
+      if (errorStack && typeof errorStack === 'string') {
         console.error(`   Stack: ${errorStack.substring(0, 300)}`);
       }
       throw error;
@@ -283,8 +283,8 @@ export class PromptsService {
     generationId?: string;
   }> {
     console.log(`\n💬 [CHAT ANSWER FORMATTER] Starting answer formatting...`);
-    console.log(`   Question: "${input.userQuestion.substring(0, 80)}..."`);
-    console.log(`   SQL Result rows: ${input.sqlResult.length}`);
+    console.log(`   Question: "${input.userQuestion?.substring(0, 80) ?? '<no question>'}..."`);
+    console.log(`   SQL Result rows: ${input.sqlResult?.length ?? 0}`);
 
     const promptKey = 'chat-answer-formatter';
 
@@ -391,7 +391,7 @@ export class PromptsService {
       const errorStack = error instanceof Error ? error.stack : '';
       console.error(`\n❌ [CHAT ANSWER FORMATTER] FAILED`);
       console.error(`   Error: ${errorMessage}`);
-      if (errorStack) {
+      if (errorStack && typeof errorStack === 'string') {
         console.error(`   Stack: ${errorStack.substring(0, 300)}`);
       }
       throw error;
@@ -510,7 +510,7 @@ export class PromptsService {
     generationId?: string;
   }> {
     console.log(`🎯 [ANSWER GENERATOR] Starting answer generation...`);
-    console.log(`   Question: "${input.question.substring(0, 80)}..."`);
+    console.log(`   Question: "${input.question?.substring(0, 80) ?? '<no question>'}..."`);
     console.log(`   SQL Result rows: ${Array.isArray(input.sqlResult) ? input.sqlResult.length : 'N/A'}`);
     
     const promptKey = 'quiz-answer-generator';
@@ -616,7 +616,7 @@ export class PromptsService {
       const errorStack = error instanceof Error ? error.stack : '';
       console.error(`\n❌ [ANSWER GENERATOR] FAILED`);
       console.error(`   Error: ${errorMessage}`);
-      if (errorStack) {
+      if (errorStack && typeof errorStack === 'string') {
         console.error(`   Stack: ${errorStack.substring(0, 300)}`);
       }
       throw error;

@@ -362,6 +362,14 @@ export class QuizService {
       let retryCount = 0;
       let questionCreated = false;
 
+      // Validate that the generated question has valid questionText before processing
+      if (!generatedQuestion || !generatedQuestion.questionText || typeof generatedQuestion.questionText !== 'string') {
+        console.warn(`\n⚠️  Skipping invalid question at index ${questionIndex}: missing or invalid questionText`);
+        console.warn(`   Raw question data: ${JSON.stringify(generatedQuestion)?.substring(0, 200) ?? 'undefined'}`);
+        questionIndex++;
+        continue;
+      }
+
       while (!questionCreated && retryCount < maxRetries) {
         try {
           console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questionGeneration.result.questions.length}`);
@@ -383,7 +391,7 @@ export class QuizService {
           }
 
           console.log(`   ✓ Step 1: SQL Query Generated (confidence: ${confidence})`);
-          console.log(`     SQL: ${sql.substring(0, 120)}...`);
+          console.log(`     SQL: ${sql?.substring(0, 120) ?? '<no SQL>'}...`);
 
           // Update job status - SQL generated
           await postgresService.query(
@@ -397,7 +405,8 @@ export class QuizService {
           console.log(`   ⏳ Step 2: Executing SQL Query...`);
           const { rows, fields } = await postgresService.executeUserQuery(sql);
           console.log(`   ✓ Step 2: SQL Executed Successfully - Got ${rows.length} result row(s)`);
-          console.log(`     First result: ${JSON.stringify(rows[0]).substring(0, 100)}...`);
+          const firstResultStr = rows[0] ? JSON.stringify(rows[0]) : '<no results>';
+          console.log(`     First result: ${firstResultStr.substring(0, 100)}...`);
 
           // Validate results
           if (rows.length === 0) {
@@ -504,7 +513,7 @@ export class QuizService {
           
           console.error(`\n❌ ROUND ${roundNumber} ERROR (Attempt ${retryCount + 1}/${maxRetries})`);
           console.error(`   Error: ${errorMessage}`);
-          if (errorStack) {
+          if (errorStack && typeof errorStack === 'string') {
             console.error(`   Stack: ${errorStack.substring(0, 200)}`);
           }
           
