@@ -352,13 +352,23 @@ export class QuizService {
       numberOfPlayers: config.numberOfPlayers,
     });
 
+    // Validate that we received a valid questions array
+    const questions = questionGeneration.result?.questions;
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      console.error(`❌ Question generation failed: received invalid or empty questions array`);
+      console.error(`   Raw result: ${JSON.stringify(questionGeneration.result)?.substring(0, 500) ?? 'undefined'}`);
+      throw new Error('Question generation failed: LLM returned invalid or empty questions array');
+    }
+
+    console.log(`✅ Received ${questions.length} questions from LLM`);
+
     // 4. Process each question sequentially with progress tracking
     let roundNumber = 1;
     let questionIndex = 0;
     const maxRetries = 3; // Max retries per question
 
-    while (roundNumber <= config.numRounds && questionIndex < questionGeneration.result.questions.length) {
-      const generatedQuestion = questionGeneration.result.questions[questionIndex];
+    while (roundNumber <= config.numRounds && questionIndex < questions.length) {
+      const generatedQuestion = questions[questionIndex];
       let retryCount = 0;
       let questionCreated = false;
 
@@ -372,7 +382,7 @@ export class QuizService {
 
       while (!questionCreated && retryCount < maxRetries) {
         try {
-          console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questionGeneration.result.questions.length}`);
+          console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questions.length}`);
           console.log(`   Question: "${generatedQuestion.questionText.substring(0, 80)}..."`);
           
           // Step 1: Generate SQL query for the question (using chat-sql-generator)
@@ -530,7 +540,7 @@ export class QuizService {
             questionIndex++;
             
             // If we've run out of questions, we need to generate more or fail
-            if (questionIndex >= questionGeneration.result.questions.length) {
+            if (questionIndex >= questions.length) {
               throw new Error(`Failed to generate ${config.numRounds} valid questions. Only ${roundNumber - 1} succeeded.`);
             }
           } else {
