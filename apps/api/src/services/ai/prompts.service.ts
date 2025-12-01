@@ -19,6 +19,103 @@ import type {
  * Normalize LLM answer generation output to handle both German and English field names.
  * Maps various field name aliases to the canonical English schema.
  */
+// Helper to find first matching key from aliases
+function findValue(obj: any, aliases: string[]): any {
+  for (const alias of aliases) {
+    if (obj[alias] !== undefined) return obj[alias];
+  }
+  return undefined;
+}
+
+/**
+ * Normalize a single question object from LLM output.
+ * Maps various field name aliases to the canonical English schema.
+ */
+function normalizeQuestion(raw: any): { 
+  questionText: string; 
+  sqlQueryNeeded: string;
+  category?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+} {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error(`Invalid question object: expected object, got ${typeof raw}`);
+  }
+
+  // Field name aliases for questionText
+  const questionTextAliases = [
+    'questionText', 'question_text', 'question',
+    'Fragetext', 'fragetext', 'Frage', 'frage',
+    'FrageText', 'text', 'Text'
+  ];
+  
+  // Field name aliases for sqlQueryNeeded
+  const sqlQueryAliases = [
+    'sqlQueryNeeded', 'sql_query_needed', 'sqlQuery', 'sql_query',
+    'sql', 'SQL', 'query', 'Query',
+    'SQL_Abfrage', 'sql_abfrage', 'SQLAbfrage',
+    'benötigte_sql_abfrage', 'BenotigteSQL'
+  ];
+
+  // Field name aliases for category (optional)
+  const categoryAliases = ['category', 'Kategorie', 'kategorie', 'topic', 'Thema'];
+  
+  // Field name aliases for difficulty (optional)
+  const difficultyAliases = ['difficulty', 'Schwierigkeit', 'schwierigkeit', 'level'];
+
+  const questionText = findValue(raw, questionTextAliases);
+  const sqlQueryNeeded = findValue(raw, sqlQueryAliases);
+  const category = findValue(raw, categoryAliases);
+  const difficulty = findValue(raw, difficultyAliases);
+
+  if (!questionText) {
+    console.error('   ⚠️ Missing questionText in question. Raw:', JSON.stringify(raw, null, 2));
+    throw new Error('Question missing questionText field');
+  }
+
+  if (!sqlQueryNeeded) {
+    console.error('   ⚠️ Missing sqlQueryNeeded in question. Raw:', JSON.stringify(raw, null, 2));
+    throw new Error('Question missing sqlQueryNeeded field');
+  }
+
+  return {
+    questionText: String(questionText),
+    sqlQueryNeeded: String(sqlQueryNeeded),
+    category: category ? String(category) : undefined,
+    difficulty: difficulty as 'easy' | 'medium' | 'hard' | undefined,
+  };
+}
+
+/**
+ * Normalize LLM question generator output to handle both German and English field names.
+ */
+function normalizeQuestionGeneratorOutput(raw: any): QuestionGeneratorOutput {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error(`Invalid question generator response: expected object, got ${typeof raw}`);
+  }
+
+  // Field name aliases for questions array
+  const questionsAliases = ['questions', 'Fragen', 'fragen', 'questionList', 'question_list'];
+  
+  const questionsRaw = findValue(raw, questionsAliases);
+  
+  if (!questionsRaw || !Array.isArray(questionsRaw)) {
+    console.error('   ⚠️ Missing or invalid questions array in LLM response. Raw:', JSON.stringify(raw, null, 2));
+    throw new Error('LLM response missing questions array');
+  }
+
+  // Normalize each question
+  const questions = questionsRaw.map((q: any, idx: number) => {
+    try {
+      return normalizeQuestion(q);
+    } catch (err) {
+      console.error(`   ⚠️ Failed to normalize question ${idx + 1}:`, err);
+      throw err;
+    }
+  });
+
+  return { questions };
+}
+
 function normalizeAnswerGeneratorOutput(raw: any): AnswerGeneratorOutput {
   if (!raw || typeof raw !== 'object') {
     throw new Error(`Invalid answer generator response: expected object, got ${typeof raw}`);
@@ -30,14 +127,6 @@ function normalizeAnswerGeneratorOutput(raw: any): AnswerGeneratorOutput {
   const explanationAliases = ['explanation', 'Erklärung', 'erklaerung', 'Erklaerung'];
   const evidenceScoreAliases = ['evidenceScore', 'evidence_score', 'Bewertung', 'bewertung', 'confidence', 'score'];
   const optionsAliases = ['options', 'Antwortmöglichkeiten', 'antwortmoeglichkeiten', 'alternatives', 'choices'];
-
-  // Helper to find first matching key
-  const findValue = (obj: any, aliases: string[]): any => {
-    for (const alias of aliases) {
-      if (obj[alias] !== undefined) return obj[alias];
-    }
-    return undefined;
-  };
 
   // Extract correct answer
   let correctAnswer = findValue(raw, correctAnswerAliases);
@@ -544,29 +633,66 @@ export class PromptsService {
       promptVersion: meta.promptVersion,
     });
 
-    // Call OpenRouter with config from YAML
-    const { data, usage } = await openRouterService.generateJSON<QuestionGeneratorOutput>(
+    // Define JSON Schema for structured output (enforces exact field names)
+    const questionSchema = {
+      name: 'quiz_questions',
+      strict: true,
+      schema: {
+        type: 'object' as const,
+        properties: {
+          questions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                questionText: {
+                  type: 'string',
+                  description: 'The quiz question text in German',
+                },
+                sqlQueryNeeded: {
+                  type: 'string',
+                  description: 'SQL query to validate the answer against the database',
+                },
+              },
+              required: ['questionText', 'sqlQueryNeeded'],
+              additionalProperties: false,
+            },
+            description: 'Array of quiz questions with their SQL queries',
+          },
+        },
+        required: ['questions'],
+        additionalProperties: false,
+      },
+    };
+
+    // Call OpenRouter with JSON Schema for structured output
+    const { data: rawData, usage } = await openRouterService.generateJSON<any>(
       userPrompt,
       {
         model: model,
         systemInstruction: systemPrompt,
         temperature: config.llm_config.temperature,
         maxOutputTokens: config.llm_config.max_tokens,
-        responseFormat: config.llm_config.response_format,
+        responseFormat: 'json_schema',
+        jsonSchema: questionSchema,
       }
     );
 
+    // Normalize the LLM response to handle German/English field name variations
+    const normalizedData = normalizeQuestionGeneratorOutput(rawData);
+    console.log(`   📦 DEBUG - Normalized ${normalizedData.questions.length} questions`);
+
     // End generation (latency calculated automatically by Langfuse)
-    langfuseService.endGeneration(generation, data, usage);
+    langfuseService.endGeneration(generation, normalizedData, usage);
 
     // End trace with output (only the questions array)
-    langfuseService.endTrace(trace, data.questions);
+    langfuseService.endTrace(trace, normalizedData.questions);
 
     // Flush to Langfuse
     await langfuseService.flush();
 
     return {
-      result: data,
+      result: normalizedData,
       traceId: trace?.id,
       generationId: generation?.id,
     };

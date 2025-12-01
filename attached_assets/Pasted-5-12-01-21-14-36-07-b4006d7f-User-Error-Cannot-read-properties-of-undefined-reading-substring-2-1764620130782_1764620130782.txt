@@ -1,0 +1,95 @@
+5-12-01 21:14:36.07
+b4006d7f
+User
+Error: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:36.07
+b4006d7f
+User
+❌ ROUND 1 ERROR (Attempt 3/3)
+2025-12-01 21:14:36.07
+b4006d7f
+User
+at QuizService.generateQuestionsForGame (file:///home/runner/workspace/apps/api/dist/services/quiz/quiz.service.js:245:79)
+2025-12-01 21:14:36.07
+b4006d7f
+User
+
+2025-12-01 21:14:36.07
+b4006d7f
+User
+Stack: TypeError: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:36.27
+b4006d7f
+User
+Question: "Gegen welchen Gegner erlitt der 1. FSV Mainz 05 im März 2024 die höchste Niederl..."
+2025-12-01 21:14:36.27
+b4006d7f
+User
+⏭️ Skipping question after 3 retries, moving to next question
+2025-12-01 21:14:36.27
+b4006d7f
+User
+📋 ROUND 1/5 - Processing Question 7/8
+2025-12-01 21:14:36.38
+b4006d7f
+User
+✓ Step 1: SQL Query Generated
+2025-12-01 21:14:36.38
+b4006d7f
+User
+Stack: TypeError: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:36.38
+b4006d7f
+User
+at QuizService.generateQuestionsForGame (file:///home/runner/workspace/apps/api/dist/services/quiz/quiz.service.js:245:79)
+2025-12-01 21:14:36.38
+b4006d7f
+User
+Error: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:36.57
+b4006d7f
+User
+📋 ROUND 1/5 - Processing Question 7/8
+2025-12-01 21:14:36.57
+b4006d7f
+User
+🔄 Retrying...
+2025-12-01 21:14:36.57
+b4006d7f
+User
+Question: "Gegen welchen Gegner erlitt der 1. FSV Mainz 05 im März 2024 die höchste Niederl..."
+2025-12-01 21:14:36.68
+b4006d7f
+User
+✓ Step 1: SQL Query Generated
+2025-12-01 21:14:36.68
+b4006d7f
+User
+Stack: TypeError: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:36.68
+b4006d7f
+User
+Error: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:36.68
+b4006d7f
+User
+2025-12-01 21:14:36.87
+b4006d7f
+User
+🔄 Retrying...
+2025-12-01 21:14:36.98
+b4006d7f
+User
+Stack: TypeError: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:36.98
+b4006d7f
+User
+Error: Cannot read properties of undefined (reading 'substring')
+2025-12-01 21:14:37.10
+b4006d7f
+User
+Question: "Wie oft konnte sich Mainz 05 in seiner Vereinsgeschichte für die Gruppenphase de..."
+2025-12-01 21:14:37.10
+b4006d7f
+User
+📋 ROUND 1/5 - Processing Question 8/8
