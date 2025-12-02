@@ -67,11 +67,9 @@ export interface QuestionGeneratorInput {
 export interface QuestionGeneratorOutput {
     questions: Array<{
         questionText: string;
-        category: string;
-        difficulty: 'easy' | 'medium' | 'hard';
         sqlQueryNeeded: string;
-        expectedAnswerType: 'number' | 'string' | 'date' | 'list';
-        hint?: string;
+        category?: string;
+        difficulty?: 'easy' | 'medium' | 'hard';
     }>;
 }
 export interface AnswerGeneratorInput {
