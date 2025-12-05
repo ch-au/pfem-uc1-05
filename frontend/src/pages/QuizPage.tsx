@@ -8,7 +8,7 @@ import { QuizOption } from '../components/quiz/QuizOption';
 import { Leaderboard } from '../components/quiz/Leaderboard';
 import { useQuizGame } from '../hooks/useQuizGame';
 import { quizService } from '../services/quizService';
-import { Trophy } from 'lucide-react';
+import { Trophy, Check, X, Lightbulb } from 'lucide-react';
 import type { QuizGameState, QuizLeaderboardEntry } from '../types/api';
 import styles from './QuizPage.module.css';
 
@@ -316,17 +316,25 @@ export const QuizPage: React.FC = () => {
 
               {answerResult && (
                 <div className={`${styles.result} ${styles[answerResult.correct ? 'result--correct' : 'result--incorrect']}`}>
-                  <div className={styles.resultText}>
-                    {answerResult.correct ? (
-                      <>✓ Richtig! (+{answerResult.pointsEarned} Punkte)</>
-                    ) : (
-                      <>✗ Falsch</>
-                    )}
+                  <div className={styles.resultHeader}>
+                    <div className={styles.resultIcon}>
+                      {answerResult.correct ? <Check size={24} strokeWidth={3} /> : <X size={24} strokeWidth={3} />}
+                    </div>
+                    <div className={styles.resultTextWrapper}>
+                      <div className={styles.resultText}>
+                        {answerResult.correct ? 'Richtig!' : 'Falsch'}
+                      </div>
+                      <div className={styles.resultPoints}>
+                        {answerResult.correct ? `+${answerResult.pointsEarned} Punkte` : 'Keine Punkte'}
+                      </div>
+                    </div>
                   </div>
                   <div className={styles.explanation}>
-                    Richtige Antwort: {answerResult.correctAnswer}
+                    <div className={styles.explanationLabel}>Richtige Antwort</div>
+                    <div className={styles.explanationAnswer}>{answerResult.correctAnswer}</div>
                     {answerResult.explanation && (
                       <div className={styles.explanationDetail}>
+                        <Lightbulb size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
                         {answerResult.explanation}
                       </div>
                     )}

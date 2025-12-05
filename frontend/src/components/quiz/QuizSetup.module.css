@@ -1,14 +1,17 @@
 .title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #374151;
-  margin: 0 0 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--mainz-black);
+  margin: 0 0 1.75rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 .field {
@@ -18,32 +21,52 @@
 
 .label {
   display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--gray-dark);
   margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .select {
   width: 100%;
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.25rem;
   border: 2px solid #E5E7EB;
-  border-radius: 0.75rem;
-  font-size: 0.9375rem;
+  border-radius: 12px;
+  font-size: 1rem;
   font-family: inherit;
-  transition: all 0.2s ease-in-out;
-  background: #FFFFFF;
-  color: #374151;
+  font-weight: 500;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--mainz-white);
+  color: var(--gray-dark);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 3rem;
+}
+
+.select:hover {
+  border-color: var(--mainz-red);
 }
 
 .select:focus {
   outline: none;
-  border-color: #C8191E;
-  box-shadow: 0 0 0 3px rgba(200, 25, 30, 0.1);
+  border-color: var(--mainz-red);
+  box-shadow: 0 0 0 4px rgba(195, 20, 31, 0.1);
 }
 
 .submitButton {
   width: 100%;
   justify-content: center;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .form {
+    max-width: 480px;
+    margin: 0 auto;
+  }
 }

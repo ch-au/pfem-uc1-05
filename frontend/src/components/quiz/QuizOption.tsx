@@ -1,5 +1,6 @@
 import React from 'react';
 import { clsx } from 'clsx';
+import { Check, X } from 'lucide-react';
 import styles from './QuizOption.module.css';
 
 export interface QuizOptionProps {
@@ -23,7 +24,17 @@ export const QuizOption: React.FC<QuizOptionProps> = ({
   disabled = false,
   onClick,
 }) => {
-  const letter = String.fromCharCode(65 + index); // A, B, C, D
+  const letter = String.fromCharCode(65 + index);
+
+  const renderBadgeContent = () => {
+    if (correct) {
+      return <Check size={16} strokeWidth={3} />;
+    }
+    if (incorrect) {
+      return <X size={16} strokeWidth={3} />;
+    }
+    return letter;
+  };
 
   return (
     <button
@@ -37,14 +48,13 @@ export const QuizOption: React.FC<QuizOptionProps> = ({
       onClick={onClick}
       disabled={disabled}
     >
-      <span className={styles.letter}>{letter})</span>
+      <span className={styles.badge}>{renderBadgeContent()}</span>
       <span className={styles.label}>{label}</span>
+      {(correct || incorrect) && (
+        <span className={styles.indicator}>
+          {correct ? <Check size={20} strokeWidth={2.5} /> : <X size={20} strokeWidth={2.5} />}
+        </span>
+      )}
     </button>
   );
 };
-
-
-
-
-
-

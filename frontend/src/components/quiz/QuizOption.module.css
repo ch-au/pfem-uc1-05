@@ -1,71 +1,193 @@
 .option {
   width: 100%;
   padding: 1rem 1.25rem;
-  background: #FFFFFF;
-  border: 2px solid #E5E7EB;
-  border-radius: 0.75rem;
-  font-size: 0.9375rem;
+  background: var(--mainz-white);
+  border: 2px solid var(--gray-light);
+  border-radius: 12px;
+  font-size: 1rem;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  color: #374151;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--gray-dark);
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(195, 20, 31, 0.03) 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.option:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
 .option:hover:not(:disabled) {
-  border-color: #C8191E;
-  background: rgba(200, 25, 30, 0.05);
-  transform: translateX(4px);
+  border-color: var(--mainz-red);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(195, 20, 31, 0.15);
+}
+
+.option:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(195, 20, 31, 0.1);
 }
 
 .option--selected {
-  border-color: #C8191E;
-  background: rgba(200, 25, 30, 0.1);
+  border-color: var(--mainz-red);
+  background: linear-gradient(135deg, rgba(195, 20, 31, 0.08) 0%, rgba(195, 20, 31, 0.04) 100%);
+}
+
+.option--selected .badge {
+  background: var(--mainz-red);
+  color: var(--mainz-white);
+  border-color: var(--mainz-red);
 }
 
 .option--correct {
-  border-color: #10B981;
-  background: rgba(16, 185, 129, 0.1);
-  color: #10B981;
+  border-color: var(--success);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0.06) 100%);
+  animation: correctPulse 0.5s ease-out;
+}
+
+.option--correct .badge {
+  background: var(--success);
+  color: var(--mainz-white);
+  border-color: var(--success);
+}
+
+.option--correct .label {
+  color: #047857;
+  font-weight: 600;
 }
 
 .option--incorrect {
   border-color: #EF4444;
-  background: rgba(239, 68, 68, 0.1);
-  color: #EF4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.06) 100%);
+  animation: incorrectShake 0.4s ease-out;
+}
+
+.option--incorrect .badge {
+  background: #EF4444;
+  color: var(--mainz-white);
+  border-color: #EF4444;
+}
+
+.option--incorrect .label {
+  color: #B91C1C;
+  font-weight: 600;
 }
 
 .option--disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  pointer-events: none;
 }
 
-.letter {
-  font-weight: 700;
-  color: #6B7280;
-  min-width: 24px;
+.option--disabled:not(.option--correct):not(.option--incorrect) {
+  opacity: 0.5;
 }
 
-.option--correct .letter,
-.option--incorrect .letter {
-  color: currentColor;
+.badge {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: var(--gray-light);
+  border: 2px solid #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.875rem;
+  color: var(--gray);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.option:hover:not(:disabled) .badge {
+  border-color: var(--mainz-red);
+  color: var(--mainz-red);
+  transform: scale(1.05);
 }
 
 .label {
   flex: 1;
+  line-height: 1.4;
+  position: relative;
+  z-index: 1;
+}
+
+.indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  position: relative;
+  z-index: 1;
+}
+
+.option--correct .indicator {
+  color: var(--success);
+}
+
+.option--incorrect .indicator {
+  color: #EF4444;
+}
+
+@keyframes correctPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes incorrectShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 @media (min-width: 1024px) {
   .option {
     padding: 1.25rem 1.5rem;
   }
+
+  .badge {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 1rem;
+  }
+
+  .label {
+    font-size: 1.0625rem;
+  }
 }
-
-
-
-
-
-

@@ -3,56 +3,161 @@
 }
 
 .header {
-  background: #F5F5F5;
-  padding: 1rem;
-  border-radius: 0.75rem;
+  background: linear-gradient(135deg, var(--gray-light) 0%, #FAFAFA 100%);
+  padding: 1.25rem;
+  border-radius: 12px;
   margin-bottom: 1.5rem;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.info {
+.progressSection {
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
+}
+
+.progressInfo {
+  display: flex;
+  align-items: baseline;
   gap: 0.25rem;
 }
 
-.roundInfo {
-  font-size: 0.875rem;
+.roundLabel {
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 0.5rem;
 }
 
-.roundNumber {
-  color: #C8191E;
+.roundCurrent {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--mainz-red);
+  line-height: 1;
 }
 
-.totalRounds {
-  color: #374151;
+.roundSeparator {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray);
+  margin: 0 0.125rem;
 }
 
-.playerInfo {
-  font-size: 0.75rem;
-  color: #6B7280;
+.roundTotal {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-dark);
+}
+
+.progressBar {
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 999px;
+  position: relative;
+  overflow: visible;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mainz-red) 0%, var(--mainz-red-light) 100%);
+  border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progressMarker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: var(--mainz-white);
+  border: 3px solid var(--mainz-red);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(195, 20, 31, 0.3);
+  transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stepIndicators {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #E5E7EB;
+  transition: all 0.3s ease;
+}
+
+.stepComplete {
+  background: var(--mainz-red);
+  transform: scale(1);
+}
+
+.stepCurrent {
+  background: var(--mainz-red);
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px rgba(195, 20, 31, 0.2);
+}
+
+.playerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--mainz-white);
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gray-dark);
+  align-self: flex-start;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.playerBadge svg {
+  color: var(--mainz-red);
 }
 
 .question {
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 700;
-  color: #374151;
+  color: var(--mainz-black);
   margin: 0;
   line-height: 1.5;
+  padding: 0.5rem 0;
+}
+
+@media (min-width: 768px) {
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .progressSection {
+    flex: 1;
+    max-width: 400px;
+  }
+
+  .playerBadge {
+    align-self: center;
+  }
 }
 
 @media (min-width: 1024px) {
   .question {
-    font-size: 1.5rem;
+    font-size: 1.625rem;
+  }
+
+  .header {
+    padding: 1.5rem;
   }
 }
-
-
-
-
-
-
