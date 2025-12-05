@@ -299,6 +299,11 @@ export const useQuizGame = () => {
     }
   };
 
+  const passToNextPlayer = () => {
+    setSelectedAnswer(null);
+    setAnswerResult(null);
+  };
+
   return {
     gameId,
     gameState,
@@ -319,5 +324,6 @@ export const useQuizGame = () => {
     nextRound,
     loadLeaderboard,
     reset,
+    passToNextPlayer,
   };
 };

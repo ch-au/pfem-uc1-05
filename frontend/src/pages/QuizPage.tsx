@@ -46,6 +46,7 @@ export const QuizPage: React.FC = () => {
     nextRound,
     loadLeaderboard,
     reset,
+    passToNextPlayer,
   } = useQuizGame();
 
   const handleSetupSubmit = async (data: {
@@ -272,8 +273,9 @@ export const QuizPage: React.FC = () => {
     const isIncorrect = (option: string): boolean =>
       answerResult ? selectedAnswer === option && !answerResult.correct : false;
 
-    const canProceed =
-      answerResult !== null && currentPlayer === gameState.players[gameState.players.length - 1];
+    const isLastPlayer = currentPlayer === gameState.players[gameState.players.length - 1];
+    const canProceed = answerResult !== null && isLastPlayer;
+    const canPassToNextPlayer = answerResult !== null && !isLastPlayer && gameState.players.length > 1;
 
     return (
       <div className={styles.quizPage}>
@@ -345,6 +347,17 @@ export const QuizPage: React.FC = () => {
                 </div>
               )}
 
+              {canPassToNextPlayer && (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={passToNextPlayer}
+                  className={styles.nextButton}
+                >
+                  Nächster Spieler: {gameState.players[(currentPlayerIndex + 1) % gameState.players.length]}
+                </Button>
+              )}
+
               {canProceed && (
                 <Button
                   variant="primary"
@@ -352,7 +365,7 @@ export const QuizPage: React.FC = () => {
                   onClick={handleNextRound}
                   className={styles.nextButton}
                 >
-                  {gameState.current_round >= gameState.num_rounds ? 'Fertig' : 'Nächste Runde'}
+                  {gameState.current_round >= gameState.num_rounds ? 'Ergebnis anzeigen' : 'Nächste Runde'}
                 </Button>
               )}
             </Card>
