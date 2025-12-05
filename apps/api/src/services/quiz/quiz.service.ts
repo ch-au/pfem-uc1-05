@@ -181,21 +181,41 @@ export class QuizService {
       throw new Error('Round not found');
     }
 
-    // 2. Check if answer is correct
+    // 2. Check if player has already answered this round
+    const existingAnswer = await postgresService.queryOne<{
+      is_correct: boolean;
+      points_earned: number;
+    }>(
+      `SELECT is_correct, points_earned FROM public.quiz_answers
+       WHERE round_id = $1 AND player_name = $2`,
+      [round.round_id, cleanedPlayerName]
+    );
+
+    if (existingAnswer) {
+      // Player has already answered - return their existing result
+      return {
+        correct: existingAnswer.is_correct,
+        correct_answer: round.correct_answer,
+        explanation: round.explanation ?? undefined,
+        points_earned: existingAnswer.points_earned,
+      };
+    }
+
+    // 3. Check if answer is correct
     const isCorrect = answer.trim().toLowerCase() === round.correct_answer.trim().toLowerCase();
 
-    // 3. Calculate points (time-based scoring)
+    // 4. Calculate points (time-based scoring)
     const maxPoints = 100;
     const timeBonus = Math.max(0, maxPoints - Math.floor(time_taken * 2));
     const pointsEarned = isCorrect ? Math.max(10, timeBonus) : 0;
 
-    // 4. Get or create player
+    // 5. Get or create player
     const playerId = await postgresService.queryOne<{ get_or_create_quiz_player: string }>(
       `SELECT get_or_create_quiz_player($1) as get_or_create_quiz_player`,
       [player_name]
     );
 
-    // 5. Save answer
+    // 6. Save answer
     await postgresService.query(
       `INSERT INTO public.quiz_answers
        (round_id, player_name, quiz_player_id, answer, is_correct, time_taken, points_earned)
@@ -211,7 +231,7 @@ export class QuizService {
       ]
     );
 
-    // 6. Return response
+    // 7. Return response
     return {
       correct: isCorrect,
       correct_answer: round.correct_answer,
