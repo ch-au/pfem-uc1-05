@@ -54,57 +54,150 @@
   color: var(--gray-dark);
 }
 
-.progressBar {
-  height: 6px;
-  background: #E5E7EB;
-  border-radius: 999px;
+.progressTrack {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   position: relative;
-  overflow: visible;
+  padding: 0;
 }
 
-.progressFill {
+.progressStep {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.progressStepNumber {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gray);
+  transition: color 0.3s ease;
+}
+
+.progressStepComplete {
+  background: var(--mainz-red);
+}
+
+.progressStepComplete .progressStepNumber {
+  color: var(--mainz-white);
+}
+
+.progressStepCurrent {
+  background: var(--mainz-red);
+  box-shadow: 0 0 0 4px rgba(195, 20, 31, 0.2);
+  transform: scale(1.1);
+}
+
+.progressStepCurrent .progressStepNumber {
+  color: var(--mainz-white);
+}
+
+.progressLine {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 3px;
+  background: #E5E7EB;
+  z-index: 1;
+  border-radius: 999px;
+}
+
+.progressLineFill {
   height: 100%;
-  background: linear-gradient(90deg, var(--mainz-red) 0%, var(--mainz-red-light) 100%);
+  background: var(--mainz-red);
   border-radius: 999px;
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.progressMarker {
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
-  background: var(--mainz-white);
-  border: 3px solid var(--mainz-red);
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(195, 20, 31, 0.3);
-  transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.stepIndicators {
+.playerOverview {
   display: flex;
-  justify-content: space-between;
-  padding: 0 2px;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.stepDot {
-  width: 8px;
-  height: 8px;
+.playerOverviewLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.playerList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.playerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--mainz-white);
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--gray-dark);
+  transition: all 0.2s ease;
+}
+
+.playerChipActive {
+  background: var(--mainz-red);
+  border-color: var(--mainz-red);
+  color: var(--mainz-white);
+  box-shadow: 0 2px 8px rgba(195, 20, 31, 0.3);
+  transform: scale(1.05);
+}
+
+.crownIcon {
+  color: #FDE047;
+}
+
+.playerInitial {
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #E5E7EB;
-  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--gray-dark);
 }
 
-.stepComplete {
-  background: var(--mainz-red);
-  transform: scale(1);
+.playerChipActive .playerInitial {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--mainz-white);
 }
 
-.stepCurrent {
-  background: var(--mainz-red);
-  transform: scale(1.25);
-  box-shadow: 0 0 0 3px rgba(195, 20, 31, 0.2);
+.playerName {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.turnIndicator {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--gray);
+  background: #F3F4F6;
+  padding: 0.125rem 0.375rem;
+  border-radius: 999px;
 }
 
 .playerBadge {

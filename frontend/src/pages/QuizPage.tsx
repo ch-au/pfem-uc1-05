@@ -37,6 +37,7 @@ export const QuizPage: React.FC = () => {
     statusMessage,
     generationProgress,
     currentPlayer,
+    currentPlayerIndex,
     selectedAnswer,
     answerResult,
     createGame,
@@ -293,6 +294,8 @@ export const QuizPage: React.FC = () => {
                 roundNumber={currentQuestion.round_number || gameState.current_round}
                 totalRounds={gameState.num_rounds}
                 currentPlayer={currentPlayer}
+                players={gameState.players}
+                currentPlayerIndex={currentPlayerIndex}
               />
 
               <div className={styles.options}>
