@@ -332,15 +332,22 @@ export class PromptsService {
     const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
     console.log(`   ✓ Loaded prompt template from ${meta.source}`);
 
-    // Compile system prompt with Kontext variable
+    // Format conversation history for the prompt
+    const formattedHistory = input.conversationHistory && input.conversationHistory.length > 0
+      ? input.conversationHistory.map((msg) => `${msg.role === 'user' ? 'Nutzer' : 'Assistent'}: ${msg.content}`).join('\n')
+      : 'Keine vorherige Konversation.';
+
+    // Compile system prompt with Kontext and conversation history variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
       Kontext: input.schemaContext,
+      VORHERIGE_KONVERSATIONEN: formattedHistory,
     });
 
     // Compile user prompt with Frage variable
     const userPrompt = userTemplate
       ? this.compileTemplate(userTemplate, {
           Frage: input.userQuestion,
+          VORHERIGE_KONVERSATIONEN: formattedHistory,
         })
       : `AKTUELLE FRAGE:\n${input.userQuestion}`;
     
