@@ -126,6 +126,13 @@ PERFORMANCE TIPS:
 4. LIMIT wird automatisch hinzugefügt (max 200 Zeilen)
 5. Nutze WHERE-Filter vor JOINs wenn möglich
 
+WICHTIGE DATENTYP-HINWEISE:
+- EXTRACT() nur mit DATE/TIMESTAMP Spalten verwenden, NICHT mit TEXT!
+- DATE-Spalten: match_date (matches), birth_date (players, coaches)
+- TEXT-Spalten (für Datumsvergleiche CAST verwenden): start_date/end_date (coach_careers), kickoff_time (matches)
+- Für Jahre aus TEXT: Verwende SUBSTRING(start_date, 1, 4) oder WHERE start_date LIKE '2023%'
+- Für Jahre aus DATE: Verwende EXTRACT(YEAR FROM match_date)
+
 KEY STATISTICS:
 - 121 Saisonen (1905-2026)
 - 3,956 Spiele (inkl. 668 historische Profirest-Matches)
