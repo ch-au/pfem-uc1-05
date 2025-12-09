@@ -341,8 +341,10 @@ export class PromptsService {
     console.log(`   ${formattedHistory.substring(0, 500)}...`);
 
     // Compile system prompt with Kontext and conversation history variables
+    // Note: Langfuse prompt uses VORHERIGE_KONVERSATION (singular), fallback uses VORHERIGE_KONVERSATIONEN (plural)
     const systemPrompt = this.compileTemplate(systemTemplate, {
       Kontext: input.schemaContext,
+      VORHERIGE_KONVERSATION: formattedHistory,
       VORHERIGE_KONVERSATIONEN: formattedHistory,
     });
 
@@ -350,6 +352,7 @@ export class PromptsService {
     let userPrompt = userTemplate
       ? this.compileTemplate(userTemplate, {
           Frage: input.userQuestion,
+          VORHERIGE_KONVERSATION: formattedHistory,
           VORHERIGE_KONVERSATIONEN: formattedHistory,
         })
       : `AKTUELLE FRAGE:\n${input.userQuestion}`;
