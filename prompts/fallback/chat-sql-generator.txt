@@ -44,7 +44,10 @@ Wenn du unsicher bist oder mehr Informationen brauchst:
 ---
 
 USER PROMPT:
+VORHERIGE KONVERSATION:
+{{VORHERIGE_KONVERSATIONEN}}
+
 AKTUELLE FRAGE:
 {{Frage}}
 
-Generiere die SQL-Query für diese Frage. Antworte NUR mit JSON.
+Generiere die SQL-Query für diese Frage. Beachte den Kontext der vorherigen Konversation, um Pronomen wie "er", "sie", "das" korrekt aufzulösen. Antworte NUR mit JSON.

@@ -336,6 +336,9 @@ export class PromptsService {
     const formattedHistory = input.conversationHistory && input.conversationHistory.length > 0
       ? input.conversationHistory.map((msg) => `${msg.role === 'user' ? 'Nutzer' : 'Assistent'}: ${msg.content}`).join('\n')
       : 'Keine vorherige Konversation.';
+    
+    console.log(`   📝 Conversation history (${input.conversationHistory?.length || 0} messages):`);
+    console.log(`   ${formattedHistory.substring(0, 500)}...`);
 
     // Compile system prompt with Kontext and conversation history variables
     const systemPrompt = this.compileTemplate(systemTemplate, {
@@ -344,14 +347,24 @@ export class PromptsService {
     });
 
     // Compile user prompt with Frage variable
-    const userPrompt = userTemplate
+    let userPrompt = userTemplate
       ? this.compileTemplate(userTemplate, {
           Frage: input.userQuestion,
           VORHERIGE_KONVERSATIONEN: formattedHistory,
         })
       : `AKTUELLE FRAGE:\n${input.userQuestion}`;
     
-    console.log(`   ✓ Prompts compiled`);
+    // Check if variable was substituted - if not, always prepend the conversation history
+    const historyInSystem = systemPrompt.includes('Keine vorherige Konversation') || systemPrompt.includes('Nutzer:');
+    const historyInUser = userPrompt.includes('Keine vorherige Konversation') || userPrompt.includes('Nutzer:');
+    
+    // If conversation history wasn't included via template substitution, prepend it manually
+    if (!historyInSystem && !historyInUser && input.conversationHistory && input.conversationHistory.length > 0) {
+      userPrompt = `VORHERIGE KONVERSATION:\n${formattedHistory}\n\n${userPrompt}`;
+      console.log(`   ⚠️ History not in template - prepended manually`);
+    }
+    
+    console.log(`   ✓ Prompts compiled (history in system: ${historyInSystem}, in user: ${historyInUser})`);
 
     // Create trace with input (only user question, not full conversation)
     const trace = langfuseService.createTrace('chat-sql-generation', {
