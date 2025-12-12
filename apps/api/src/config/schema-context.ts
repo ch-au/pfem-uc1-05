@@ -67,8 +67,9 @@ HAUPTTABELLEN:
     Columns: match_coach_id (INT PK), match_id (INT FK), team_id (INT FK), coach_id (INT FK), role (TEXT)
 
 14. player_careers
-    Columns: career_id (INT PK), player_id (INT FK), team_name (TEXT), team_id (INT FK),
+    Columns: career_id (INT PK), player_id (INT FK), team_name (TEXT),
              start_year (INT), end_year (INT), notes (TEXT)
+    HINWEIS: KEINE team_id Spalte! Verwende team_name für Suche.
 
 15. season_squads
     Columns: season_squad_id (INT PK), season_competition_id (INT FK), player_id (INT FK),
