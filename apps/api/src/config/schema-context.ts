@@ -96,6 +96,19 @@ PFLICHTSPIELE vs FREUNDSCHAFTSSPIELE:
 - Freundschaftsspiele nur inkludieren wenn explizit angefragt
 - competitions.name Werte: 'Bundesliga', '2. Bundesliga', 'DFB-Pokal', 'Freundschaftsspiele', etc.
 
+TEAM-NAMEN SUCHE:
+- NIEMALS exakte Matches (=) für Team-Namen verwenden!
+- IMMER ILIKE mit Wildcards für robuste Suche:
+  WHERE t.name ILIKE '%mainz%' OR t.normalized_name ILIKE '%mainz%'
+  WHERE t.name ILIKE '%bayern%' OR t.normalized_name ILIKE '%bayern%'
+- Beispiel normalized_name Werte:
+  - '1. fsv mainz 05' (mit Punkt nach der 1!)
+  - 'fc bayern munchen' (ohne Umlaut, lowercase)
+  - 'borussia dortmund'
+  - 'vfb stuttgart'
+- Bei Spielen gegen bestimmte Teams:
+  WHERE (t_home.name ILIKE '%bayern%' OR t_away.name ILIKE '%bayern%')
+
 SPIELER-NAMEN FUZZY SUCHE:
 - pg_trgm Extension aktiviert für Trigram-Similarity
 - Kombiniere ILIKE und Trigram für beste Ergebnisse:
