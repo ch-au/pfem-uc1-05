@@ -1,83 +1,83 @@
 // FSV Mainz 05 Database Schema Context for AI prompts
-// Updated: 2025-11-25 - Synced with actual PostgreSQL database
+// Updated: 2025-12-12 - Synced with actual PostgreSQL database
 
 export const SCHEMA_CONTEXT = `
 FSV Mainz 05 Football Database Schema (PostgreSQL):
 Database: Neon PostgreSQL Cloud
-Status: ✅ Production Ready (3,956 matches, 9,955 players, 8,312 goals)
+Status: ✅ Production Ready (4,680 matches, 10,191 players, 9,897 goals)
 
 HAUPTTABELLEN:
 
-1. teams (585 Zeilen)
-   Columns: team_id (INT PK), name (TEXT UNIQUE), normalized_name (TEXT), team_type (TEXT), profile_url (TEXT)
+1. teams (828 Zeilen)
+   Columns: team_id (INT PK), name (TEXT UNIQUE), normalized_name (TEXT), team_type (TEXT), profile_url (TEXT), name_embedding (vector)
    WICHTIG: FSV Mainz 05 hat IMMER team_id = 1
 
-2. players (9,955 Zeilen)
-   Columns: player_id (INT PK), name (TEXT), normalized_name (TEXT), birth_date (DATE), 
-            birth_place (TEXT), height_cm (INT), weight_kg (INT), primary_position (TEXT), 
-            nationality (TEXT), profile_url (TEXT), image_url (TEXT)
+2. players (10,191 Zeilen)
+   Columns: player_id (INT PK), name (TEXT), normalized_name (TEXT), birth_date (TEXT),
+            birth_place (TEXT), height_cm (INT), weight_kg (INT), primary_position (TEXT),
+            nationality (TEXT), profile_url (TEXT), image_url (TEXT), name_embedding (vector)
 
-3. matches (3,956 Zeilen - inkl. 668 historische Profirest-Spiele)
+3. matches (4,680 Zeilen)
    Columns: match_id (INT PK), season_competition_id (INT FK), round_name (TEXT), matchday (INT),
-            leg (INT), match_date (DATE), kickoff_time (TEXT), venue (TEXT), attendance (INT),
+            leg (INT), match_date (TEXT), kickoff_time (TEXT), venue (TEXT), attendance (INT),
             referee_id (INT FK), home_team_id (INT FK), away_team_id (INT FK),
             home_score (INT), away_score (INT), halftime_home (INT), halftime_away (INT),
             extra_time_home (INT), extra_time_away (INT), penalties_home (INT), penalties_away (INT),
             source_file (TEXT)
 
-4. goals (8,312 Zeilen)
+4. goals (9,897 Zeilen)
    Columns: goal_id (INT PK), match_id (INT FK), team_id (INT FK), player_id (INT FK),
             assist_player_id (INT FK), minute (INT), stoppage (INT), score_home (INT), score_away (INT),
-            event_type (TEXT: NULL, 'penalty', 'own_goal')
+            event_type (TEXT: 'goal', 'penalty', 'own_goal')
 
-5. cards (5,768 Zeilen)
+5. cards (5,765 Zeilen)
    Columns: card_id (INT PK), match_id (INT FK), team_id (INT FK), player_id (INT FK),
             minute (INT), stoppage (INT), card_type (TEXT: 'yellow', 'red', 'second_yellow')
-   NOTE: 94.5% der Karten haben minute = NULL (historische Daten)
+   NOTE: Viele historische Karten haben minute = NULL
 
-6. match_lineups (91,475 Zeilen)
+6. match_lineups (100,373 Zeilen)
    Columns: lineup_id (INT PK), match_id (INT FK), team_id (INT FK), player_id (INT FK),
             shirt_number (INT), is_starter (BOOLEAN), minute_on (INT), stoppage_on (INT),
             minute_off (INT), stoppage_off (INT)
 
-7. match_substitutions (10,029 Zeilen)
-   Columns: substitution_id (INT PK), match_id (INT FK), player_on_id (INT FK),
+7. match_substitutions (13,339 Zeilen)
+   Columns: substitution_id (INT PK), match_id (INT FK), team_id (INT FK), player_on_id (INT FK),
             player_off_id (INT FK), minute (INT), stoppage (INT)
 
 8. seasons (121 Zeilen: 1905-2026)
    Columns: season_id (INT PK), label (TEXT: '2023-24'), start_year (INT), end_year (INT), team_id (INT FK)
 
-9. season_competitions (175 Zeilen)
+9. season_competitions
    Columns: season_competition_id (INT PK), season_id (INT FK), competition_id (INT FK),
             stage_label (TEXT), source_path (TEXT)
 
-10. competitions (23 Zeilen)
+10. competitions (24 Zeilen)
     Columns: competition_id (INT PK), name (TEXT: 'Bundesliga', 'DFB-Pokal', etc.),
              normalized_name (TEXT), level (TEXT), gender (TEXT)
 
-11. coaches (566 Zeilen)
-    Columns: coach_id (INT PK), name (TEXT), normalized_name (TEXT), birth_date (DATE),
+11. coaches (615 Zeilen)
+    Columns: coach_id (INT PK), name (TEXT), normalized_name (TEXT), birth_date (TEXT),
              birth_place (TEXT), nationality (TEXT), profile_url (TEXT)
 
-12. coach_careers (522 Zeilen)
+12. coach_careers
     Columns: career_id (INT PK), coach_id (INT FK), team_name (TEXT), start_date (TEXT),
              end_date (TEXT), role (TEXT)
 
-13. match_coaches (2,832 Zeilen)
+13. match_coaches
     Columns: match_coach_id (INT PK), match_id (INT FK), team_id (INT FK), coach_id (INT FK), role (TEXT)
 
-14. player_careers (4,760 Zeilen)
+14. player_careers
     Columns: career_id (INT PK), player_id (INT FK), team_name (TEXT), team_id (INT FK),
              start_year (INT), end_year (INT), notes (TEXT)
 
-15. season_squads (434 Zeilen)
+15. season_squads
     Columns: season_squad_id (INT PK), season_competition_id (INT FK), player_id (INT FK),
              team_id (INT FK NOT NULL), position_group (TEXT), shirt_number (INT), status (TEXT), notes (TEXT)
 
 16. referees (870 Zeilen)
     Columns: referee_id (INT PK), name (TEXT), normalized_name (TEXT), profile_url (TEXT)
 
-17. match_referees (2,879 Zeilen)
+17. match_referees
     Columns: match_referee_id (INT PK), match_id (INT FK), referee_id (INT FK), role (TEXT)
 
 WICHTIGE FILTER:
@@ -89,6 +89,25 @@ WICHTIGE FILTER:
 - Gegentore: g.team_id != 1 (in Spielen wo FSV beteiligt ist)
 - Eigentore: g.event_type = 'own_goal'
 - Elfmetertore: g.event_type = 'penalty'
+
+PFLICHTSPIELE vs FREUNDSCHAFTSSPIELE:
+- Standardmäßig NUR Pflichtspiele (Bundesliga, DFB-Pokal, 2. Bundesliga, etc.)
+- Filter: JOIN competitions c ON ... WHERE c.name != 'Freundschaftsspiele'
+- Freundschaftsspiele nur inkludieren wenn explizit angefragt
+- competitions.name Werte: 'Bundesliga', '2. Bundesliga', 'DFB-Pokal', 'Freundschaftsspiele', etc.
+
+SPIELER-NAMEN FUZZY SUCHE:
+- pg_trgm Extension aktiviert für Trigram-Similarity
+- Kombiniere ILIKE und Trigram für beste Ergebnisse:
+  WHERE p.normalized_name ILIKE '%suchname%'
+     OR similarity(p.normalized_name, 'suchname') > 0.3
+     OR similarity(SUBSTRING(p.normalized_name FROM '([^ ]+)$'), 'suchname') > 0.3
+  ORDER BY GREATEST(
+    similarity(p.normalized_name, 'suchname'),
+    similarity(SUBSTRING(p.normalized_name FROM '([^ ]+)$'), 'suchname')
+  ) DESC
+- ILIKE findet exakte Substring-Matches
+- Trigram mit Nachnamen-Extraktion findet z.B. "MICHAEL THURK" bei Typo "Turk"
 
 BEISPIEL-QUERIES:
 
@@ -119,28 +138,41 @@ WHERE (m.home_team_id = 1 OR m.away_team_id = 1)
        OR (m.away_team_id = 1 AND m.away_score > m.home_score))
 ORDER BY m.match_date;
 
-PERFORMANCE TIPS:
-1. Nutze WITH (CTEs) für komplexe Abfragen
-2. Verwende Tabellenaliase: p=players, m=matches, g=goals, t=teams, s=seasons, c=competitions
-3. JOIN-Reihenfolge: Von kleinsten zu größten Tabellen
-4. LIMIT wird automatisch hinzugefügt (max 200 Zeilen)
-5. Nutze WHERE-Filter vor JOINs wenn möglich
+MATERIALIZED VIEWS (für schnelle Aggregat-Abfragen):
 
-WICHTIGE DATENTYP-HINWEISE:
-- EXTRACT() nur mit DATE/TIMESTAMP Spalten verwenden, NICHT mit TEXT!
-- DATE-Spalten: match_date (matches), birth_date (players, coaches)
-- TEXT-Spalten (für Datumsvergleiche CAST verwenden): start_date/end_date (coach_careers), kickoff_time (matches)
-- Für Jahre aus TEXT: Verwende SUBSTRING(start_date, 1, 4) oder WHERE start_date LIKE '2023%'
-- Für Jahre aus DATE: Verwende EXTRACT(YEAR FROM match_date)
+mv_player_career_stats - Spieler-Karrierestatistiken
+  Columns: player_id, name, normalized_name, birth_date, total_matches, wins, draws, losses,
+           goals, assists, yellow_cards, red_cards, first_match, last_match
+
+mv_team_stats - Statistiken aller Teams gegen FSV
+  Columns: team_id, name, normalized_name, total_matches, wins, draws, losses,
+           goals_for, goals_against, first_match, last_match
+
+mv_season_summary - Saison-Zusammenfassungen pro Wettbewerb
+  Columns: season_id, season, competition, competition_level, matches_played,
+           home_wins, away_wins, draws, total_goals, season_start, season_end
+
+mv_coach_record - Trainer-Bilanzen
+  Columns: coach_id, name, normalized_name, birth_date, total_matches,
+           wins, draws, losses, first_match, last_match
+
+PERFORMANCE TIPS:
+1. Nutze Materialized Views für Aggregatstatistiken (100-400x schneller)
+2. Nutze WITH (CTEs) für komplexe Abfragen
+3. Verwende Tabellenaliase: p=players, m=matches, g=goals, t=teams, s=seasons, c=competitions
+4. JOIN-Reihenfolge: Von kleinsten zu größten Tabellen
+5. LIMIT wird automatisch hinzugefügt (max 200 Zeilen)
+6. Nutze WHERE-Filter vor JOINs wenn möglich
 
 KEY STATISTICS:
 - 121 Saisonen (1905-2026)
-- 3,956 Spiele (inkl. 668 historische Profirest-Matches)
-- 9,955 Spieler
-- 8,312 Tore
-- 5,768 Karten
-- 91,475 Lineup-Einträge
-- Top Scorer: Bopp mit 142 Toren
+- 4,680 Spiele
+- 10,191 Spieler
+- 9,897 Tore
+- 5,765 Karten
+- 100,373 Lineup-Einträge
+- 828 Teams
+- 615 Trainer
 `;
 
 export const getSchemaContext = (): string => SCHEMA_CONTEXT;
