@@ -250,4 +250,24 @@ export async function quizRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Failed to fetch global leaderboard' });
     }
   });
+
+  // Delete a game
+  fastify.delete<{
+    Params: { gameId: string };
+  }>('/quiz/game/:gameId', async (request, reply) => {
+    try {
+      const { gameId } = request.params;
+
+      await quizService.deleteGame(gameId);
+      fastify.log.info({ gameId }, 'quiz game deleted');
+
+      return reply.code(204).send();
+    } catch (error: any) {
+      fastify.log.error(error);
+      if (error.message === 'Game not found') {
+        return reply.code(404).send({ error: 'Game not found' });
+      }
+      return reply.code(500).send({ error: 'Failed to delete game' });
+    }
+  });
 }

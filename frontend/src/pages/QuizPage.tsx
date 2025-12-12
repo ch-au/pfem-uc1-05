@@ -8,7 +8,7 @@ import { QuizOption } from '../components/quiz/QuizOption';
 import { Leaderboard } from '../components/quiz/Leaderboard';
 import { useQuizGame } from '../hooks/useQuizGame';
 import { quizService } from '../services/quizService';
-import { Trophy, Check, X, Lightbulb } from 'lucide-react';
+import { Trophy, Check, X, Lightbulb, Trash2 } from 'lucide-react';
 import type { QuizGameState, QuizLeaderboardEntry } from '../types/api';
 import styles from './QuizPage.module.css';
 
@@ -148,6 +148,20 @@ export const QuizPage: React.FC = () => {
         const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
         alert(`Fehler beim Laden des Quiz: ${errorMessage}`);
       }
+    }
+  };
+
+  const handleDeleteGame = async (gameId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Dieses Quiz wirklich löschen?')) return;
+    
+    try {
+      await quizService.deleteGame(gameId);
+      await loadGameHistory();
+      await loadGlobalLeaderboard();
+    } catch (error) {
+      console.error('Failed to delete game:', error);
+      alert('Fehler beim Löschen des Quiz');
     }
   };
 
@@ -442,7 +456,7 @@ export const QuizPage: React.FC = () => {
               {activeGames.length > 0 ? (
                 <div className={styles.gameList}>
                   {activeGames.map((game) => (
-                    <button
+                    <div
                       key={game.game_id}
                       className={styles.gameListItem}
                       onClick={() => handleSelectGame(game.game_id)}
@@ -453,10 +467,19 @@ export const QuizPage: React.FC = () => {
                           Runde {game.current_round}/{game.num_rounds} • {game.players.length} Spieler
                         </div>
                       </div>
-                      <span className={styles.badge}>
-                        {game.status === 'pending' ? 'Wartet' : 'Läuft'}
-                      </span>
-                    </button>
+                      <div className={styles.gameActions}>
+                        <span className={styles.badge}>
+                          {game.status === 'pending' ? 'Wartet' : 'Läuft'}
+                        </span>
+                        <button
+                          className={styles.deleteButton}
+                          onClick={(e) => handleDeleteGame(game.game_id, e)}
+                          title="Quiz löschen"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -471,7 +494,7 @@ export const QuizPage: React.FC = () => {
               {completedGames.length > 0 ? (
                 <div className={styles.gameList}>
                   {completedGames.map((game) => (
-                    <button
+                    <div
                       key={game.game_id}
                       className={styles.gameListItem}
                       onClick={() => handleSelectGame(game.game_id)}
@@ -482,8 +505,17 @@ export const QuizPage: React.FC = () => {
                           {game.num_rounds} Runden • {game.players.length} Spieler
                         </div>
                       </div>
-                      <span className={styles.badge}>Beendet</span>
-                    </button>
+                      <div className={styles.gameActions}>
+                        <span className={styles.badge}>Beendet</span>
+                        <button
+                          className={styles.deleteButton}
+                          onClick={(e) => handleDeleteGame(game.game_id, e)}
+                          title="Quiz löschen"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (

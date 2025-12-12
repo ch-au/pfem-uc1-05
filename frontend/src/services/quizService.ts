@@ -140,6 +140,13 @@ export const quizService = {
     );
     return response.data.leaderboard || [];
   },
+
+  /**
+   * Delete a quiz game
+   */
+  async deleteGame(gameId: string): Promise<void> {
+    await api.delete(`/quiz/game/${gameId}`);
+  },
 };
 
 

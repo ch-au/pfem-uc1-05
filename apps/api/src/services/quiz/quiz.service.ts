@@ -645,6 +645,16 @@ export class QuizService {
    * Get quiz generation progress
    */
   async getGenerationProgress(gameId: string): Promise<QuizGenerationProgressResponse> {
+    // Check game status first
+    const game = await postgresService.queryOne<{ status: string; num_rounds: number }>(
+      `SELECT status, num_rounds FROM public.quiz_games WHERE game_id = $1`,
+      [gameId]
+    );
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
     const jobs = await postgresService.queryMany<QuizGenerationJob>(
       `SELECT * FROM quiz_generation_jobs
        WHERE game_id = $1
@@ -652,15 +662,29 @@ export class QuizService {
       [gameId]
     );
 
+    // If no jobs exist, return based on game status
     if (jobs.length === 0) {
-      throw new Error('No generation jobs found for this game');
+      // Game exists but no jobs - could be completed/abandoned/in_progress
+      const status = game.status === 'in_progress' || game.status === 'completed' 
+        ? 'completed' 
+        : game.status === 'abandoned' 
+          ? 'failed' 
+          : 'generating';
+      
+      return {
+        game_id: gameId,
+        status,
+        progress: {
+          game_id: gameId,
+          total_rounds: game.num_rounds,
+          completed_rounds: game.status === 'in_progress' || game.status === 'completed' ? game.num_rounds : 0,
+          current_round: undefined,
+          current_status: undefined,
+          error_message: game.status === 'abandoned' ? 'Game was abandoned' : undefined,
+          rounds: [],
+        },
+      };
     }
-
-    // Check game status to determine if generation truly failed
-    const game = await postgresService.queryOne<{ status: string }>(
-      `SELECT status FROM public.quiz_games WHERE game_id = $1`,
-      [gameId]
-    );
 
     const completedCount = jobs.filter((j) => j.status === 'round_created').length;
     const failedJobs = jobs.filter((j) => j.status === 'failed');
@@ -861,6 +885,29 @@ export class QuizService {
     }
 
     return result;
+  }
+
+  /**
+   * Delete a quiz game and all related data
+   */
+  async deleteGame(gameId: string): Promise<void> {
+    const game = await postgresService.queryOne<{ game_id: string }>(
+      `SELECT game_id FROM public.quiz_games WHERE game_id = $1`,
+      [gameId]
+    );
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    // Delete in order of dependencies
+    await postgresService.query(
+      `DELETE FROM public.quiz_answers WHERE round_id IN (SELECT round_id FROM public.quiz_rounds WHERE game_id = $1)`,
+      [gameId]
+    );
+    await postgresService.query(`DELETE FROM public.quiz_rounds WHERE game_id = $1`, [gameId]);
+    await postgresService.query(`DELETE FROM public.quiz_generation_jobs WHERE game_id = $1`, [gameId]);
+    await postgresService.query(`DELETE FROM public.quiz_games WHERE game_id = $1`, [gameId]);
   }
 
   /**
