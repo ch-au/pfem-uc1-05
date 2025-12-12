@@ -184,18 +184,7 @@ export const useQuizGame = () => {
         } catch {
           // best-effort
         }
-        // All players have answered, automatically advance to next round after showing result
-        setTimeout(async () => {
-          try {
-            const roundResult = await nextRound();
-            if (roundResult?.status === 'completed') {
-              const leaderboardData = await quizService.getLeaderboard(gameId);
-              setLeaderboard(leaderboardData.leaderboard);
-            }
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to advance round');
-          }
-        }, 2000); // Wait 2 seconds to show result before advancing
+        // User will click "Next Round" button manually to advance
       } else {
         setCurrentPlayerIndex(nextPlayerIndex);
       }
