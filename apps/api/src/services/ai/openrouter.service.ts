@@ -1,6 +1,23 @@
 import { OpenRouter } from '@openrouter/sdk';
 import { env } from '../../config/env.js';
 
+const DEFAULT_TIMEOUT_MS = 60000; // 60 seconds per LLM call
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+  let timeoutId: NodeJS.Timeout;
+  
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error(`LLM timeout: ${operation} exceeded ${timeoutMs}ms`)),
+      timeoutMs
+    );
+  });
+  
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
 export interface JsonSchemaDefinition {
   name: string;
   strict?: boolean;
@@ -74,13 +91,17 @@ export class OpenRouterService {
       responseFormat = { type: 'json_object' };
     }
 
-    const response = await this.client.chat.send({
-      model: options.model ?? env.OPENROUTER_MODEL,
-      messages,
-      temperature: options.temperature ?? 0.7,
-      maxTokens: options.maxOutputTokens ?? 2000,
-      responseFormat,
-    });
+    const response = await withTimeout(
+      this.client.chat.send({
+        model: options.model ?? env.OPENROUTER_MODEL,
+        messages,
+        temperature: options.temperature ?? 0.7,
+        maxTokens: options.maxOutputTokens ?? 2000,
+        responseFormat,
+      }),
+      DEFAULT_TIMEOUT_MS,
+      'generateJSON'
+    );
 
     const content = response.choices[0]?.message?.content;
     let contentStr = typeof content === 'string' ? content : JSON.stringify(content) || '{}';

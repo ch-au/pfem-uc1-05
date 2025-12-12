@@ -1,6 +1,7 @@
 import { postgresService } from '../database/postgres.service.js';
 import { promptsService } from '../ai/prompts.service.js';
 import { getSchemaContext } from '../../config/schema-context.js';
+import { quizLogger, type QuizLogContext } from './quiz-logger.js';
 import type {
   QuizGame,
   QuizQuestion,
@@ -359,15 +360,25 @@ export class QuizService {
     // 3. Generate questions with SQL queries (with buffer for failures)
     const bufferMultiplier = 2.0; // Generate 100% more questions as buffer for SQL failures
     const questionsToGenerate = Math.ceil(config.numRounds * bufferMultiplier);
-    console.log(
-      `\n${'='.repeat(80)}\n🎯 QUIZ GENERATION START\n${'='.repeat(80)}\nGenerating ${questionsToGenerate} questions (${config.numRounds} needed + buffer)\nCategory: ${config.category} | Difficulty: ${config.difficulty}\nGame ID: ${gameId}\n${'='.repeat(80)}\n`
-    );
+    const logCtx: QuizLogContext = { gameId };
+    
+    // Cache schema context once per job (performance optimization)
+    const schemaContext = getSchemaContext();
+    
+    quizLogger.info(`🎯 QUIZ GENERATION START`, logCtx, {
+      questionsToGenerate,
+      numRounds: config.numRounds,
+      category: config.category,
+      difficulty: config.difficulty,
+    });
+    
+    const generationStart = Date.now();
     const questionGeneration = await promptsService.executeQuizQuestionGenerator({
       category: config.category,
       difficulty: config.difficulty,
       previousQuestions,
       count: questionsToGenerate,
-      schemaContext: getSchemaContext(),
+      schemaContext,
       rounds: config.numRounds,
       numberOfPlayers: config.numberOfPlayers,
     });
@@ -410,7 +421,7 @@ export class QuizService {
           const sqlGeneration = await promptsService.executeChatSQLGenerator({
             userQuestion: generatedQuestion.questionText,
             conversationHistory: [],
-            schemaContext: getSchemaContext(),
+            schemaContext,
           });
 
           const { sql, confidence, needsClarification } = sqlGeneration.result;
@@ -547,33 +558,31 @@ export class QuizService {
           questionCreated = true;
           roundNumber++;
         } catch (error) {
-          // Handle errors - log and skip this question
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          const errorStack = error instanceof Error ? error.stack : '';
+          const err = error instanceof Error ? error : new Error('Unknown error');
+          const logCtx: QuizLogContext = { gameId, roundNumber, stage: 'question_generation' };
           
-          console.error(`\n❌ ROUND ${roundNumber} ERROR (Attempt ${retryCount + 1}/${maxRetries})`);
-          console.error(`   Error: ${errorMessage}`);
-          if (errorStack && typeof errorStack === 'string') {
-            console.error(`   Stack: ${errorStack.substring(0, 200)}`);
-          }
+          // Categorize error for smart retry logic
+          const { code: errorCode, recoverable } = quizLogger.categorizeError(err);
+          retryCount++;
           
+          quizLogger.stageFailed(`Round ${roundNumber} (attempt ${retryCount}/${maxRetries})`, logCtx, err, errorCode);
+          
+          // Update job with detailed error info
           await postgresService.query(
             `UPDATE quiz_generation_jobs
-             SET status = 'failed', error_message = $1, updated_at = CURRENT_TIMESTAMP
-             WHERE game_id = $2 AND round_number = $3`,
-            [errorMessage, gameId, roundNumber]
+             SET status = 'failed', 
+                 error_message = $1, 
+                 error_code = $2, 
+                 retry_count = $3,
+                 last_sql_error = CASE WHEN $2 LIKE 'SQL_%' THEN $1 ELSE last_sql_error END,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE game_id = $4 AND round_number = $5`,
+            [err.message, errorCode, retryCount, gameId, roundNumber]
           );
           
-          // Check if this is an unrecoverable SQL error (skip retries for these)
-          const isUnrecoverableError = 
-            errorMessage.includes('does not exist') ||
-            errorMessage.includes('syntax error') ||
-            errorMessage.includes('column') ||
-            errorMessage.includes('relation') ||
-            errorMessage.includes('no results');
-          
-          if (isUnrecoverableError) {
-            console.warn(`   ⏭️  Unrecoverable SQL error - skipping to next question\n`);
+          // Skip retries for unrecoverable errors (SQL structure problems)
+          if (!recoverable) {
+            quizLogger.warn(`Unrecoverable error (${errorCode}) - skipping to next question`, logCtx);
             questionIndex++;
             if (questionIndex >= questions.length) {
               throw new Error(`Failed to generate ${config.numRounds} valid questions. Only ${roundNumber - 1} succeeded.`);
@@ -581,17 +590,14 @@ export class QuizService {
             break; // Exit retry loop immediately
           }
           
-          retryCount++;
           if (retryCount >= maxRetries) {
-            console.warn(`   ⏭️  Skipping question after ${maxRetries} retries, moving to next question\n`);
+            quizLogger.warn(`Max retries (${maxRetries}) reached - skipping to next question`, logCtx);
             questionIndex++;
-            
-            // If we've run out of questions, we need to generate more or fail
             if (questionIndex >= questions.length) {
               throw new Error(`Failed to generate ${config.numRounds} valid questions. Only ${roundNumber - 1} succeeded.`);
             }
           } else {
-            console.log(`   🔄 Retrying...\n`);
+            quizLogger.info(`Retrying (${retryCount}/${maxRetries})...`, logCtx);
           }
         }
       }
@@ -611,12 +617,20 @@ export class QuizService {
     
     // If we generated fewer than requested but still enough, update the game's num_rounds
     if (generatedCount < config.numRounds) {
-      console.warn(`⚠️  Generated ${generatedCount}/${config.numRounds} questions. Adjusting game to use available questions.`);
+      quizLogger.warn(`Generated ${generatedCount}/${config.numRounds} questions. Adjusting game.`, logCtx);
       await postgresService.query(
         `UPDATE public.quiz_games SET num_rounds = $1 WHERE game_id = $2`,
         [generatedCount, gameId]
       );
     }
+    
+    const totalDuration = Date.now() - generationStart;
+    quizLogger.info(`✅ QUIZ GENERATION COMPLETE`, logCtx, {
+      generatedCount,
+      requestedCount: config.numRounds,
+      duration_ms: totalDuration,
+      avgPerQuestion_ms: Math.round(totalDuration / generatedCount),
+    });
   }
 
   /**
