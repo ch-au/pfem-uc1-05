@@ -411,6 +411,8 @@ export class QuizService {
         continue;
       }
 
+      let lastGeneratedSql: string | null = null; // Track SQL for error logging
+      
       while (!questionCreated && retryCount < maxRetries) {
         try {
           console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questions.length}`);
@@ -425,6 +427,7 @@ export class QuizService {
           });
 
           const { sql, confidence, needsClarification } = sqlGeneration.result;
+          lastGeneratedSql = sql; // Store for error logging
 
           // Check if SQL was successfully generated
           if (needsClarification || !sql) {
@@ -432,7 +435,7 @@ export class QuizService {
           }
 
           console.log(`   ✓ Step 1: SQL Query Generated (confidence: ${confidence})`);
-          console.log(`     SQL: ${sql?.substring(0, 120) ?? '<no SQL>'}...`);
+          console.log(`   📝 FULL SQL QUERY:\n${sql ?? '<no SQL>'}`);
 
           // Update job status - SQL generated
           await postgresService.query(
@@ -564,6 +567,11 @@ export class QuizService {
           // Categorize error for smart retry logic
           const { code: errorCode, recoverable } = quizLogger.categorizeError(err);
           retryCount++;
+          
+          // Log the full SQL that caused the error
+          console.error(`\n❌ FAILED SQL QUERY:`);
+          console.error(`${lastGeneratedSql ?? 'SQL not yet generated'}`);
+          console.error(`   Error: ${err.message}`);
           
           quizLogger.stageFailed(`Round ${roundNumber} (attempt ${retryCount}/${maxRetries})`, logCtx, err, errorCode);
           
