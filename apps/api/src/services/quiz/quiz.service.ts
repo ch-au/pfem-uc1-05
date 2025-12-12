@@ -488,8 +488,8 @@ export class QuizService {
 
           // Step 5: Save question to database
           const allAnswers = [correctAnswer, ...incorrectAnswers];
-          // Keep answer order stable; no shuffling on the server
-          const stableAnswers = allAnswers;
+          // Shuffle answers so correct answer is not always first
+          const shuffledAnswers = [...allAnswers].sort(() => Math.random() - 0.5);
 
           const question = await postgresService.queryOne<QuizQuestion>(
             `INSERT INTO public.quiz_questions
@@ -502,7 +502,7 @@ export class QuizService {
             [
               generatedQuestion.questionText,
               correctAnswer,
-              JSON.stringify(stableAnswers),
+              JSON.stringify(shuffledAnswers),
               explanation,
               config.difficulty,
               config.category,
