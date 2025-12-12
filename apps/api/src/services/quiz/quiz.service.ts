@@ -73,6 +73,39 @@ export class QuizService {
    * Start a quiz game
    */
   async startGame(gameId: string): Promise<QuizGameResponse> {
+    // First check if game exists
+    const existingGame = await postgresService.queryOne<QuizGame>(
+      `SELECT * FROM public.quiz_games WHERE game_id = $1`,
+      [gameId]
+    );
+
+    if (!existingGame) {
+      throw new Error('Game not found');
+    }
+
+    // Check if at least round 1 exists before starting
+    const round1Exists = await postgresService.queryOne<{ count: number }>(
+      `SELECT COUNT(*) as count FROM public.quiz_rounds WHERE game_id = $1 AND round_number = 1`,
+      [gameId]
+    );
+
+    if (!round1Exists || round1Exists.count === 0) {
+      // Check generation status for better error message
+      const genStatus = await postgresService.queryOne<{ total: number; completed: number; status: string }>(
+        `SELECT 
+           COUNT(*) as total,
+           SUM(CASE WHEN status = 'round_created' THEN 1 ELSE 0 END) as completed,
+           COALESCE(MAX(status), 'pending') as status
+         FROM quiz_generation_jobs WHERE game_id = $1`,
+        [gameId]
+      );
+
+      if (genStatus && genStatus.total > 0 && genStatus.completed < genStatus.total) {
+        throw new Error(`Cannot start game: Questions are still being generated (${genStatus.completed}/${genStatus.total} completed)`);
+      }
+      throw new Error('Cannot start game: No questions have been generated yet');
+    }
+
     const game = await postgresService.queryOne<QuizGame>(
       `UPDATE public.quiz_games
        SET status = 'in_progress', current_round = 1
@@ -82,7 +115,7 @@ export class QuizService {
     );
 
     if (!game) {
-      throw new Error('Game not found');
+      throw new Error('Failed to start game');
     }
 
     return this.formatGameResponse(game);
@@ -254,13 +287,56 @@ export class QuizService {
       throw new Error('Game not found');
     }
 
-    if (game.current_round >= game.num_rounds) {
-      // Game is complete
+    // Check how many rounds actually exist (not just num_rounds target)
+    const roundsCount = await postgresService.queryOne<{ count: number; max_round: number }>(
+      `SELECT COUNT(*) as count, COALESCE(MAX(round_number), 0) as max_round 
+       FROM public.quiz_rounds WHERE game_id = $1`,
+      [gameId]
+    );
+
+    const actualRoundsAvailable = roundsCount?.max_round ?? 0;
+
+    // Check if we've reached the end of available rounds
+    if (game.current_round >= actualRoundsAvailable) {
+      // Game is complete (either finished all available rounds or reached target)
       await postgresService.query(
         `UPDATE public.quiz_games
-         SET status = 'completed', completed_at = CURRENT_TIMESTAMP, current_round = $2
+         SET status = 'completed', completed_at = CURRENT_TIMESTAMP
          WHERE game_id = $1`,
-        [gameId, game.current_round + 1]
+        [gameId]
+      );
+
+      return this.getGame(gameId);
+    }
+
+    const nextRoundNumber = game.current_round + 1;
+
+    // Verify next round actually exists before advancing
+    const nextRoundExists = await postgresService.queryOne<{ count: number }>(
+      `SELECT COUNT(*) as count FROM public.quiz_rounds WHERE game_id = $1 AND round_number = $2`,
+      [gameId, nextRoundNumber]
+    );
+
+    if (!nextRoundExists || nextRoundExists.count === 0) {
+      // Check if more questions are being generated
+      const genStatus = await postgresService.queryOne<{ total: number; completed: number }>(
+        `SELECT 
+           COUNT(*) as total,
+           SUM(CASE WHEN status = 'round_created' THEN 1 ELSE 0 END) as completed
+         FROM quiz_generation_jobs WHERE game_id = $1`,
+        [gameId]
+      );
+
+      if (genStatus && genStatus.total > 0 && genStatus.completed < genStatus.total) {
+        throw new Error(`Cannot advance: Round ${nextRoundNumber} is still being generated (${genStatus.completed}/${genStatus.total} completed)`);
+      }
+
+      // No more rounds available - complete the game
+      await postgresService.query(
+        `UPDATE public.quiz_games
+         SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+         WHERE game_id = $1`,
+        [gameId]
       );
 
       return this.getGame(gameId);
@@ -542,12 +618,21 @@ export class QuizService {
             throw new Error('Failed to create question');
           }
 
-          // Step 6: Create round and mark job as complete
-          await postgresService.query(
-            `INSERT INTO public.quiz_rounds (game_id, question_id, round_number)
-             VALUES ($1, $2, $3)`,
-            [gameId, question.question_id, roundNumber]
+          // Step 6: Create round and mark job as complete (skip if already exists from previous attempt)
+          const existingRound = await postgresService.queryOne<{ count: number }>(
+            `SELECT COUNT(*) as count FROM public.quiz_rounds WHERE game_id = $1 AND round_number = $2`,
+            [gameId, roundNumber]
           );
+          
+          if (!existingRound || existingRound.count === 0) {
+            await postgresService.query(
+              `INSERT INTO public.quiz_rounds (game_id, question_id, round_number)
+               VALUES ($1, $2, $3)`,
+              [gameId, question.question_id, roundNumber]
+            );
+          } else {
+            console.log(`   ⏩ Round ${roundNumber} already exists, skipping insert`);
+          }
 
           await postgresService.query(
             `UPDATE quiz_generation_jobs
