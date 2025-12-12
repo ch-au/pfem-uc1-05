@@ -54,7 +54,7 @@ export class QuizService {
     // 3. Generate questions for all rounds
     const generationJob = quizJobQueue.enqueue(() =>
       this.generateQuestionsForGame(game.game_id, {
-        category: category_id ?? 'statistics',
+        category: topic ?? category_id ?? 'statistics',
         difficulty,
         numRounds: num_rounds,
         numberOfPlayers: normalizedPlayers.length,

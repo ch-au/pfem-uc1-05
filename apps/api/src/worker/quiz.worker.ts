@@ -6,6 +6,8 @@ type PendingGame = {
   num_rounds: number;
   difficulty: 'easy' | 'medium' | 'hard';
   category_name: string;
+  topic: string | null;
+  player_count: number;
 };
 
 const log = (...args: any[]) => console.log('[quiz-worker]', ...args);
@@ -13,7 +15,9 @@ const log = (...args: any[]) => console.log('[quiz-worker]', ...args);
 async function fetchPendingGames(): Promise<PendingGame[]> {
   return await postgresService.queryMany<PendingGame>(
     `SELECT g.game_id, g.num_rounds, g.difficulty,
-            COALESCE(c.name, 'statistics') as category_name
+            COALESCE(c.name, 'statistics') as category_name,
+            g.topic,
+            COALESCE(jsonb_array_length(g.player_names::jsonb), 1) as player_count
      FROM public.quiz_games g
      LEFT JOIN public.quiz_categories c ON g.category_id = c.category_id
      WHERE EXISTS (
@@ -27,14 +31,15 @@ async function fetchPendingGames(): Promise<PendingGame[]> {
 }
 
 async function processGame(game: PendingGame): Promise<void> {
-  log(`Processing game ${game.game_id} (${game.num_rounds} rounds, ${game.difficulty}, ${game.category_name})`);
+  const category = game.topic ?? game.category_name;
+  log(`Processing game ${game.game_id} (${game.num_rounds} rounds, ${game.difficulty}, ${category}, ${game.player_count} players)`);
   await quizService.generateQuestionsForGame(
     game.game_id,
     {
-      category: game.category_name,
+      category: category,
       difficulty: game.difficulty,
       numRounds: game.num_rounds,
-      numberOfPlayers: 1,
+      numberOfPlayers: game.player_count,
     },
     { ensureJobs: false }
   );
