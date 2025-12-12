@@ -489,7 +489,7 @@ export class PromptsService {
       SQL: input.sqlQuery,
       ANTWORT: JSON.stringify(input.sqlResult, null, 2),
       VORHERIGE_KONVERSATION: formattedConversation,
-      STYLE: input.style || 'Hochdeutsch',
+      DIALEKT: input.style || 'Hochdeutsch',
     });
     console.log(`   ✓ System prompt compiled`);
     
