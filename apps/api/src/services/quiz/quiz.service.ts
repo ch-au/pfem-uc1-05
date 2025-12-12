@@ -494,8 +494,12 @@ export class QuizService {
 
           // Step 5: Save question to database
           const allAnswers = [correctAnswer, ...incorrectAnswers];
-          // Shuffle answers so correct answer is not always first
-          const shuffledAnswers = [...allAnswers].sort(() => Math.random() - 0.5);
+          // Fisher-Yates shuffle for proper randomization
+          const shuffledAnswers = [...allAnswers];
+          for (let i = shuffledAnswers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
+          }
 
           const question = await postgresService.queryOne<QuizQuestion>(
             `INSERT INTO public.quiz_questions
