@@ -477,12 +477,18 @@ export class PromptsService {
     const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
     console.log(`   ✓ Loaded prompt template`);
 
+    // Format conversation history for prompt
+    const formattedConversation = input.conversationHistory && input.conversationHistory.length > 0
+      ? input.conversationHistory.map((msg) => `${msg.role === 'user' ? 'Nutzer' : 'Assistent'}: ${msg.content}`).join('\n')
+      : 'Keine vorherige Konversation';
+    console.log(`   📝 Conversation history (${input.conversationHistory?.length || 0} messages)`);
+
     // Compile system prompt with German variable names
     const systemPrompt = this.compileTemplate(systemTemplate, {
       FRAGE: input.userQuestion,
       SQL: input.sqlQuery,
       ANTWORT: JSON.stringify(input.sqlResult, null, 2),
-      VORHERIGE_KONVERSATION: '', // TODO: Add conversation history if available
+      VORHERIGE_KONVERSATION: formattedConversation,
       STYLE: input.style || 'Hochdeutsch',
     });
     console.log(`   ✓ System prompt compiled`);
@@ -493,7 +499,7 @@ export class PromptsService {
           FRAGE: input.userQuestion,
           SQL: input.sqlQuery,
           ANTWORT: JSON.stringify(input.sqlResult, null, 2),
-          VORHERIGE_KONVERSATION: '',
+          VORHERIGE_KONVERSATION: formattedConversation,
         })
       : `Generiere eine Antwort für den Chat mit dem Nutzer`;
 

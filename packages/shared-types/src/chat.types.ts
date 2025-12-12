@@ -65,6 +65,7 @@ export interface AnswerFormatterInput {
     executionTimeMs: number;
   };
   style?: ChatStyle;
+  conversationHistory?: Array<{ role: string; content: string }>;
 }
 
 export interface AnswerFormatterOutput {

@@ -121,6 +121,7 @@ export class ChatService {
           executionTimeMs,
         },
         style,
+        conversationHistory,
       });
 
       const {
