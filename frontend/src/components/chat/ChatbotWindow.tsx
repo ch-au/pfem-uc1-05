@@ -10,7 +10,7 @@ import { SuggestionChips } from './SuggestionChips';
 import { useChatbotWindow } from '../../hooks/useChatbotWindow';
 import styles from './ChatbotWindow.module.css';
 
-const contextualSuggestions: string[] = [
+const defaultSuggestions: string[] = [
   'Mehr über die Vereinsgeschichte',
   'Legendäre Spieler',
   'Größte Erfolge',
@@ -117,7 +117,16 @@ export const ChatbotWindow: React.FC = () => {
       <div className={styles.inputContainer}>
         {!showWelcome && messages.length > 0 && (
           <SuggestionChips
-            suggestions={contextualSuggestions}
+            suggestions={(() => {
+              // Find the last assistant message with follow-up questions
+              const lastAssistantMessage = [...messages]
+                .reverse()
+                .find((msg) => msg.role === 'assistant');
+              const followUpQuestions = lastAssistantMessage?.metadata?.follow_up_questions as string[] | undefined;
+              return followUpQuestions && followUpQuestions.length > 0
+                ? followUpQuestions
+                : defaultSuggestions;
+            })()}
             onSelect={sendMessage}
             maxVisible={3}
           />
