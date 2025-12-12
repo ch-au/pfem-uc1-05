@@ -357,7 +357,7 @@ export class QuizService {
     const previousQuestions = existingQuestions.map((q) => q.question_text);
 
     // 3. Generate questions with SQL queries (with buffer for failures)
-    const bufferMultiplier = 1.5; // Generate 50% more questions as buffer
+    const bufferMultiplier = 2.0; // Generate 100% more questions as buffer for SQL failures
     const questionsToGenerate = Math.ceil(config.numRounds * bufferMultiplier);
     console.log(
       `\n${'='.repeat(80)}\n🎯 QUIZ GENERATION START\n${'='.repeat(80)}\nGenerating ${questionsToGenerate} questions (${config.numRounds} needed + buffer)\nCategory: ${config.category} | Difficulty: ${config.difficulty}\nGame ID: ${gameId}\n${'='.repeat(80)}\n`
@@ -559,6 +559,23 @@ export class QuizService {
              WHERE game_id = $2 AND round_number = $3`,
             [errorMessage, gameId, roundNumber]
           );
+          
+          // Check if this is an unrecoverable SQL error (skip retries for these)
+          const isUnrecoverableError = 
+            errorMessage.includes('does not exist') ||
+            errorMessage.includes('syntax error') ||
+            errorMessage.includes('column') ||
+            errorMessage.includes('relation') ||
+            errorMessage.includes('no results');
+          
+          if (isUnrecoverableError) {
+            console.warn(`   ⏭️  Unrecoverable SQL error - skipping to next question\n`);
+            questionIndex++;
+            if (questionIndex >= questions.length) {
+              throw new Error(`Failed to generate ${config.numRounds} valid questions. Only ${roundNumber - 1} succeeded.`);
+            }
+            break; // Exit retry loop immediately
+          }
           
           retryCount++;
           if (retryCount >= maxRetries) {
