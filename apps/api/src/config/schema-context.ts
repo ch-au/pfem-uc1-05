@@ -80,6 +80,21 @@ HAUPTTABELLEN:
 17. match_referees
     Columns: match_referee_id (INT PK), match_id (INT FK), referee_id (INT FK), role (TEXT)
 
+KRITISCH - KEINE FAKTEN RATEN!
+- NIEMALS spezifische Werte raten (Spieltage, Ergebnisse, Daten)
+- IMMER per ORDER BY + LIMIT abfragen statt WHERE mit geratenen Werten
+- Falsch: WHERE m.matchday = 27 AND m.home_score = 0 AND m.away_score = 6
+- Richtig: ORDER BY tordifferenz DESC LIMIT 1 (findet höchste Niederlage)
+- Bei "höchste Niederlage": Nicht raten "0:6", sondern sortieren nach Tordifferenz
+- Bei "Spiel gegen X": Nicht Spieltag raten, sondern alle Spiele gegen X abfragen
+- Bei "wann war...": Nicht Datum raten, sondern mit ORDER BY finden
+
+QUERY-STRATEGIE:
+1. Explorative Queries statt exakte Matches
+2. ORDER BY + LIMIT für "größte/erste/letzte" Fragen
+3. Aggregationen (COUNT, MAX, MIN) für Statistik-Fragen
+4. Nur WHERE mit exakten Werten wenn User diese explizit nennt
+
 WICHTIGE FILTER:
 - FSV Mainz 05 hat IMMER team_id = 1
 - Heimspiele: m.home_team_id = 1
@@ -235,9 +250,43 @@ WHERE (m.home_team_id = 1 AND m.away_team_id = (SELECT team_id FROM MatchedTeam)
    OR (m.away_team_id = 1 AND m.home_team_id = (SELECT team_id FROM MatchedTeam))
 ORDER BY m.match_date DESC;
 
-BEISPIEL-QUERIES:
+BEISPIEL-QUERIES (EXPLORATIV - KEINE GERATENEN WERTE!):
 
--- Top Torschützen aller Zeiten
+-- Höchste Niederlage einer Saison (NICHT: WHERE score = '0:6')
+SELECT m.match_date, t_home.name AS heim, t_away.name AS auswaerts,
+       m.home_score || ':' || m.away_score AS ergebnis,
+       CASE WHEN m.home_team_id = 1 THEN m.away_score - m.home_score
+            ELSE m.home_score - m.away_score END AS gegentore_differenz
+FROM matches m
+JOIN teams t_home ON m.home_team_id = t_home.team_id
+JOIN teams t_away ON m.away_team_id = t_away.team_id
+JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id
+JOIN seasons s ON sc.season_id = s.season_id
+WHERE (m.home_team_id = 1 OR m.away_team_id = 1) AND s.label = '2022-23'
+  AND ((m.home_team_id = 1 AND m.home_score < m.away_score)
+       OR (m.away_team_id = 1 AND m.away_score < m.home_score))
+ORDER BY gegentore_differenz DESC LIMIT 3;
+
+-- Alle Spiele gegen ein Team (NICHT: WHERE matchday = 27)
+WITH MatchedTeam AS (
+  SELECT team_id FROM teams
+  WHERE similarity(normalized_name, 'bayern') > 0.3
+  ORDER BY similarity(normalized_name, 'bayern') DESC LIMIT 1
+)
+SELECT m.match_date, s.label AS saison, m.matchday AS spieltag,
+       t_home.name AS heim, t_away.name AS auswaerts,
+       m.home_score || ':' || m.away_score AS ergebnis
+FROM matches m
+JOIN teams t_home ON m.home_team_id = t_home.team_id
+JOIN teams t_away ON m.away_team_id = t_away.team_id
+JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id
+JOIN seasons s ON sc.season_id = s.season_id
+WHERE (m.home_team_id = 1 OR m.away_team_id = 1)
+  AND (m.home_team_id = (SELECT team_id FROM MatchedTeam)
+       OR m.away_team_id = (SELECT team_id FROM MatchedTeam))
+ORDER BY m.match_date DESC;
+
+-- Top Torschützen (Aggregation statt Raten)
 SELECT p.name, COUNT(g.goal_id) AS tore
 FROM goals g
 JOIN players p ON g.player_id = p.player_id
@@ -246,42 +295,35 @@ GROUP BY p.player_id, p.name
 ORDER BY tore DESC
 LIMIT 10;
 
--- Mainz Bundesliga-Siege in Saison 2023-24
-SELECT m.match_date,
-       CASE WHEN m.home_team_id = 1 THEN t_away.name ELSE t_home.name END AS gegner,
-       CASE WHEN m.home_team_id = 1 THEN m.home_score || ':' || m.away_score
-            ELSE m.away_score || ':' || m.home_score END AS ergebnis
-FROM matches m
-JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id
-JOIN seasons s ON sc.season_id = s.season_id
-JOIN competitions c ON sc.competition_id = c.competition_id
-JOIN teams t_home ON m.home_team_id = t_home.team_id
-JOIN teams t_away ON m.away_team_id = t_away.team_id
-WHERE (m.home_team_id = 1 OR m.away_team_id = 1)
-  AND c.name = 'Bundesliga'
-  AND s.label = '2023-24'
-  AND ((m.home_team_id = 1 AND m.home_score > m.away_score)
-       OR (m.away_team_id = 1 AND m.away_score > m.home_score))
-ORDER BY m.match_date;
-
--- Trainer-Bilanz (mit Fuzzy-Match auf Trainername)
+-- Trainer-Bilanz (mit Fuzzy-Match)
 WITH MatchedCoach AS (
   SELECT coach_id, name FROM coaches
-  WHERE similarity(normalized_name, 'trainername') > 0.3
-  ORDER BY similarity(normalized_name, 'trainername') DESC LIMIT 1
+  WHERE similarity(normalized_name, 'klopp') > 0.3
+  ORDER BY similarity(normalized_name, 'klopp') DESC LIMIT 1
 )
-SELECT mc.name AS trainer,
-       COUNT(*) AS spiele,
+SELECT mc.name AS trainer, COUNT(*) AS spiele,
        SUM(CASE WHEN (m.home_team_id = 1 AND m.home_score > m.away_score)
-                  OR (m.away_team_id = 1 AND m.away_score > m.home_score) THEN 1 ELSE 0 END) AS siege,
-       SUM(CASE WHEN m.home_score = m.away_score THEN 1 ELSE 0 END) AS unentschieden,
-       SUM(CASE WHEN (m.home_team_id = 1 AND m.home_score < m.away_score)
-                  OR (m.away_team_id = 1 AND m.away_score < m.home_score) THEN 1 ELSE 0 END) AS niederlagen
+                  OR (m.away_team_id = 1 AND m.away_score > m.home_score) THEN 1 ELSE 0 END) AS siege
 FROM matches m
 JOIN match_coaches mco ON m.match_id = mco.match_id
 JOIN MatchedCoach mc ON mco.coach_id = mc.coach_id
 WHERE mco.team_id = 1
 GROUP BY mc.coach_id, mc.name;
+
+-- Erstes/Letztes Spiel eines Spielers (ORDER BY statt WHERE date = 'x')
+WITH MatchedPlayer AS (
+  SELECT player_id FROM players
+  WHERE similarity(normalized_name, 'spielername') > 0.3
+  ORDER BY similarity(normalized_name, 'spielername') DESC LIMIT 1
+)
+SELECT p.name, m.match_date, t_home.name || ' vs ' || t_away.name AS spiel
+FROM match_lineups ml
+JOIN matches m ON ml.match_id = m.match_id
+JOIN players p ON ml.player_id = p.player_id
+JOIN teams t_home ON m.home_team_id = t_home.team_id
+JOIN teams t_away ON m.away_team_id = t_away.team_id
+WHERE ml.player_id = (SELECT player_id FROM MatchedPlayer) AND ml.team_id = 1
+ORDER BY m.match_date ASC LIMIT 1; -- ASC für erstes, DESC für letztes
 
 MATERIALIZED VIEWS (für schnelle Aggregat-Abfragen):
 

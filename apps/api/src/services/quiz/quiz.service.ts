@@ -862,6 +862,63 @@ export class QuizService {
 
     return result;
   }
+
+  /**
+   * Recover pending quiz generation jobs after server restart
+   * Re-enqueues any games that were in the middle of generation
+   */
+  async recoverPendingJobs(): Promise<number> {
+    console.log('🔄 Checking for pending quiz generation jobs...');
+    
+    type PendingGame = {
+      game_id: string;
+      num_rounds: number;
+      difficulty: 'easy' | 'medium' | 'hard';
+      category_name: string;
+      topic: string | null;
+      player_count: number;
+    };
+
+    const pendingGames = await postgresService.queryMany<PendingGame>(
+      `SELECT g.game_id, g.num_rounds, g.difficulty,
+              COALESCE(c.name, 'statistics') as category_name,
+              g.topic,
+              COALESCE(jsonb_array_length(g.player_names::jsonb), 1) as player_count
+       FROM public.quiz_games g
+       LEFT JOIN public.quiz_categories c ON g.category_id = c.category_id
+       WHERE g.status = 'pending'
+         AND EXISTS (
+           SELECT 1 FROM quiz_generation_jobs j
+           WHERE j.game_id = g.game_id
+             AND j.status NOT IN ('round_created')
+         )
+       ORDER BY g.created_at ASC
+       LIMIT 10`
+    );
+
+    if (pendingGames.length === 0) {
+      console.log('✅ No pending quiz generation jobs found');
+      return 0;
+    }
+
+    console.log(`🔄 Found ${pendingGames.length} pending quiz generation job(s), re-enqueueing...`);
+
+    for (const game of pendingGames) {
+      const category = game.topic ?? game.category_name;
+      console.log(`   📋 Re-enqueueing game ${game.game_id} (${game.num_rounds} rounds, ${category})`);
+      
+      quizJobQueue.enqueue(() =>
+        this.generateQuestionsForGame(game.game_id, {
+          category,
+          difficulty: game.difficulty,
+          numRounds: game.num_rounds,
+          numberOfPlayers: game.player_count,
+        })
+      );
+    }
+
+    return pendingGames.length;
+  }
 }
 
 // Singleton instance

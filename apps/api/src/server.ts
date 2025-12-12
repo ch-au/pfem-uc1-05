@@ -10,6 +10,8 @@ import { healthRoutes } from './routes/health.routes.js';
 import { postgresService } from './services/database/postgres.service.js';
 import { langfuseService } from './services/ai/langfuse.service.js';
 import { promptsConfig } from './config/prompts.config.js';
+import { quizService } from './services/quiz/quiz.service.js';
+import { quizJobQueue } from './services/quiz/quiz.job-queue.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -115,6 +117,13 @@ const start = async () => {
     fastify.log.info(`🤖 Default Model (YAML): ${config.defaults.default_model}`);
     fastify.log.info(`🔧 Fallback Model (.env): ${env.OPENROUTER_MODEL}`);
     fastify.log.info(`📡 Langfuse: ${langfuseService.isActive() ? 'Enabled' : 'Disabled (using local prompts)'}`);
+    
+    // Start quiz job queue and recover any pending jobs
+    quizJobQueue.start();
+    const recoveredJobs = await quizService.recoverPendingJobs();
+    if (recoveredJobs > 0) {
+      fastify.log.info(`🔄 Recovered ${recoveredJobs} pending quiz generation job(s)`);
+    }
   } catch (error: unknown) {
     fastify.log.error(error);
     process.exit(1);

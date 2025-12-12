@@ -19,6 +19,18 @@ export class QuizJobQueue {
   private queue: QueuedTask[] = [];
   private jobs = new Map<string, Job>();
   private processing = false;
+  private isInitialized = false;
+
+  /**
+   * Start the queue processor - call this on server startup
+   */
+  start(): void {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+    console.log('🚀 Quiz job queue started');
+    // Trigger processing in case there are already jobs
+    setImmediate(() => this.processNext());
+  }
 
   enqueue(task: () => Promise<void>): Job {
     const id = randomUUID();
