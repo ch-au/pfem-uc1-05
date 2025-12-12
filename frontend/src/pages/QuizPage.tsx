@@ -158,7 +158,7 @@ export const QuizPage: React.FC = () => {
   if (screen === 'setup') {
     return (
       <div className={styles.quizPage}>
-        {statusMessage && (
+        {statusMessage && !generationProgress && (
           <Alert
             variant="info"
             title="Quiz wird vorbereitet"
