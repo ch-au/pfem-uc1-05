@@ -434,8 +434,10 @@ export class QuizService {
     const previousQuestions = existingQuestions.map((q) => q.question_text);
 
     // 3. Generate questions with SQL queries (with buffer for failures)
-    const bufferMultiplier = 2.0; // Generate 100% more questions as buffer for SQL failures
-    const questionsToGenerate = Math.ceil(config.numRounds * bufferMultiplier);
+    // LLM often generates questions based on events that don't exist in the database
+    // so we need a large buffer to ensure enough valid questions
+    const bufferMultiplier = 4.0; // Generate 300% more questions as buffer for SQL failures
+    const questionsToGenerate = Math.max(15, Math.ceil(config.numRounds * bufferMultiplier));
     const logCtx: QuizLogContext = { gameId };
     
     // Cache schema context once per job (performance optimization)
@@ -678,7 +680,9 @@ export class QuizService {
             quizLogger.warn(`Unrecoverable error (${errorCode}) - skipping to next question`, logCtx);
             questionIndex++;
             if (questionIndex >= questions.length) {
-              throw new Error(`Failed to generate ${config.numRounds} valid questions. Only ${roundNumber - 1} succeeded.`);
+              // Don't throw immediately - we'll check minimum requirements at the end
+              quizLogger.warn(`No more questions available. Generated ${roundNumber - 1}/${config.numRounds}`, logCtx);
+              break; // Exit the main while loop
             }
             break; // Exit retry loop immediately
           }
@@ -687,7 +691,9 @@ export class QuizService {
             quizLogger.warn(`Max retries (${maxRetries}) reached - skipping to next question`, logCtx);
             questionIndex++;
             if (questionIndex >= questions.length) {
-              throw new Error(`Failed to generate ${config.numRounds} valid questions. Only ${roundNumber - 1} succeeded.`);
+              // Don't throw immediately - we'll check minimum requirements at the end
+              quizLogger.warn(`No more questions available. Generated ${roundNumber - 1}/${config.numRounds}`, logCtx);
+              break; // Exit the main while loop
             }
           } else {
             quizLogger.info(`Retrying (${retryCount}/${maxRetries})...`, logCtx);
@@ -702,10 +708,11 @@ export class QuizService {
 
     // Check if we generated enough questions
     const generatedCount = roundNumber - 1;
-    const minimumRequired = Math.max(1, Math.floor(config.numRounds * 0.6)); // Accept at least 60% success
+    // Accept even 1 successful question - the LLM often generates questions about events that don't exist in the database
+    const minimumRequired = 1;
     
     if (generatedCount < minimumRequired) {
-      throw new Error(`Only generated ${generatedCount} questions out of ${config.numRounds} requested (minimum ${minimumRequired} required)`);
+      throw new Error(`Quiz generation failed: No valid questions could be created. The AI generated questions about events that don't exist in our historical database. Please try a different topic.`);
     }
     
     // If we generated fewer than requested but still enough, update the game's num_rounds
