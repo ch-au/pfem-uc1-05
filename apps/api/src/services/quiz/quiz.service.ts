@@ -438,9 +438,15 @@ export class QuizService {
           const firstResultStr = rows[0] ? JSON.stringify(rows[0]) : '<no results>';
           console.log(`     First result: ${firstResultStr.substring(0, 100)}...`);
 
-          // Validate results
+          // Validate results - if no results, skip to next question immediately
+          // (retrying with different SQL for same question rarely helps)
           if (rows.length === 0) {
-            throw new Error('SQL query returned no results');
+            console.warn(`   ⚠️ SQL returned no results - skipping to next question`);
+            questionIndex++;
+            if (questionIndex >= questions.length) {
+              throw new Error(`Failed to generate ${config.numRounds} valid questions. No more questions available.`);
+            }
+            break; // Exit retry loop, outer loop will try next question
           }
 
           // Infer answer type from SQL result metadata (first column type)
