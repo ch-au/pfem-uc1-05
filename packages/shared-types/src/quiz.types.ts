@@ -77,7 +77,6 @@ export interface QuestionGeneratorInput {
 export interface QuestionGeneratorOutput {
   questions: Array<{
     questionText: string;
-    sqlQueryNeeded: string;
     category?: string;
     difficulty?: 'easy' | 'medium' | 'hard';
   }>;

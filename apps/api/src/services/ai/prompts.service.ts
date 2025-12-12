@@ -33,7 +33,6 @@ function findValue(obj: any, aliases: string[]): any {
  */
 function normalizeQuestion(raw: any): { 
   questionText: string; 
-  sqlQueryNeeded: string;
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
 } {
@@ -47,23 +46,14 @@ function normalizeQuestion(raw: any): {
     'Fragetext', 'fragetext', 'Frage', 'frage',
     'FrageText', 'text', 'Text'
   ];
-  
-  // Field name aliases for sqlQueryNeeded
-  const sqlQueryAliases = [
-    'sqlQueryNeeded', 'sql_query_needed', 'sqlQuery', 'sql_query',
-    'sql', 'SQL', 'query', 'Query',
-    'SQL_Abfrage', 'sql_abfrage', 'SQLAbfrage',
-    'benötigte_sql_abfrage', 'BenotigteSQL'
-  ];
 
   // Field name aliases for category (optional)
   const categoryAliases = ['category', 'Kategorie', 'kategorie', 'topic', 'Thema'];
   
   // Field name aliases for difficulty (optional)
-  const difficultyAliases = ['difficulty', 'Schwierigkeit', 'schwierigkeit', 'level'];
+  const difficultyAliases = ['difficulty', 'Schwierigkeit', 'schwierigkeit', 'level', 'leicht', 'mittel', 'schwer'];
 
   const questionText = findValue(raw, questionTextAliases);
-  const sqlQueryNeeded = findValue(raw, sqlQueryAliases);
   const category = findValue(raw, categoryAliases);
   const difficulty = findValue(raw, difficultyAliases);
 
@@ -72,14 +62,8 @@ function normalizeQuestion(raw: any): {
     throw new Error('Question missing questionText field');
   }
 
-  if (!sqlQueryNeeded) {
-    console.error('   ⚠️ Missing sqlQueryNeeded in question. Raw:', JSON.stringify(raw, null, 2));
-    throw new Error('Question missing sqlQueryNeeded field');
-  }
-
   return {
     questionText: String(questionText),
-    sqlQueryNeeded: String(sqlQueryNeeded),
     category: category ? String(category) : undefined,
     difficulty: difficulty as 'easy' | 'medium' | 'hard' | undefined,
   };
@@ -678,15 +662,19 @@ export class PromptsService {
                   type: 'string',
                   description: 'The quiz question text in German',
                 },
-                sqlQueryNeeded: {
+                category: {
                   type: 'string',
-                  description: 'SQL query to validate the answer against the database',
+                  description: 'Category of the question (e.g., Tore, Spieler, Saison)',
+                },
+                difficulty: {
+                  type: 'string',
+                  description: 'Difficulty level: leicht, mittel, or schwer',
                 },
               },
-              required: ['questionText', 'sqlQueryNeeded'],
+              required: ['questionText', 'category', 'difficulty'],
               additionalProperties: false,
             },
-            description: 'Array of quiz questions with their SQL queries',
+            description: 'Array of quiz questions',
           },
         },
         required: ['questions'],
