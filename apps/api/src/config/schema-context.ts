@@ -67,9 +67,8 @@ HAUPTTABELLEN:
     Columns: match_coach_id (INT PK), match_id (INT FK), team_id (INT FK), coach_id (INT FK), role (TEXT)
 
 14. player_careers
-    Columns: career_id (INT PK), player_id (INT FK), team_name (TEXT),
+    Columns: career_id (INT PK), player_id (INT FK), team_name (TEXT), team_id (INT FK),
              start_year (INT), end_year (INT), notes (TEXT)
-    HINWEIS: KEINE team_id Spalte! Verwende team_name für Suche.
 
 15. season_squads
     Columns: season_squad_id (INT PK), season_competition_id (INT FK), player_id (INT FK),
@@ -97,31 +96,144 @@ PFLICHTSPIELE vs FREUNDSCHAFTSSPIELE:
 - Freundschaftsspiele nur inkludieren wenn explizit angefragt
 - competitions.name Werte: 'Bundesliga', '2. Bundesliga', 'DFB-Pokal', 'Freundschaftsspiele', etc.
 
-TEAM-NAMEN SUCHE:
-- NIEMALS exakte Matches (=) für Team-Namen verwenden!
-- IMMER ILIKE mit Wildcards für robuste Suche:
-  WHERE t.name ILIKE '%mainz%' OR t.normalized_name ILIKE '%mainz%'
-  WHERE t.name ILIKE '%bayern%' OR t.normalized_name ILIKE '%bayern%'
-- Beispiel normalized_name Werte:
-  - '1. fsv mainz 05' (mit Punkt nach der 1!)
-  - 'fc bayern munchen' (ohne Umlaut, lowercase)
-  - 'borussia dortmund'
-  - 'vfb stuttgart'
-- Bei Spielen gegen bestimmte Teams:
-  WHERE (t_home.name ILIKE '%bayern%' OR t_away.name ILIKE '%bayern%')
+NORMALIZED_NAME FORMAT:
+- Alle Tabellen (players, coaches, teams, referees) haben normalized_name
+- Format: Kleinbuchstaben, Umlaute aufgelöst, keine Sonderzeichen
+- Umwandlung: ü→u, ö→o, ä→a, ß→ss, é→e, è→e, ç→c, etc.
+- Beispiele: "Jürgen Klopp"→"jurgen klopp", "1. FSV Mainz 05"→"1 fsv mainz 05"
 
-SPIELER-NAMEN FUZZY SUCHE:
-- pg_trgm Extension aktiviert für Trigram-Similarity
-- Kombiniere ILIKE und Trigram für beste Ergebnisse:
-  WHERE p.normalized_name ILIKE '%suchname%'
-     OR similarity(p.normalized_name, 'suchname') > 0.3
-     OR similarity(SUBSTRING(p.normalized_name FROM '([^ ]+)$'), 'suchname') > 0.3
-  ORDER BY GREATEST(
-    similarity(p.normalized_name, 'suchname'),
-    similarity(SUBSTRING(p.normalized_name FROM '([^ ]+)$'), 'suchname')
-  ) DESC
-- ILIKE findet exakte Substring-Matches
-- Trigram mit Nachnamen-Extraktion findet z.B. "MICHAEL THURK" bei Typo "Turk"
+FUZZY SUCHE FÜR ALLE ENTITÄTEN (WICHTIG!):
+- Benutzer können Namen falsch schreiben! IMMER Fuzzy-Matching verwenden.
+- pg_trgm Extension ist aktiviert für Trigram-Similarity
+
+Spieler-Suche (players):
+  SELECT player_id, name, similarity(normalized_name, 'suchbegriff') AS sim
+  FROM players
+  WHERE normalized_name ILIKE '%suchbegriff%'
+     OR similarity(normalized_name, 'suchbegriff') > 0.3
+     OR similarity(SUBSTRING(normalized_name FROM '([^ ]+)$'), 'suchbegriff') > 0.5
+  ORDER BY sim DESC LIMIT 5;
+
+Trainer-Suche (coaches):
+  SELECT coach_id, name, similarity(normalized_name, 'suchbegriff') AS sim
+  FROM coaches
+  WHERE normalized_name ILIKE '%suchbegriff%'
+     OR similarity(normalized_name, 'suchbegriff') > 0.3
+     OR similarity(SUBSTRING(normalized_name FROM '([^ ]+)$'), 'suchbegriff') > 0.5
+  ORDER BY sim DESC LIMIT 5;
+
+Team-Suche (teams):
+  SELECT team_id, name, similarity(normalized_name, 'suchbegriff') AS sim
+  FROM teams
+  WHERE normalized_name ILIKE '%suchbegriff%'
+     OR similarity(normalized_name, 'suchbegriff') > 0.3
+  ORDER BY sim DESC LIMIT 5;
+
+CTE-PATTERN FÜR ENTITY-AUFLÖSUNG:
+- Bei komplexen Queries: Erst Entity per Fuzzy-Match finden, dann verwenden
+- Beispiel mit Trainer:
+  WITH MatchedCoach AS (
+    SELECT coach_id FROM coaches
+    WHERE normalized_name ILIKE '%klopp%'
+       OR similarity(normalized_name, 'klopp') > 0.3
+    ORDER BY similarity(normalized_name, 'klopp') DESC LIMIT 1
+  )
+  SELECT ... FROM matches m
+  JOIN match_coaches mc ON m.match_id = mc.match_id
+  WHERE mc.coach_id = (SELECT coach_id FROM MatchedCoach)
+    AND mc.team_id = 1;
+
+TRAINER-DATEN (match_coaches):
+- match_coaches verknüpft Trainer mit einzelnen Spielen
+- Wichtig: mc.team_id = 1 für FSV Mainz 05 Trainer filtern
+- coach_careers enthält Karriere-Stationen (start_date, end_date, role)
+- mv_coach_record enthält aggregierte Trainer-Bilanzen (schneller!)
+
+SPIELER-EINSÄTZE UND DEBÜTS:
+- match_lineups enthält alle Spielereinsätze pro Spiel
+- Erstes Spiel eines Spielers für FSV: MIN(match_date) WHERE team_id = 1
+- is_starter = true → Startelfeinsatz, false → Einwechslung
+- minute_on/minute_off für Ein-/Auswechselzeiten
+
+KOMPLEXE QUERY-PATTERNS MIT CTEs:
+
+-- Pattern 1: Entity per Fuzzy-Match finden und verwenden
+WITH MatchedEntity AS (
+  SELECT entity_id FROM entity_table
+  WHERE similarity(normalized_name, 'suchbegriff') > 0.3
+  ORDER BY similarity(normalized_name, 'suchbegriff') DESC LIMIT 1
+),
+-- Pattern 2: Spiele unter bestimmten Bedingungen filtern
+FilteredMatches AS (
+  SELECT m.match_id, m.match_date, m.home_score, m.away_score
+  FROM matches m
+  WHERE /* Bedingungen */
+),
+-- Pattern 3: Aggregationen pro Spieler/Team/etc.
+Aggregations AS (
+  SELECT player_id, COUNT(*) AS anzahl, MIN(match_date) AS erstes_spiel
+  FROM match_lineups ml
+  JOIN FilteredMatches fm ON ml.match_id = fm.match_id
+  GROUP BY player_id
+)
+SELECT ... FROM Aggregations ...;
+
+-- Spieler-Debüt unter bestimmtem Trainer
+WITH MatchedCoach AS (
+  SELECT coach_id FROM coaches
+  WHERE similarity(normalized_name, 'trainername') > 0.3
+  ORDER BY similarity(normalized_name, 'trainername') DESC LIMIT 1
+),
+TrainerSpiele AS (
+  SELECT m.match_id, m.match_date
+  FROM matches m
+  JOIN match_coaches mc ON m.match_id = mc.match_id
+  WHERE mc.coach_id = (SELECT coach_id FROM MatchedCoach)
+    AND mc.team_id = 1
+),
+SpielerErstesSpielGesamt AS (
+  SELECT player_id, MIN(m.match_date) AS erstes_spiel
+  FROM match_lineups ml
+  JOIN matches m ON ml.match_id = m.match_id
+  WHERE ml.team_id = 1
+  GROUP BY player_id
+)
+SELECT p.name, ts.match_date AS debut_datum
+FROM match_lineups ml
+JOIN TrainerSpiele ts ON ml.match_id = ts.match_id
+JOIN players p ON ml.player_id = p.player_id
+JOIN SpielerErstesSpielGesamt seg ON ml.player_id = seg.player_id
+WHERE ml.team_id = 1 AND ts.match_date = seg.erstes_spiel
+GROUP BY p.player_id, p.name, ts.match_date
+ORDER BY ts.match_date;
+
+-- Tore eines Spielers (mit Fuzzy-Match)
+WITH MatchedPlayer AS (
+  SELECT player_id FROM players
+  WHERE similarity(normalized_name, 'spielername') > 0.3
+  ORDER BY similarity(normalized_name, 'spielername') DESC LIMIT 1
+)
+SELECT p.name, COUNT(g.goal_id) AS tore
+FROM goals g
+JOIN players p ON g.player_id = p.player_id
+WHERE g.player_id = (SELECT player_id FROM MatchedPlayer)
+  AND g.team_id = 1 AND (g.event_type IS NULL OR g.event_type != 'own_goal')
+GROUP BY p.player_id, p.name;
+
+-- Spiele gegen ein bestimmtes Team (mit Fuzzy-Match)
+WITH MatchedTeam AS (
+  SELECT team_id FROM teams
+  WHERE similarity(normalized_name, 'teamname') > 0.3
+  ORDER BY similarity(normalized_name, 'teamname') DESC LIMIT 1
+)
+SELECT m.match_date, t_home.name AS heim, t_away.name AS auswaerts,
+       m.home_score || ':' || m.away_score AS ergebnis
+FROM matches m
+JOIN teams t_home ON m.home_team_id = t_home.team_id
+JOIN teams t_away ON m.away_team_id = t_away.team_id
+WHERE (m.home_team_id = 1 AND m.away_team_id = (SELECT team_id FROM MatchedTeam))
+   OR (m.away_team_id = 1 AND m.home_team_id = (SELECT team_id FROM MatchedTeam))
+ORDER BY m.match_date DESC;
 
 BEISPIEL-QUERIES:
 
@@ -135,9 +247,9 @@ ORDER BY tore DESC
 LIMIT 10;
 
 -- Mainz Bundesliga-Siege in Saison 2023-24
-SELECT m.match_date, 
+SELECT m.match_date,
        CASE WHEN m.home_team_id = 1 THEN t_away.name ELSE t_home.name END AS gegner,
-       CASE WHEN m.home_team_id = 1 THEN m.home_score || ':' || m.away_score 
+       CASE WHEN m.home_team_id = 1 THEN m.home_score || ':' || m.away_score
             ELSE m.away_score || ':' || m.home_score END AS ergebnis
 FROM matches m
 JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id
@@ -148,9 +260,28 @@ JOIN teams t_away ON m.away_team_id = t_away.team_id
 WHERE (m.home_team_id = 1 OR m.away_team_id = 1)
   AND c.name = 'Bundesliga'
   AND s.label = '2023-24'
-  AND ((m.home_team_id = 1 AND m.home_score > m.away_score) 
+  AND ((m.home_team_id = 1 AND m.home_score > m.away_score)
        OR (m.away_team_id = 1 AND m.away_score > m.home_score))
 ORDER BY m.match_date;
+
+-- Trainer-Bilanz (mit Fuzzy-Match auf Trainername)
+WITH MatchedCoach AS (
+  SELECT coach_id, name FROM coaches
+  WHERE similarity(normalized_name, 'trainername') > 0.3
+  ORDER BY similarity(normalized_name, 'trainername') DESC LIMIT 1
+)
+SELECT mc.name AS trainer,
+       COUNT(*) AS spiele,
+       SUM(CASE WHEN (m.home_team_id = 1 AND m.home_score > m.away_score)
+                  OR (m.away_team_id = 1 AND m.away_score > m.home_score) THEN 1 ELSE 0 END) AS siege,
+       SUM(CASE WHEN m.home_score = m.away_score THEN 1 ELSE 0 END) AS unentschieden,
+       SUM(CASE WHEN (m.home_team_id = 1 AND m.home_score < m.away_score)
+                  OR (m.away_team_id = 1 AND m.away_score < m.home_score) THEN 1 ELSE 0 END) AS niederlagen
+FROM matches m
+JOIN match_coaches mco ON m.match_id = mco.match_id
+JOIN MatchedCoach mc ON mco.coach_id = mc.coach_id
+WHERE mco.team_id = 1
+GROUP BY mc.coach_id, mc.name;
 
 MATERIALIZED VIEWS (für schnelle Aggregat-Abfragen):
 
@@ -177,6 +308,13 @@ PERFORMANCE TIPS:
 4. JOIN-Reihenfolge: Von kleinsten zu größten Tabellen
 5. LIMIT wird automatisch hinzugefügt (max 200 Zeilen)
 6. Nutze WHERE-Filter vor JOINs wenn möglich
+
+DATEN-LIMITIERUNGEN:
+- Datenbank enthält NUR FSV Mainz 05 Spiele und Statistiken
+- Keine Daten über Spieler-Karrieren bei anderen Vereinen (außer player_careers Notizen)
+- Keine Nationalmannschafts-Daten
+- Bei Fragen nach "erfolgreicher Karriere danach" → Nur Mainz-Daten lieferbar
+- Bei solchen Fragen: Antwort sollte klarstellen, dass nur Mainz-Einsätze gezeigt werden
 
 KEY STATISTICS:
 - 121 Saisonen (1905-2026)
