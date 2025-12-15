@@ -19,7 +19,7 @@ const __dirname = dirname(__filename);
 // Create Fastify instance
 const fastify = Fastify({
   logger: {
-    level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+    level: env.NODE_ENV === 'production' ? 'info' : 'warn',
     transport:
       env.NODE_ENV === 'development'
         ? {
@@ -31,6 +31,7 @@ const fastify = Fastify({
           }
         : undefined,
   },
+  disableRequestLogging: env.NODE_ENV === 'development',
 });
 
 // Register CORS
