@@ -6,9 +6,11 @@ import { QuizSetup } from '../components/quiz/QuizSetup';
 import { QuizQuestion } from '../components/quiz/QuizQuestion';
 import { QuizOption } from '../components/quiz/QuizOption';
 import { Leaderboard } from '../components/quiz/Leaderboard';
+import { PlayerHandoff } from '../components/quiz/PlayerHandoff';
+import { RoundResults } from '../components/quiz/RoundResults';
 import { useQuizGame } from '../hooks/useQuizGame';
 import { quizService } from '../services/quizService';
-import { Trophy, Check, X, Lightbulb, Trash2, Pause, SkipForward, Home } from 'lucide-react';
+import { Trophy, Trash2, Home } from 'lucide-react';
 import type { QuizGameState, QuizLeaderboardEntry } from '../types/api';
 import styles from './QuizPage.module.css';
 
@@ -39,14 +41,17 @@ export const QuizPage: React.FC = () => {
     currentPlayer,
     currentPlayerIndex,
     selectedAnswer,
-    answerResult,
     createGame,
     loadGame,
     submitAnswer,
     nextRound,
     loadLeaderboard,
     reset,
-    passToNextPlayer,
+    gamePhase,
+    roundResults,
+    correctAnswerForRound,
+    explanationForRound,
+    confirmHandoff,
   } = useQuizGame();
 
   const handleSetupSubmit = async (data: {
@@ -281,15 +286,7 @@ export const QuizPage: React.FC = () => {
       (option) => option && option.trim().length > 0
     );
 
-    const isCorrect = (option: string): boolean =>
-      answerResult ? option === answerResult.correctAnswer : false;
     const isSelected = (option: string): boolean => selectedAnswer === option;
-    const isIncorrect = (option: string): boolean =>
-      answerResult ? selectedAnswer === option && !answerResult.correct : false;
-
-    const isLastPlayer = currentPlayer === gameState.players[gameState.players.length - 1];
-    const canProceed = answerResult !== null && isLastPlayer;
-    const canPassToNextPlayer = answerResult !== null && !isLastPlayer && gameState.players.length > 1;
 
     const handlePauseGame = () => {
       if (confirm('Quiz pausieren und zum Hauptmenü zurückkehren? Du kannst später weiterspielen.')) {
@@ -297,6 +294,52 @@ export const QuizPage: React.FC = () => {
         reset();
       }
     };
+
+    if (gamePhase === 'handoff') {
+      return (
+        <div className={styles.quizPage}>
+          <PlayerHandoff
+            nextPlayer={currentPlayer}
+            roundNumber={gameState.current_round}
+            totalRounds={gameState.num_rounds}
+            onReady={confirmHandoff}
+          />
+        </div>
+      );
+    }
+
+    if (gamePhase === 'results') {
+      return (
+        <div className={styles.quizPage}>
+          <div className={styles.layout}>
+            <div className={styles.mainColumn}>
+              <RoundResults
+                roundNumber={gameState.current_round}
+                totalRounds={gameState.num_rounds}
+                correctAnswer={correctAnswerForRound}
+                explanation={explanationForRound}
+                playerResults={roundResults}
+                onNextRound={handleNextRound}
+                isLastRound={gameState.current_round >= gameState.num_rounds}
+              />
+            </div>
+            <aside className={styles.sidebar}>
+              <Card variant="elevated" padding="md">
+                <h2 className={styles.sectionTitle}>
+                  <Trophy size={24} />
+                  Aktuelle Punkte
+                </h2>
+                {leaderboard.length > 0 ? (
+                  <Leaderboard entries={leaderboard} />
+                ) : (
+                  <p className={styles.statusText}>Leaderboard wird aufgebaut...</p>
+                )}
+              </Card>
+            </aside>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className={styles.quizPage}>
@@ -318,31 +361,7 @@ export const QuizPage: React.FC = () => {
             </span>
           </div>
 
-          {canProceed && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleNextRound}
-              className={styles.controlButton}
-            >
-              <SkipForward size={18} />
-              <span>{gameState.current_round >= gameState.num_rounds ? 'Ergebnis' : 'Nächste Runde'}</span>
-            </Button>
-          )}
-          {canPassToNextPlayer && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={passToNextPlayer}
-              className={styles.controlButton}
-            >
-              <SkipForward size={18} />
-              <span>{gameState.players[(currentPlayerIndex + 1) % gameState.players.length]}</span>
-            </Button>
-          )}
-          {!canProceed && !canPassToNextPlayer && (
-            <div className={styles.controlPlaceholder} />
-          )}
+          <div className={styles.controlPlaceholder} />
         </div>
 
         {error && (
@@ -377,42 +396,13 @@ export const QuizPage: React.FC = () => {
                     label={option}
                     index={index}
                     selected={isSelected(option)}
-                    correct={isCorrect(option)}
-                    incorrect={isIncorrect(option)}
-                    disabled={answerResult !== null || isLoading}
+                    correct={false}
+                    incorrect={false}
+                    disabled={selectedAnswer !== null || isLoading}
                     onClick={() => handleAnswerSelect(option)}
                   />
                 ))}
               </div>
-
-              {answerResult && (
-                <div className={`${styles.result} ${styles[answerResult.correct ? 'result--correct' : 'result--incorrect']}`}>
-                  <div className={styles.resultHeader}>
-                    <div className={styles.resultIcon}>
-                      {answerResult.correct ? <Check size={24} strokeWidth={3} /> : <X size={24} strokeWidth={3} />}
-                    </div>
-                    <div className={styles.resultTextWrapper}>
-                      <div className={styles.resultText}>
-                        {answerResult.correct ? 'Richtig!' : 'Falsch'}
-                      </div>
-                      <div className={styles.resultPoints}>
-                        {answerResult.correct ? `+${answerResult.pointsEarned} Punkte` : 'Keine Punkte'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className={styles.explanation}>
-                    <div className={styles.explanationLabel}>Richtige Antwort</div>
-                    <div className={styles.explanationAnswer}>{answerResult.correctAnswer}</div>
-                    {answerResult.explanation && (
-                      <div className={styles.explanationDetail}>
-                        <Lightbulb size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'middle' }} />
-                        {answerResult.explanation}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
             </Card>
           </div>
 

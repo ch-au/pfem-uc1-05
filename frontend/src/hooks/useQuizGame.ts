@@ -3,6 +3,15 @@ import { quizService } from '../services/quizService';
 import { useQuizStore } from '../store/quizStore';
 import type { QuizGameCreate, QuizAnswer } from '../types/api';
 
+export interface PlayerRoundResult {
+  playerName: string;
+  answer: string;
+  correct: boolean;
+  pointsEarned: number;
+}
+
+export type GamePhase = 'question' | 'handoff' | 'results';
+
 export const useQuizGame = () => {
   const {
     gameId,
@@ -32,6 +41,11 @@ export const useQuizGame = () => {
     pointsEarned: number;
     explanation?: string;
   } | null>(null);
+  
+  const [gamePhase, setGamePhase] = useState<GamePhase>('question');
+  const [roundResults, setRoundResults] = useState<PlayerRoundResult[]>([]);
+  const [correctAnswerForRound, setCorrectAnswerForRound] = useState<string>('');
+  const [explanationForRound, setExplanationForRound] = useState<string | undefined>(undefined);
 
   const createGame = async (gameRequest: QuizGameCreate) => {
     try {
@@ -161,32 +175,39 @@ export const useQuizGame = () => {
         time_taken: (Date.now() - startTime) / 1000,
       };
 
-    const result = await quizService.submitAnswer(
-      gameId,
-      answerData
-    );
+      const result = await quizService.submitAnswer(
+        gameId,
+        answerData
+      );
 
-    setAnswerResult({
+      const playerResult: PlayerRoundResult = {
+        playerName: currentPlayer,
+        answer,
         correct: result.correct,
-        correctAnswer: result.correct_answer,
         pointsEarned: result.points_earned,
-        explanation: result.explanation,
-      });
+      };
+      
+      setRoundResults(prev => [...prev, playerResult]);
+      setCorrectAnswerForRound(result.correct_answer);
+      setExplanationForRound(result.explanation);
 
-      // Move to next player or advance to next round
       const nextPlayerIndex = currentPlayerIndex + 1;
+      const isMultiPlayer = playerNames.length > 1;
+      
       if (nextPlayerIndex >= playerNames.length) {
         setCurrentPlayerIndex(0);
-        // Update leaderboard after the round is finished for all players
         try {
           const board = await quizService.getLeaderboard(gameId);
           setLeaderboard(board.leaderboard);
         } catch {
           // best-effort
         }
-        // User will click "Next Round" button manually to advance
+        setGamePhase('results');
       } else {
         setCurrentPlayerIndex(nextPlayerIndex);
+        if (isMultiPlayer) {
+          setGamePhase('handoff');
+        }
       }
 
       return result;
@@ -196,6 +217,11 @@ export const useQuizGame = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const confirmHandoff = () => {
+    setSelectedAnswer(null);
+    setGamePhase('question');
   };
 
   const nextRound = async () => {
@@ -207,17 +233,19 @@ export const useQuizGame = () => {
       const result = await quizService.nextRound(gameId);
 
       setGameState(result);
+      setRoundResults([]);
+      setCorrectAnswerForRound('');
+      setExplanationForRound(undefined);
+      setSelectedAnswer(null);
 
       if (result.status === 'completed') {
-        // Load leaderboard
         const leaderboardData = await quizService.getLeaderboard(gameId);
         setLeaderboard(leaderboardData.leaderboard);
       } else {
-        // Load next question
         await loadQuestion();
-        // Refresh leaderboard to reflect new scores after the previous round
         const leaderboardData = await quizService.getLeaderboard(gameId);
         setLeaderboard(leaderboardData.leaderboard);
+        setGamePhase('question');
       }
 
       return result;
@@ -278,6 +306,8 @@ export const useQuizGame = () => {
       setSelectedAnswer(null);
       setAnswerResult(null);
       setStatusMessage(null);
+      setGamePhase('question');
+      setRoundResults([]);
       
       return state;
     } catch (err) {
@@ -306,6 +336,10 @@ export const useQuizGame = () => {
     selectedAnswer,
     answerResult,
     currentPlayer: gameState?.players?.[currentPlayerIndex] || gameState?.players?.[0] || '',
+    gamePhase,
+    roundResults,
+    correctAnswerForRound,
+    explanationForRound,
     createGame,
     loadGame,
     loadQuestion,
@@ -314,5 +348,6 @@ export const useQuizGame = () => {
     loadLeaderboard,
     reset,
     passToNextPlayer,
+    confirmHandoff,
   };
 };

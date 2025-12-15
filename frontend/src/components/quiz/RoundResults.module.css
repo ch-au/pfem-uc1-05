@@ -1,0 +1,139 @@
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.roundLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--mainz-black);
+  margin: 0.25rem 0 0;
+  text-transform: uppercase;
+}
+
+.answer {
+  background: var(--gray-light);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.answerLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.answerText {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--mainz-black);
+}
+
+.explanation {
+  font-size: 0.9rem;
+  color: var(--gray-dark);
+  margin-top: 0.75rem;
+  line-height: 1.5;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 2px solid;
+}
+
+.correct {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.incorrect {
+  background: rgba(195, 20, 31, 0.1);
+  border-color: rgba(195, 20, 31, 0.3);
+}
+
+.resultIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.correct .resultIcon {
+  background: var(--success);
+  color: white;
+}
+
+.incorrect .resultIcon {
+  background: var(--mainz-red);
+  color: white;
+}
+
+.resultInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.playerName {
+  font-weight: 700;
+  color: var(--mainz-black);
+}
+
+.playerAnswer {
+  font-size: 0.875rem;
+  color: var(--gray);
+}
+
+.points {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.correct .points {
+  color: var(--success);
+}
+
+.incorrect .points {
+  color: var(--gray);
+}
+
+.nextButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
