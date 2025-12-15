@@ -675,7 +675,12 @@ export class QuizService {
               [gameId, question.question_id, roundNumber]
             );
           } else {
-            console.log(`   ⏩ Round ${roundNumber} already exists, skipping insert`);
+            // Update existing round with new question (from retry/re-generation)
+            await postgresService.query(
+              `UPDATE public.quiz_rounds SET question_id = $1 WHERE game_id = $2 AND round_number = $3`,
+              [question.question_id, gameId, roundNumber]
+            );
+            console.log(`   ⏩ Round ${roundNumber} updated with new question`);
           }
 
           await postgresService.query(
