@@ -8,7 +8,7 @@ import { QuizOption } from '../components/quiz/QuizOption';
 import { Leaderboard } from '../components/quiz/Leaderboard';
 import { useQuizGame } from '../hooks/useQuizGame';
 import { quizService } from '../services/quizService';
-import { Trophy, Check, X, Lightbulb, Trash2 } from 'lucide-react';
+import { Trophy, Check, X, Lightbulb, Trash2, Pause, SkipForward, Home } from 'lucide-react';
 import type { QuizGameState, QuizLeaderboardEntry } from '../types/api';
 import styles from './QuizPage.module.css';
 
@@ -291,8 +291,60 @@ export const QuizPage: React.FC = () => {
     const canProceed = answerResult !== null && isLastPlayer;
     const canPassToNextPlayer = answerResult !== null && !isLastPlayer && gameState.players.length > 1;
 
+    const handlePauseGame = () => {
+      if (confirm('Quiz pausieren und zum Hauptmenü zurückkehren? Du kannst später weiterspielen.')) {
+        setScreen('start');
+        reset();
+      }
+    };
+
     return (
       <div className={styles.quizPage}>
+        <div className={styles.gameControls}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handlePauseGame}
+            className={styles.controlButton}
+          >
+            <Home size={18} />
+            <span>Beenden</span>
+          </Button>
+          
+          <div className={styles.gameInfo}>
+            <span className={styles.gameTopic}>{gameState.topic || 'Quiz'}</span>
+            <span className={styles.gameProgress}>
+              Runde {gameState.current_round} von {gameState.num_rounds}
+            </span>
+          </div>
+
+          {canProceed && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleNextRound}
+              className={styles.controlButton}
+            >
+              <SkipForward size={18} />
+              <span>{gameState.current_round >= gameState.num_rounds ? 'Ergebnis' : 'Nächste Runde'}</span>
+            </Button>
+          )}
+          {canPassToNextPlayer && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={passToNextPlayer}
+              className={styles.controlButton}
+            >
+              <SkipForward size={18} />
+              <span>{gameState.players[(currentPlayerIndex + 1) % gameState.players.length]}</span>
+            </Button>
+          )}
+          {!canProceed && !canPassToNextPlayer && (
+            <div className={styles.controlPlaceholder} />
+          )}
+        </div>
+
         {error && (
           <Alert
             variant="error"
@@ -361,27 +413,6 @@ export const QuizPage: React.FC = () => {
                 </div>
               )}
 
-              {canPassToNextPlayer && (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={passToNextPlayer}
-                  className={styles.nextButton}
-                >
-                  Nächster Spieler: {gameState.players[(currentPlayerIndex + 1) % gameState.players.length]}
-                </Button>
-              )}
-
-              {canProceed && (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleNextRound}
-                  className={styles.nextButton}
-                >
-                  {gameState.current_round >= gameState.num_rounds ? 'Ergebnis anzeigen' : 'Nächste Runde'}
-                </Button>
-              )}
             </Card>
           </div>
 
