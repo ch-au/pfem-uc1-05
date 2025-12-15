@@ -22,6 +22,24 @@ import { quizJobQueue } from './quiz.job-queue.js';
 // DTO for joined quiz_rounds + quiz_questions
 type QuizRoundWithQuestion = QuizRound & QuizQuestion;
 
+// Helper to map legacy database statuses to new simplified statuses
+type SimplifiedJobStatus = 'pending' | 'generating_alternatives' | 'round_created' | 'failed';
+function mapJobStatus(dbStatus: string): SimplifiedJobStatus {
+  switch (dbStatus) {
+    case 'sql_generated':
+    case 'answer_verified':
+      return 'generating_alternatives'; // Map legacy in-progress statuses
+    case 'round_created':
+      return 'round_created';
+    case 'failed':
+      return 'failed';
+    case 'generating_alternatives':
+      return 'generating_alternatives';
+    default:
+      return 'pending';
+  }
+}
+
 export class QuizService {
   /**
    * Create a new quiz game
@@ -549,7 +567,7 @@ export class QuizService {
     // 4. Process each question sequentially with progress tracking
     let roundNumber = 1;
     let questionIndex = 0;
-    const maxRetries = 3; // Max retries per question
+    const maxRetries = 2; // Reduced retries since KB provides validated facts
 
     while (roundNumber <= config.numRounds && questionIndex < questions.length) {
       const generatedQuestion = questions[questionIndex];
@@ -564,113 +582,43 @@ export class QuizService {
         continue;
       }
 
-      let lastGeneratedSql: string | null = null; // Track SQL for error logging and reuse
-      let sqlConfidence: number | null = null; // Cache confidence for reuse
-      
       while (!questionCreated && retryCount < maxRetries) {
         try {
           console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questions.length}`);
           console.log(`   Question: "${generatedQuestion.questionText.substring(0, 80)}..."`);
+          console.log(`   Correct Answer (from KB): "${generatedQuestion.correct_answer}"`);
           
-          // Step 1: Generate SQL query for the question (reuse if already generated)
-          let sql: string | null = lastGeneratedSql;
-          let confidence: number | null = sqlConfidence;
-          
-          if (!sql) {
-            console.log(`   ⏳ Step 1: Generating SQL Query...`);
-            const sqlGeneration = await promptsService.executeChatSQLGenerator({
-              userQuestion: generatedQuestion.questionText,
-              conversationHistory: [],
-              schemaContext,
-            });
-
-            sql = sqlGeneration.result.sql;
-            confidence = sqlGeneration.result.confidence;
-            const needsClarification = sqlGeneration.result.needsClarification;
-
-            // Check if SQL was successfully generated
-            if (needsClarification || !sql) {
-              throw new Error(`SQL generation failed: ${needsClarification || 'No SQL query generated'}`);
-            }
-
-            lastGeneratedSql = sql; // Cache for potential retry
-            sqlConfidence = confidence;
-            console.log(`   ✓ Step 1: SQL Query Generated (confidence: ${confidence})`);
-          } else {
-            console.log(`   ⏩ Step 1: Reusing cached SQL Query (confidence: ${confidence})`);
+          // Validate correct_answer from Knowledge Base
+          if (!generatedQuestion.correct_answer || typeof generatedQuestion.correct_answer !== 'string') {
+            console.warn(`   ⚠️ Question missing correct_answer - skipping to next question`);
+            questionIndex++;
+            break;
           }
-          console.log(`   📝 FULL SQL QUERY:\n${sql ?? '<no SQL>'}`);
 
-          // Update job status - SQL generated
+          // Update job status - generating alternatives
           await postgresService.query(
             `UPDATE quiz_generation_jobs
-             SET status = 'sql_generated', generated_question_text = $1, generated_sql = $2, updated_at = CURRENT_TIMESTAMP
+             SET status = 'generating_alternatives', generated_question_text = $1, correct_answer = $2, updated_at = CURRENT_TIMESTAMP
              WHERE game_id = $3 AND round_number = $4`,
-            [generatedQuestion.questionText, sql, gameId, roundNumber]
+            [generatedQuestion.questionText, generatedQuestion.correct_answer, gameId, roundNumber]
           );
 
-          // Step 2: Execute SQL to get correct answer (with field metadata)
-          console.log(`   ⏳ Step 2: Executing SQL Query...`);
-          const { rows, fields } = await postgresService.executeUserQuery(sql);
-          console.log(`   ✓ Step 2: SQL Executed Successfully - Got ${rows.length} result row(s)`);
-          const firstResultStr = rows[0] ? JSON.stringify(rows[0]) : '<no results>';
-          console.log(`     First result: ${firstResultStr.substring(0, 100)}...`);
-
-          // Validate results - if no results, skip to next question immediately
-          // (retrying with different SQL for same question rarely helps)
-          if (rows.length === 0) {
-            console.warn(`   ⚠️ SQL returned no results - skipping to next question`);
-            questionIndex++;
-            if (questionIndex >= questions.length) {
-              throw new Error(`Failed to generate ${config.numRounds} valid questions. No more questions available.`);
-            }
-            break; // Exit retry loop, outer loop will try next question
-          }
-
-          // Infer answer type from SQL result metadata (first column type)
-          let answerType: 'number' | 'string' | 'date' | 'list' = 'string'; // default fallback
-          if (fields && fields.length > 0) {
-            const firstFieldType = fields[0].dataTypeID;
-            // PostgreSQL data type IDs (common ones)
-            // 23 = int4, 20 = int8, 21 = int2, 700 = float4, 701 = float8, 1700 = numeric
-            // 1082 = date, 1114 = timestamp, 1184 = timestamptz
-            // 25 = text, 1043 = varchar, 1042 = char
-            // 1007 = _int4 (int array), 1009 = _text (text array)
-            if ([23, 20, 21, 700, 701, 1700].includes(firstFieldType)) {
-              answerType = 'number';
-            } else if ([1082, 1114, 1184].includes(firstFieldType)) {
-              answerType = 'date';
-            } else if ([1007, 1009, 1016, 1231].includes(firstFieldType)) {
-              answerType = 'list';
-            }
-          }
-          console.log(`   📊 Inferred answer type from SQL: ${answerType}`);
-
-          // Step 3: Generate alternative answers based on SQL result
-          console.log(`   ⏳ Step 3: Generating Answer Alternatives...`);
+          // Step 1: Generate alternative answers using correct_answer from Knowledge Base
+          console.log(`   ⏳ Step 1: Generating Answer Alternatives...`);
           const answerGeneration = await promptsService.executeQuizAnswerGenerator({
             question: generatedQuestion.questionText,
-            sqlQuery: sql,
-            sqlResult: rows,
+            correctAnswer: generatedQuestion.correct_answer,
             difficulty: config.difficulty,
+            category: generatedQuestion.category ?? config.category,
+            knowledgeBaseContext: formattedKnowledgeBase,
           });
 
           const { correctAnswer, incorrectAnswers, explanation, evidenceScore } = answerGeneration.result;
-          console.log(`   ✓ Step 3: Answer Generated`);
+          console.log(`   ✓ Step 1: Alternatives Generated`);
           console.log(`     Correct: "${correctAnswer}"`);
           console.log(`     Wrong: ${incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
 
-          // Step 4: Update job status - answer verified
-          await postgresService.query(
-            `UPDATE quiz_generation_jobs
-             SET status = 'answer_verified', sql_result = $1, correct_answer = $2,
-                 incorrect_answers = $3, explanation = $4, updated_at = CURRENT_TIMESTAMP
-             WHERE game_id = $5 AND round_number = $6`,
-            [JSON.stringify(rows), correctAnswer, JSON.stringify(incorrectAnswers), explanation, gameId, roundNumber]
-          );
-          console.log(`   ✓ Step 4: Saved to Database`);
-
-          // Step 5: Save question to database
+          // Step 2: Save question to database
           const allAnswers = [correctAnswer, ...incorrectAnswers];
           // Fisher-Yates shuffle for proper randomization
           const shuffledAnswers = [...allAnswers];
@@ -679,24 +627,31 @@ export class QuizService {
             [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
           }
 
+          // Infer answer type from correct answer format
+          let answerType: 'number' | 'string' | 'date' | 'list' = 'string';
+          if (/^\d+$/.test(correctAnswer)) {
+            answerType = 'number';
+          } else if (/^\d{4}(-\d{2}(-\d{2})?)?$/.test(correctAnswer) || /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(correctAnswer)) {
+            answerType = 'date';
+          }
+
           const question = await postgresService.queryOne<QuizQuestion>(
             `INSERT INTO public.quiz_questions
              (question_text, correct_answer, alternatives, explanation, difficulty, topic,
-              category_id, evidence_score, sql_query, answer_type, langfuse_trace_id)
+              category_id, evidence_score, answer_type, langfuse_trace_id)
              VALUES ($1, $2, $3, $4, $5, $6,
                      (SELECT category_id FROM public.quiz_categories WHERE name = $7),
-                     $8, $9, $10, $11)
+                     $8, $9, $10)
              RETURNING *`,
             [
               generatedQuestion.questionText,
               correctAnswer,
               JSON.stringify(shuffledAnswers),
               explanation,
-              config.difficulty,
-              config.category,
-              config.category,
+              generatedQuestion.difficulty ?? config.difficulty,
+              generatedQuestion.category ?? config.category,
+              generatedQuestion.category ?? config.category,
               evidenceScore,
-              sql,
               answerType,
               answerGeneration.traceId ?? null,
             ]
@@ -705,8 +660,9 @@ export class QuizService {
           if (!question) {
             throw new Error('Failed to create question');
           }
+          console.log(`   ✓ Step 2: Question Saved to Database`);
 
-          // Step 6: Create round and mark job as complete (skip if already exists from previous attempt)
+          // Step 3: Create round and mark job as complete
           const existingRound = await postgresService.queryOne<{ count: number }>(
             `SELECT COUNT(*) as count FROM public.quiz_rounds WHERE game_id = $1 AND round_number = $2`,
             [gameId, roundNumber]
@@ -724,11 +680,11 @@ export class QuizService {
 
           await postgresService.query(
             `UPDATE quiz_generation_jobs
-             SET status = 'round_created', updated_at = CURRENT_TIMESTAMP
-             WHERE game_id = $1 AND round_number = $2`,
-            [gameId, roundNumber]
+             SET status = 'round_created', incorrect_answers = $1, explanation = $2, updated_at = CURRENT_TIMESTAMP
+             WHERE game_id = $3 AND round_number = $4`,
+            [JSON.stringify(incorrectAnswers), explanation, gameId, roundNumber]
           );
-          console.log(`   ✓ Step 5: Question Saved to Database`);
+          console.log(`   ✓ Step 3: Round Created`);
           console.log(`\n✅ ROUND ${roundNumber} COMPLETE\n`);
 
           questionCreated = true;
@@ -737,53 +693,40 @@ export class QuizService {
           const err = error instanceof Error ? error : new Error('Unknown error');
           const logCtx: QuizLogContext = { gameId, roundNumber, stage: 'question_generation' };
           
-          // Categorize error for smart retry logic
+          // Categorize error for retry logic
           const { code: errorCode, recoverable } = quizLogger.categorizeError(err);
           retryCount++;
           
-          // Log the full SQL that caused the error
-          console.error(`\n❌ FAILED SQL QUERY:`);
-          console.error(`${lastGeneratedSql ?? 'SQL not yet generated'}`);
+          console.error(`\n❌ ROUND ${roundNumber} FAILED (attempt ${retryCount}/${maxRetries})`);
           console.error(`   Error: ${err.message}`);
           
           quizLogger.stageFailed(`Round ${roundNumber} (attempt ${retryCount}/${maxRetries})`, logCtx, err, errorCode);
           
-          // Update job with detailed error info
+          // Update job with error info
           await postgresService.query(
             `UPDATE quiz_generation_jobs
              SET status = 'failed', 
                  error_message = $1, 
                  error_code = $2, 
                  retry_count = $3,
-                 last_sql_error = CASE WHEN $2 LIKE 'SQL_%' THEN $1 ELSE last_sql_error END,
                  updated_at = CURRENT_TIMESTAMP
              WHERE game_id = $4 AND round_number = $5`,
             [err.message, errorCode, retryCount, gameId, roundNumber]
           );
           
-          // Skip retries for unrecoverable errors (SQL structure problems)
-          if (!recoverable) {
-            quizLogger.warn(`Unrecoverable error (${errorCode}) - skipping to next question`, logCtx);
+          // For unrecoverable errors or max retries, skip to next question
+          if (!recoverable || retryCount >= maxRetries) {
+            const reason = !recoverable ? `Unrecoverable error (${errorCode})` : `Max retries (${maxRetries}) reached`;
+            quizLogger.warn(`${reason} - skipping to next question`, logCtx);
             questionIndex++;
             if (questionIndex >= questions.length) {
-              // Don't throw immediately - we'll check minimum requirements at the end
               quizLogger.warn(`No more questions available. Generated ${roundNumber - 1}/${config.numRounds}`, logCtx);
-              break; // Exit the main while loop
+              break;
             }
-            break; // Exit retry loop immediately
+            break;
           }
           
-          if (retryCount >= maxRetries) {
-            quizLogger.warn(`Max retries (${maxRetries}) reached - skipping to next question`, logCtx);
-            questionIndex++;
-            if (questionIndex >= questions.length) {
-              // Don't throw immediately - we'll check minimum requirements at the end
-              quizLogger.warn(`No more questions available. Generated ${roundNumber - 1}/${config.numRounds}`, logCtx);
-              break; // Exit the main while loop
-            }
-          } else {
-            quizLogger.info(`Retrying (${retryCount}/${maxRetries})...`, logCtx);
-          }
+          quizLogger.info(`Retrying (${retryCount}/${maxRetries})...`, logCtx);
         }
       }
 
@@ -903,11 +846,11 @@ export class QuizService {
         total_rounds: jobs.length,
         completed_rounds: completedCount,
         current_round: active?.round_number,
-        current_status: active?.status,
+        current_status: active ? mapJobStatus(active.status) : undefined,
         error_message: errorMessage,
         rounds: jobs.map((j) => ({
           round_number: j.round_number,
-          status: j.status,
+          status: mapJobStatus(j.status),
           question_preview: j.generated_question_text?.substring(0, 100),
           error_message: j.error_message,
         })),
