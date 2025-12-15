@@ -1,0 +1,29 @@
+ Step 3: Generating 10 questions from Knowledge Base...
+✅ Loaded prompt "quiz-question-generator" from Langfuse (uc1/production/Quiz_Fragen)
+📊 Query executed in 214ms: SELECT status, num_rounds FROM public.quiz_games WHERE game_id = $1
+📊 Query executed in 112ms: SELECT status, num_rounds FROM public.quiz_games WHERE game_id = $1
+📊 Query executed in 112ms: SELECT status, num_rounds FROM public.quiz_games WHERE game_id = $1
+📊 Query executed in 113ms: SELECT status, num_rounds FROM public.quiz_games WHERE game_id = $1
+📊 Query executed in 113ms: SELECT status, num_rounds FROM public.quiz_games WHERE game_id = $1
+   ⚠️ Missing correct_answer in question. Raw: {
+  "questionText": "Gegen welchen Gegner erzielte Mainz 05 im DFB-Pokal seinen historisch höchsten Sieg mit einer Tordifferenz von 7 Toren?",
+  "category": "Größte Siege",
+  "difficulty": "mittel"
+}
+   ⚠️ Failed to normalize question 1: Error: Question missing correct_answer field
+    at normalizeQuestion (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:78:11)
+    at <anonymous> (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:123:14)
+    at Array.map (<anonymous>)
+    at normalizeQuestionGeneratorOutput (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:121:34)
+    at PromptsService.executeQuizQuestionGenerator (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:731:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async QuizService.generateQuestionsForGame (/home/runner/workspace/apps/api/src/services/quiz/quiz.service.ts:546:32)
+    at async QuizJobQueue.processNext (/home/runner/workspace/apps/api/src/services/quiz/quiz.job-queue.ts:62:7)
+❌ Quiz generation job ebfb5e81-f044-4fef-bc5c-5f49acce929f failed: Error: Question missing correct_answer field
+    at normalizeQuestion (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:78:11)
+    at <anonymous> (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:123:14)
+    at Array.map (<anonymous>)
+    at normalizeQuestionGeneratorOutput (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:121:34)
+    at PromptsService.executeQuizQuestionGenerator (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:731:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async QuizService.generateQuestionsForGame (/home/runner/workspace/apps/api/src/services/quiz/quiz.service.ts:546:32)

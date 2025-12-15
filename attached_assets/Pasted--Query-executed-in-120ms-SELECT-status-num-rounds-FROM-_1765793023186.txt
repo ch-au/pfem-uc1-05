@@ -1,0 +1,24 @@
+📊 Query executed in 120ms: SELECT status, num_rounds FROM public.quiz_games WHERE game_id = $1
+   ⚠️ Missing correct_answer in question. Raw: {
+  "questionText": "Welcher Spieler absolvierte die meisten Pflichtspiele unter Trainer Jürgen Klopp für Mainz 05?",
+  "category": "Spieler",
+  "difficulty": "medium"
+}
+   ⚠️ Failed to normalize question 1: Error: Question missing correct_answer field
+    at normalizeQuestion (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:78:11)
+    at <anonymous> (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:123:14)
+    at Array.map (<anonymous>)
+    at normalizeQuestionGeneratorOutput (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:121:34)
+    at PromptsService.executeQuizQuestionGenerator (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:731:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async QuizService.generateQuestionsForGame (/home/runner/workspace/apps/api/src/services/quiz/quiz.service.ts:546:32)
+    at async QuizJobQueue.processNext (/home/runner/workspace/apps/api/src/services/quiz/quiz.job-queue.ts:62:7)
+❌ Quiz generation job dd48d8d6-7c85-419a-ade1-bd20c48f3b52 failed: Error: Question missing correct_answer field
+    at normalizeQuestion (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:78:11)
+    at <anonymous> (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:123:14)
+    at Array.map (<anonymous>)
+    at normalizeQuestionGeneratorOutput (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:121:34)
+    at PromptsService.executeQuizQuestionGenerator (/home/runner/workspace/apps/api/src/services/ai/prompts.service.ts:731:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async QuizService.generateQuestionsForGame (/home/runner/workspace/apps/api/src/services/quiz/quiz.service.ts:546:32)
+    at async QuizJobQueue.processNext (/home/runner/workspace/apps/api/src/services/quiz/qu

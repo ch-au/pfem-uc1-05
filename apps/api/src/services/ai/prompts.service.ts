@@ -164,12 +164,7 @@ function normalizeAnswerGeneratorOutput(raw: any): AnswerGeneratorOutput {
   const explanation = findValue(raw, explanationAliases) ?? '';
   const evidenceScore = findValue(raw, evidenceScoreAliases) ?? 0.5;
 
-  // Validate required fields
-  if (!correctAnswer) {
-    console.error('   ⚠️ Missing correctAnswer in LLM response. Raw data:', JSON.stringify(raw, null, 2));
-    throw new Error('LLM response missing correctAnswer field');
-  }
-
+  // Validate required fields - correctAnswer is now passed from input, not from LLM response
   if (!incorrectAnswers || !Array.isArray(incorrectAnswers) || incorrectAnswers.length === 0) {
     console.error('   ⚠️ Missing or invalid incorrectAnswers in LLM response. Raw data:', JSON.stringify(raw, null, 2));
     throw new Error('LLM response missing or invalid incorrectAnswers field');
@@ -184,7 +179,7 @@ function normalizeAnswerGeneratorOutput(raw: any): AnswerGeneratorOutput {
   }
 
   return {
-    correctAnswer: String(correctAnswer),
+    correctAnswer: correctAnswer ? String(correctAnswer) : '', // May be empty - caller provides it
     incorrectAnswers: incorrectAnswers.map((a: any) => String(a)),
     explanation: String(explanation),
     evidenceScore: typeof evidenceScore === 'number' ? evidenceScore : parseFloat(evidenceScore) || 0.5,
@@ -679,6 +674,7 @@ export class PromptsService {
     });
 
     // Define JSON Schema for structured output (enforces exact field names)
+    // IMPORTANT: correct_answer must be included - the LLM extracts this from the Knowledge Base
     const questionSchema = {
       name: 'quiz_questions',
       strict: true,
@@ -694,6 +690,10 @@ export class PromptsService {
                   type: 'string',
                   description: 'The quiz question text in German',
                 },
+                correct_answer: {
+                  type: 'string',
+                  description: 'The correct answer extracted from the Knowledge Base data',
+                },
                 category: {
                   type: 'string',
                   description: 'Category of the question (e.g., Tore, Spieler, Saison)',
@@ -703,10 +703,10 @@ export class PromptsService {
                   description: 'Difficulty level: leicht, mittel, or schwer',
                 },
               },
-              required: ['questionText', 'category', 'difficulty'],
+              required: ['questionText', 'correct_answer', 'category', 'difficulty'],
               additionalProperties: false,
             },
-            description: 'Array of quiz questions',
+            description: 'Array of quiz questions with correct answers from Knowledge Base',
           },
         },
         required: ['questions'],
