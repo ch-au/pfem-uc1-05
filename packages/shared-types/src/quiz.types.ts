@@ -75,19 +75,23 @@ export interface QuestionGeneratorInput {
   knowledgeBase?: string;
 }
 
+export interface GeneratedQuestion {
+  questionText: string;
+  correct_answer: string;
+  category?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
+
 export interface QuestionGeneratorOutput {
-  questions: Array<{
-    questionText: string;
-    category?: string;
-    difficulty?: 'easy' | 'medium' | 'hard';
-  }>;
+  questions: GeneratedQuestion[];
 }
 
 export interface AnswerGeneratorInput {
   question: string;
-  sqlQuery: string;
-  sqlResult: any[];
+  correctAnswer: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  category?: string;
+  knowledgeBaseContext?: string;
 }
 
 export interface AnswerGeneratorOutput {
@@ -128,11 +132,11 @@ export interface QuizGenerationProgress {
   total_rounds: number;
   completed_rounds: number;
   current_round?: number;
-  current_status?: 'pending' | 'sql_generated' | 'answer_verified' | 'round_created' | 'failed';
+  current_status?: 'pending' | 'generating_alternatives' | 'round_created' | 'failed';
   error_message?: string;
   rounds: Array<{
     round_number: number;
-    status: 'pending' | 'sql_generated' | 'answer_verified' | 'round_created' | 'failed';
+    status: 'pending' | 'generating_alternatives' | 'round_created' | 'failed';
     question_preview?: string;
     error_message?: string;
   }>;

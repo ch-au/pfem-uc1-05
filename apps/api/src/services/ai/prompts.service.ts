@@ -32,9 +32,11 @@ function findValue(obj: any, aliases: string[]): any {
 /**
  * Normalize a single question object from LLM output.
  * Maps various field name aliases to the canonical English schema.
+ * Now includes correct_answer from the Knowledge Base pipeline.
  */
 function normalizeQuestion(raw: any): { 
   questionText: string; 
+  correct_answer: string;
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
 } {
@@ -49,25 +51,51 @@ function normalizeQuestion(raw: any): {
     'FrageText', 'text', 'Text'
   ];
 
+  // Field name aliases for correct_answer (required - from KB pipeline)
+  const correctAnswerAliases = [
+    'correct_answer', 'correctAnswer', 'richtige_antwort', 'Richtige_Antwort',
+    'antwort', 'Antwort', 'answer', 'Answer'
+  ];
+
   // Field name aliases for category (optional)
   const categoryAliases = ['category', 'Kategorie', 'kategorie', 'topic', 'Thema'];
   
   // Field name aliases for difficulty (optional)
-  const difficultyAliases = ['difficulty', 'Schwierigkeit', 'schwierigkeit', 'level', 'leicht', 'mittel', 'schwer'];
+  const difficultyAliases = ['difficulty', 'Schwierigkeit', 'schwierigkeit', 'level'];
 
   const questionText = findValue(raw, questionTextAliases);
+  const correctAnswer = findValue(raw, correctAnswerAliases);
   const category = findValue(raw, categoryAliases);
-  const difficulty = findValue(raw, difficultyAliases);
+  const rawDifficulty = findValue(raw, difficultyAliases);
 
   if (!questionText) {
     console.error('   ⚠️ Missing questionText in question. Raw:', JSON.stringify(raw, null, 2));
     throw new Error('Question missing questionText field');
   }
 
+  if (!correctAnswer) {
+    console.error('   ⚠️ Missing correct_answer in question. Raw:', JSON.stringify(raw, null, 2));
+    throw new Error('Question missing correct_answer field');
+  }
+
+  // Normalize German difficulty values to English
+  let difficulty: 'easy' | 'medium' | 'hard' | undefined;
+  if (rawDifficulty) {
+    const diffStr = String(rawDifficulty).toLowerCase();
+    if (diffStr === 'leicht' || diffStr === 'easy') {
+      difficulty = 'easy';
+    } else if (diffStr === 'mittel' || diffStr === 'medium') {
+      difficulty = 'medium';
+    } else if (diffStr === 'schwer' || diffStr === 'hard') {
+      difficulty = 'hard';
+    }
+  }
+
   return {
     questionText: String(questionText),
+    correct_answer: String(correctAnswer),
     category: category ? String(category) : undefined,
-    difficulty: difficulty as 'easy' | 'medium' | 'hard' | undefined,
+    difficulty,
   };
 }
 
@@ -721,6 +749,7 @@ export class PromptsService {
 
   /**
    * Execute Quiz Answer Generator
+   * Generates plausible incorrect alternatives for a question that already has a correct answer.
    */
   async executeQuizAnswerGenerator(
     input: AnswerGeneratorInput
@@ -729,9 +758,9 @@ export class PromptsService {
     traceId?: string;
     generationId?: string;
   }> {
-    console.log(`🎯 [ANSWER GENERATOR] Starting answer generation...`);
+    console.log(`🎯 [ANSWER GENERATOR] Starting alternative generation...`);
     console.log(`   Question: "${input.question?.substring(0, 80) ?? '<no question>'}..."`);
-    console.log(`   SQL Result rows: ${Array.isArray(input.sqlResult) ? input.sqlResult.length : 'N/A'}`);
+    console.log(`   Correct Answer: "${input.correctAnswer}"`);
     
     const promptKey = 'quiz-answer-generator';
 
@@ -748,10 +777,11 @@ export class PromptsService {
         ? this.compileTemplate(userTemplate, {
             question: input.question,
             difficulty: input.difficulty,
-            sqlQuery: input.sqlQuery,
-            sqlResult: JSON.stringify(input.sqlResult, null, 2),
+            correctAnswer: input.correctAnswer,
+            category: input.category ?? '',
+            knowledgeBaseContext: input.knowledgeBaseContext ?? '',
           })
-        : `Question: ${input.question}\nDifficulty: ${input.difficulty}\n\nSQL Query:\n${input.sqlQuery}\n\nSQL Result:\n${JSON.stringify(input.sqlResult, null, 2)}`;
+        : `Frage: ${input.question}\nSchwierigkeit: ${input.difficulty}\nKategorie: ${input.category ?? 'Allgemein'}\n\nRichtige Antwort: ${input.correctAnswer}\n\nGeneriere 3 plausible aber falsche Alternativen.`;
 
       console.log(`   ✓ User prompt compiled`);
 
@@ -798,17 +828,13 @@ export class PromptsService {
       });
       console.log(`   ✓ Generation started (calling LLM...)`);
 
-      // Define JSON Schema for structured output (enforces exact field names)
+      // Define JSON Schema for structured output (only generates alternatives, correctAnswer is provided)
       const answerSchema = {
-        name: 'quiz_answer',
+        name: 'quiz_alternatives',
         strict: true,
         schema: {
           type: 'object' as const,
           properties: {
-            correctAnswer: {
-              type: 'string',
-              description: 'The correct answer to the quiz question',
-            },
             incorrectAnswers: {
               type: 'array',
               items: { type: 'string' },
@@ -816,14 +842,14 @@ export class PromptsService {
             },
             explanation: {
               type: 'string',
-              description: 'Brief explanation of why the answer is correct',
+              description: 'Brief explanation of why the correct answer is right',
             },
             evidenceScore: {
               type: 'number',
-              description: 'Confidence score from 0 to 1 based on SQL evidence',
+              description: 'Confidence score from 0 to 1 for answer quality',
             },
           },
-          required: ['correctAnswer', 'incorrectAnswers', 'explanation', 'evidenceScore'],
+          required: ['incorrectAnswers', 'explanation', 'evidenceScore'],
           additionalProperties: false,
         },
       };
@@ -847,7 +873,14 @@ export class PromptsService {
       console.log(`   📦 DEBUG - Raw LLM response:`, JSON.stringify(rawData, null, 2));
 
       // Normalize the LLM response to handle German/English field name variations
-      const normalizedData = normalizeAnswerGeneratorOutput(rawData);
+      // correctAnswer comes from input now, not from LLM
+      const normalizedRaw = normalizeAnswerGeneratorOutput(rawData);
+      const normalizedData: AnswerGeneratorOutput = {
+        correctAnswer: input.correctAnswer,
+        incorrectAnswers: normalizedRaw.incorrectAnswers,
+        explanation: normalizedRaw.explanation,
+        evidenceScore: normalizedRaw.evidenceScore,
+      };
       
       console.log(`     Correct: "${normalizedData.correctAnswer}"`);
       console.log(`     Wrong options: ${normalizedData.incorrectAnswers.map(a => `"${a}"`).join(', ')}`);
