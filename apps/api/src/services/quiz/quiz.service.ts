@@ -663,17 +663,24 @@ export class QuizService {
           console.log(`   ✓ Step 2: Question Saved to Database`);
 
           // Step 3: Create round and mark job as complete
-          const existingRound = await postgresService.queryOne<{ count: number }>(
+          const existingRound = await postgresService.queryOne<{ count: string }>(
             `SELECT COUNT(*) as count FROM public.quiz_rounds WHERE game_id = $1 AND round_number = $2`,
             [gameId, roundNumber]
           );
           
-          if (!existingRound || existingRound.count === 0) {
-            await postgresService.query(
+          const roundCount = parseInt(existingRound?.count ?? '0', 10);
+          
+          if (roundCount === 0) {
+            const insertedRound = await postgresService.queryOne<{ round_id: string }>(
               `INSERT INTO public.quiz_rounds (game_id, question_id, round_number)
-               VALUES ($1, $2, $3)`,
+               VALUES ($1, $2, $3)
+               RETURNING round_id`,
               [gameId, question.question_id, roundNumber]
             );
+            if (!insertedRound) {
+              throw new Error(`Failed to create round ${roundNumber}`);
+            }
+            console.log(`   ✓ Round ${roundNumber} created with ID: ${insertedRound.round_id}`);
           } else {
             // Update existing round with new question (from retry/re-generation)
             await postgresService.query(
