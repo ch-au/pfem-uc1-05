@@ -564,30 +564,41 @@ export class QuizService {
         continue;
       }
 
-      let lastGeneratedSql: string | null = null; // Track SQL for error logging
+      let lastGeneratedSql: string | null = null; // Track SQL for error logging and reuse
+      let sqlConfidence: number | null = null; // Cache confidence for reuse
       
       while (!questionCreated && retryCount < maxRetries) {
         try {
           console.log(`\n📋 ROUND ${roundNumber}/${config.numRounds} - Processing Question ${questionIndex + 1}/${questions.length}`);
           console.log(`   Question: "${generatedQuestion.questionText.substring(0, 80)}..."`);
           
-          // Step 1: Generate SQL query for the question (using chat-sql-generator)
-          console.log(`   ⏳ Step 1: Generating SQL Query...`);
-          const sqlGeneration = await promptsService.executeChatSQLGenerator({
-            userQuestion: generatedQuestion.questionText,
-            conversationHistory: [],
-            schemaContext,
-          });
+          // Step 1: Generate SQL query for the question (reuse if already generated)
+          let sql: string | null = lastGeneratedSql;
+          let confidence: number | null = sqlConfidence;
+          
+          if (!sql) {
+            console.log(`   ⏳ Step 1: Generating SQL Query...`);
+            const sqlGeneration = await promptsService.executeChatSQLGenerator({
+              userQuestion: generatedQuestion.questionText,
+              conversationHistory: [],
+              schemaContext,
+            });
 
-          const { sql, confidence, needsClarification } = sqlGeneration.result;
-          lastGeneratedSql = sql; // Store for error logging
+            sql = sqlGeneration.result.sql;
+            confidence = sqlGeneration.result.confidence;
+            const needsClarification = sqlGeneration.result.needsClarification;
 
-          // Check if SQL was successfully generated
-          if (needsClarification || !sql) {
-            throw new Error(`SQL generation failed: ${needsClarification || 'No SQL query generated'}`);
+            // Check if SQL was successfully generated
+            if (needsClarification || !sql) {
+              throw new Error(`SQL generation failed: ${needsClarification || 'No SQL query generated'}`);
+            }
+
+            lastGeneratedSql = sql; // Cache for potential retry
+            sqlConfidence = confidence;
+            console.log(`   ✓ Step 1: SQL Query Generated (confidence: ${confidence})`);
+          } else {
+            console.log(`   ⏩ Step 1: Reusing cached SQL Query (confidence: ${confidence})`);
           }
-
-          console.log(`   ✓ Step 1: SQL Query Generated (confidence: ${confidence})`);
           console.log(`   📝 FULL SQL QUERY:\n${sql ?? '<no SQL>'}`);
 
           // Update job status - SQL generated
