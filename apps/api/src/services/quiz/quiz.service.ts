@@ -14,6 +14,8 @@ import type {
   QuizAnswerResponse,
   QuizLeaderboardResponse,
   QuizGenerationProgressResponse,
+  KnowledgeBaseOutput,
+  KnowledgeBaseResult,
 } from '@fsv/shared-types';
 import { quizJobQueue } from './quiz.job-queue.js';
 
@@ -359,6 +361,62 @@ export class QuizService {
   }
 
   /**
+   * Execute Knowledge Base SQL queries and collect results
+   * Returns results array and formatted KNOWLEDGE_BASE string for Quiz_Fragen prompt
+   */
+  async executeKnowledgeBaseQueries(
+    kbOutput: KnowledgeBaseOutput
+  ): Promise<{ results: KnowledgeBaseResult[]; formattedKnowledgeBase: string }> {
+    console.log(`\n📊 [KB EXECUTION] Executing ${kbOutput.queries.length} SQL queries...`);
+    
+    const results: KnowledgeBaseResult[] = [];
+    const formattedParts: string[] = [];
+
+    for (let i = 0; i < kbOutput.queries.length; i++) {
+      const query = kbOutput.queries[i];
+      console.log(`   Query ${i + 1}/${kbOutput.queries.length}: ${query.sql_query.substring(0, 60)}...`);
+
+      try {
+        const { rows } = await postgresService.executeUserQuery(query.sql_query);
+        console.log(`   ✓ Got ${rows.length} results`);
+
+        results.push({
+          sql_query: query.sql_query,
+          reason: query.reason,
+          result: rows,
+        });
+
+        formattedParts.push(
+          `=== Abfrage ${i + 1} ===\n` +
+          `Frage-Hinweis: ${query.reason}\n` +
+          `SQL: ${query.sql_query}\n` +
+          `Ergebnis: ${JSON.stringify(rows, null, 2)}`
+        );
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.warn(`   ⚠️ Query ${i + 1} failed: ${errorMsg.substring(0, 100)}`);
+        results.push({
+          sql_query: query.sql_query,
+          reason: query.reason,
+          result: [],
+        });
+        formattedParts.push(
+          `=== Abfrage ${i + 1} ===\n` +
+          `Frage-Hinweis: ${query.reason}\n` +
+          `SQL: ${query.sql_query}\n` +
+          `Ergebnis: FEHLER - ${errorMsg.substring(0, 200)}`
+        );
+      }
+    }
+
+    const formattedKnowledgeBase = formattedParts.join('\n\n');
+    const successfulQueries = results.filter(r => r.result.length > 0).length;
+    console.log(`📊 [KB EXECUTION] ✅ Complete: ${successfulQueries}/${kbOutput.queries.length} successful\n`);
+
+    return { results, formattedKnowledgeBase };
+  }
+
+  /**
    * Get leaderboard for a game
    */
   async getLeaderboard(gameId: string): Promise<QuizLeaderboardResponse> {
@@ -433,24 +491,40 @@ export class QuizService {
 
     const previousQuestions = existingQuestions.map((q) => q.question_text);
 
-    // 3. Generate questions with SQL queries (with buffer for failures)
-    // LLM often generates questions based on events that don't exist in the database
-    // so we need a large buffer to ensure enough valid questions
-    const bufferMultiplier = 4.0; // Generate 300% more questions as buffer for SQL failures
-    const questionsToGenerate = Math.max(15, Math.ceil(config.numRounds * bufferMultiplier));
+    // 3. Generate knowledge base with SQL queries for the topic
     const logCtx: QuizLogContext = { gameId };
-    
-    // Cache schema context once per job (performance optimization)
     const schemaContext = getSchemaContext();
     
+    // Calculate number of KB queries based on rounds (more queries = more facts for questions)
+    const kbQueriesCount = Math.max(5, Math.ceil(config.numRounds * 1.5));
+    
     quizLogger.info(`🎯 QUIZ GENERATION START`, logCtx, {
-      questionsToGenerate,
       numRounds: config.numRounds,
       category: config.category,
       difficulty: config.difficulty,
+      kbQueriesCount,
     });
     
     const generationStart = Date.now();
+    
+    // Step 1: Generate Knowledge Base SQL queries
+    console.log(`\n📚 Step 1: Generating Knowledge Base for topic "${config.category}"...`);
+    const kbGeneration = await promptsService.executeKnowledgeBaseGenerator({
+      thema: config.category,
+      schwierigkeitsgrad: config.difficulty,
+      anzahlAbfragen: kbQueriesCount,
+      schemaContext,
+    });
+    
+    // Step 2: Execute KB SQL queries and format results
+    console.log(`\n📊 Step 2: Executing Knowledge Base SQL queries...`);
+    const { formattedKnowledgeBase } = await this.executeKnowledgeBaseQueries(kbGeneration.result);
+    
+    // 4. Generate questions using the knowledge base
+    const bufferMultiplier = 2.0; // Reduced buffer since KB provides verified facts
+    const questionsToGenerate = Math.max(10, Math.ceil(config.numRounds * bufferMultiplier));
+    
+    console.log(`\n❓ Step 3: Generating ${questionsToGenerate} questions from Knowledge Base...`);
     const questionGeneration = await promptsService.executeQuizQuestionGenerator({
       category: config.category,
       difficulty: config.difficulty,
@@ -459,6 +533,7 @@ export class QuizService {
       schemaContext,
       rounds: config.numRounds,
       numberOfPlayers: config.numberOfPlayers,
+      knowledgeBase: formattedKnowledgeBase,
     });
 
     // Validate that we received a valid questions array

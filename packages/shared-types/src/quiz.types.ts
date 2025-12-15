@@ -72,6 +72,7 @@ export interface QuestionGeneratorInput {
   schemaContext: string;
   rounds: number;
   numberOfPlayers: number;
+  knowledgeBase?: string;
 }
 
 export interface QuestionGeneratorOutput {
@@ -94,6 +95,31 @@ export interface AnswerGeneratorOutput {
   incorrectAnswers: string[];
   explanation: string;
   evidenceScore: number;
+}
+
+// Knowledge Base Generator types (for quiz question generation pipeline)
+export interface KnowledgeBaseInput {
+  thema: string;
+  schwierigkeitsgrad: 'easy' | 'medium' | 'hard';
+  anzahlAbfragen: number;
+  schemaContext: string;
+}
+
+export interface KnowledgeBaseQuery {
+  sql_query: string;
+  reason: string;
+}
+
+export interface KnowledgeBaseOutput {
+  thema: string;
+  schwierigkeitsgrad: string;
+  queries: KnowledgeBaseQuery[];
+}
+
+export interface KnowledgeBaseResult {
+  sql_query: string;
+  reason: string;
+  result: any[];
 }
 
 // Quiz Generation Progress types

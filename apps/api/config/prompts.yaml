@@ -46,6 +46,17 @@ prompts:
       response_format: 'json'
     description: 'Generates plausible incorrect alternatives for quiz questions'
 
+  # Knowledge Base Generator - Generates SQL queries for quiz topics
+  knowledge-base:
+    langfuse_name: 'uc1/production/knowledge_base'
+    langfuse_label: 'production'
+    fallback_file: 'knowledge-base.txt'
+    llm_config:
+      temperature: 0.3
+      max_tokens: 15000
+      response_format: 'json'
+    description: 'Generates SQL queries for a given quiz topic to build knowledge base'
+
 # Global defaults
 defaults:
   default_model: 'google/gemini-2.5-flash-preview-09-2025'

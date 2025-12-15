@@ -13,6 +13,8 @@ import type {
   QuestionGeneratorOutput,
   AnswerGeneratorInput,
   AnswerGeneratorOutput,
+  KnowledgeBaseInput,
+  KnowledgeBaseOutput,
 } from '@fsv/shared-types';
 
 /**
@@ -588,13 +590,14 @@ export class PromptsService {
     // Load prompt template with config
     const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
 
-    // Compile system prompt with variables
+    // Compile system prompt with variables (including optional KNOWLEDGE_BASE)
     const systemPrompt = this.compileTemplate(systemTemplate, {
       schemaContext: input.schemaContext,
       Thema: input.category,
       Schwierigkeitsgrad: input.difficulty,
       Rundenanzahl: String(input.rounds),
       AnzahlMitspieler: String(input.numberOfPlayers),
+      KNOWLEDGE_BASE: input.knowledgeBase ?? '',
     });
 
     // Compile user prompt from template (or construct if template is empty)
@@ -603,6 +606,7 @@ export class PromptsService {
           category: input.category,
           difficulty: input.difficulty,
           count: String(input.count),
+          KNOWLEDGE_BASE: input.knowledgeBase ?? '',
         })
       : `Category: ${input.category}\nDifficulty: ${input.difficulty}\nNumber of Questions: ${input.count}`;
 
@@ -866,6 +870,173 @@ export class PromptsService {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : '';
       console.error(`\n❌ [ANSWER GENERATOR] FAILED`);
+      console.error(`   Error: ${errorMessage}`);
+      if (errorStack && typeof errorStack === 'string') {
+        console.error(`   Stack: ${errorStack.substring(0, 300)}`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Execute Knowledge Base Generator
+   * Generates SQL queries for a given quiz topic to build knowledge base
+   */
+  async executeKnowledgeBaseGenerator(
+    input: KnowledgeBaseInput
+  ): Promise<{
+    result: KnowledgeBaseOutput;
+    traceId?: string;
+    generationId?: string;
+  }> {
+    console.log(`\n📚 [KNOWLEDGE BASE] Starting knowledge base generation...`);
+    console.log(`   Topic: "${input.thema}"`);
+    console.log(`   Difficulty: ${input.schwierigkeitsgrad}`);
+    console.log(`   Number of queries: ${input.anzahlAbfragen}`);
+
+    const promptKey = 'knowledge-base';
+
+    try {
+      const { system: systemTemplate, user: userTemplate, config, meta } = await this.loadPromptTemplate(promptKey);
+      console.log(`   ✓ Loaded prompt template from ${meta.source}`);
+
+      const difficultyMap: Record<string, string> = {
+        easy: 'leicht',
+        medium: 'mittel',
+        hard: 'schwer',
+      };
+      const germanDifficulty = difficultyMap[input.schwierigkeitsgrad] || input.schwierigkeitsgrad;
+
+      const systemPrompt = this.compileTemplate(systemTemplate, {
+        SQL_SCHEMA: input.schemaContext,
+        Thema: input.thema,
+        Schwierigkeitsgrad: germanDifficulty,
+        AnzahlAbfragen: String(input.anzahlAbfragen),
+      });
+
+      const userPrompt = userTemplate
+        ? this.compileTemplate(userTemplate, {
+            Thema: input.thema,
+            Schwierigkeitsgrad: germanDifficulty,
+            AnzahlAbfragen: String(input.anzahlAbfragen),
+          })
+        : `Thema: ${input.thema}\nSchwierigkeitsgrad: ${germanDifficulty}\nAnzahl Abfragen: ${input.anzahlAbfragen}`;
+
+      console.log(`   ✓ Prompts compiled`);
+
+      const trace = langfuseService.createTrace('knowledge-base-generation', {
+        input: userPrompt,
+        metadata: {
+          prompt_key: promptKey,
+          prompt_source: meta.source,
+          prompt_name: meta.promptName,
+          prompt_label: meta.promptLabel,
+          prompt_version: meta.promptVersion,
+          prompt_fallback: meta.fallbackFile,
+          topic: input.thema,
+          difficulty: input.schwierigkeitsgrad,
+        },
+      });
+      console.log(`   ✓ Langfuse trace created`);
+
+      const model = promptsConfig.getModelForPrompt(promptKey);
+
+      const langfusePrompt = await langfuseService.getPrompt(
+        meta.promptName,
+        meta.promptVersion && meta.promptVersion !== 'fallback' ? Number(meta.promptVersion) : undefined
+      );
+      console.log(`   ✓ Langfuse prompt fetched`);
+
+      const generation = langfuseService.createGenerationWithPrompt(trace, {
+        name: 'Knowledge Base Generation',
+        model: model,
+        input: { system: systemPrompt, user: userPrompt },
+        metadata: {
+          prompt_key: promptKey,
+          prompt_source: meta.source,
+          prompt_name: meta.promptName,
+          prompt_label: meta.promptLabel,
+          prompt_version: meta.promptVersion,
+          prompt_id: meta.promptId,
+          prompt_fallback: meta.fallbackFile,
+        },
+        langfusePrompt: langfusePrompt,
+        promptName: meta.promptName,
+        promptVersion: meta.promptVersion,
+      });
+      console.log(`   ⏳ Calling LLM for knowledge base generation...`);
+
+      const knowledgeBaseSchema = {
+        name: 'knowledge_base',
+        strict: true,
+        schema: {
+          type: 'object' as const,
+          properties: {
+            thema: {
+              type: 'string',
+              description: 'The topic/category for the quiz',
+            },
+            schwierigkeitsgrad: {
+              type: 'string',
+              description: 'Difficulty level: leicht, mittel, or schwer',
+            },
+            queries: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  sql_query: {
+                    type: 'string',
+                    description: 'A valid PostgreSQL query for FSV Mainz 05 data',
+                  },
+                  reason: {
+                    type: 'string',
+                    description: 'Explanation of what fact this query reveals and potential question hint',
+                  },
+                },
+                required: ['sql_query', 'reason'],
+                additionalProperties: false,
+              },
+              description: 'Array of SQL queries with reasoning',
+            },
+          },
+          required: ['thema', 'schwierigkeitsgrad', 'queries'],
+          additionalProperties: false,
+        },
+      };
+
+      const { data: rawData, usage } = await openRouterService.generateJSON<KnowledgeBaseOutput>(
+        userPrompt,
+        {
+          model: model,
+          systemInstruction: systemPrompt,
+          temperature: config.llm_config.temperature,
+          maxOutputTokens: config.llm_config.max_tokens,
+          responseFormat: 'json_schema',
+          jsonSchema: knowledgeBaseSchema,
+        }
+      );
+
+      langfuseService.endGeneration(generation, rawData, usage);
+      console.log(`   ✓ Knowledge base generation complete`);
+      console.log(`     Topic: "${rawData.thema}"`);
+      console.log(`     Queries generated: ${rawData.queries?.length ?? 0}`);
+
+      langfuseService.endTrace(trace, rawData);
+
+      await langfuseService.flush();
+      console.log(`   ✓ Langfuse trace flushed`);
+      console.log(`📚 [KNOWLEDGE BASE] ✅ Complete\n`);
+
+      return {
+        result: rawData,
+        traceId: trace?.id,
+        generationId: generation?.id,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error(`\n❌ [KNOWLEDGE BASE] FAILED`);
       console.error(`   Error: ${errorMessage}`);
       if (errorStack && typeof errorStack === 'string') {
         console.error(`   Stack: ${errorStack.substring(0, 300)}`);
