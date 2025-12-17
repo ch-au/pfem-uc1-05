@@ -46,9 +46,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <header className={styles.header}>
       <div className={styles.branding}>
         <div className={styles.logoContainer}>
-          <div className={styles.logo}>
-            <span className={styles.logoText}>Mainz 05</span>
-          </div>
+          <img 
+            src="/mainz05-logo.svg" 
+            alt="Mainz 05 Logo" 
+            className={styles.logo}
+          />
         </div>
         <div className={styles.title}>
           <h1 className={styles.titleText}>Chat</h1>
@@ -76,11 +78,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
         <div className={styles.menuContainer}>
           <IconButton
-            icon={menuOpen ? <X size={20} /> : <MoreVertical size={20} />}
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Menu"
             className={styles.menuButton}
-          />
+          >
+            {menuOpen ? <X size={20} /> : <MoreVertical size={20} />}
+          </IconButton>
 
           {menuOpen && (
             <div className={styles.menu}>

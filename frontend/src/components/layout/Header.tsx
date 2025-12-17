@@ -15,7 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ onProfileClick }) => {
           <div className={styles.logoSection}>
             <div className={styles.logoContainer}>
               <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/FSV_Mainz_05_Logo.png/240px-FSV_Mainz_05_Logo.png" 
+                src="/mainz05-logo.svg" 
                 alt="Mainz 05 Logo" 
                 className={styles.logoImage}
               />
