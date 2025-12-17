@@ -14,8 +14,9 @@ HAUPTTABELLEN:
 
 2. players (10,191 Zeilen)
    Columns: player_id (INT PK), name (TEXT), normalized_name (TEXT), birth_date (TEXT),
-            birth_place (TEXT), height_cm (INT), weight_kg (INT), primary_position (TEXT),
+            birth_place (TEXT), death_date (TEXT), height_cm (INT), weight_kg (INT), primary_position (TEXT),
             nationality (TEXT), profile_url (TEXT), image_url (TEXT), name_embedding (vector)
+   NOTE: death_date ist für verstorbene Spieler verfügbar (72 Spieler haben Sterbedaten)
 
 3. matches (4,680 Zeilen)
    Columns: match_id (INT PK), season_competition_id (INT FK), round_name (TEXT), matchday (INT),
@@ -66,9 +67,11 @@ HAUPTTABELLEN:
 13. match_coaches
     Columns: match_coach_id (INT PK), match_id (INT FK), team_id (INT FK), coach_id (INT FK), role (TEXT)
 
-14. player_careers
-    Columns: career_id (INT PK), player_id (INT FK), team_name (TEXT), team_id (INT FK),
+14. player_careers (7,527 Zeilen)
+    Columns: career_id (INT PK), player_id (INT FK), team_name (TEXT),
              start_year (INT), end_year (INT), notes (TEXT)
+    WICHTIG: Enthält Karriere-Stationen bei ANDEREN Vereinen (vor/nach Mainz)
+    KEIN team_id! Nur team_name als Text-Feld verfügbar.
 
 15. season_squads
     Columns: season_squad_id (INT PK), season_competition_id (INT FK), player_id (INT FK),
@@ -442,20 +445,59 @@ ORDER BY m.match_date DESC LIMIT 10;
 
 NIEMALS für diese Aggregat-Fragen direkt aus goals/cards/match_lineups aggregieren!
 
+SPIELER-KARRIEREN (player_careers):
+Enthält Karriere-Stationen von Spielern bei ANDEREN Vereinen (vor/nach Mainz).
+WICHTIG: KEIN team_id in dieser Tabelle! Nur team_name als Text.
+
+-- "Welche Spieler haben auch bei Bayern gespielt?"
+SELECT DISTINCT p.name, p.birth_date, p.death_date,
+       pc.team_name AS station, pc.start_year, pc.end_year
+FROM players p
+JOIN player_careers pc ON p.player_id = pc.player_id
+WHERE pc.team_name ILIKE '%bayern m%'
+ORDER BY p.name;
+
+-- "Spieler die auch bei [Team] gespielt haben" (allgemein)
+SELECT DISTINCT p.name, pc.team_name, pc.start_year, pc.end_year
+FROM players p
+JOIN player_careers pc_mainz ON p.player_id = pc_mainz.player_id
+JOIN player_careers pc_other ON p.player_id = pc_other.player_id
+WHERE pc_mainz.team_name ILIKE '%mainz%'
+  AND pc_other.team_name ILIKE '%[team-suche]%'
+ORDER BY p.name;
+
+-- "Verstorbene Spieler"
+SELECT name, birth_date, death_date, birth_place
+FROM players
+WHERE death_date IS NOT NULL
+ORDER BY death_date DESC LIMIT 20;
+
 DATEN-LIMITIERUNGEN:
 - Datenbank enthält NUR FSV Mainz 05 Spiele und Statistiken
-- Keine Daten über Spieler-Karrieren bei anderen Vereinen (außer player_careers Notizen)
+- player_careers enthält Karriere-Stationen bei anderen Vereinen (7.527 Einträge)
 - Keine Nationalmannschafts-Daten
-- Bei Fragen nach "erfolgreicher Karriere danach" → Nur Mainz-Daten lieferbar
-- Bei solchen Fragen: Antwort sollte klarstellen, dass nur Mainz-Einsätze gezeigt werden
+- Bei Fragen nach "erfolgreicher Karriere" → player_careers abfragen
+
+HISTORISCHE DATENLÜCKEN (WICHTIG!):
+- TRAINER-DATEN erst ab 1926-27 Saison verfügbar!
+  - Erster dokumentierter Trainer: Tibor Hesser (ab 19.12.1926)
+  - Vor 1926: Keine Trainer-Informationen in den Archiv-Quellen
+  - 1.797 Spiele haben keinen Trainer-Eintrag
+  - Bei Fragen nach "erstem Trainer" → Hinweis geben, dass Daten erst ab 1926 vorliegen
+- SPIEL-DATEN ab 1906 verfügbar (frühestes Spiel: 07.10.1906)
+  - Verein gegründet 1905, aber erste dokumentierte Spiele ab 1906
+- Frühe Statistiken (1905-1950) oft unvollständig:
+  - Fehlende Aufstellungen, Torschützen, Minuten
+  - Teilweise nur Ergebnisse dokumentiert
 
 KEY STATISTICS:
 - 121 Saisonen (1905-2026)
 - 4,680 Spiele
-- 10,191 Spieler
+- 10,191 Spieler (72 mit Sterbedaten)
 - 9,897 Tore
 - 5,765 Karten
 - 100,373 Lineup-Einträge
+- 7,527 Karriere-Stationen (player_careers)
 - 828 Teams
 - 615 Trainer
 `;
