@@ -240,6 +240,19 @@ export class PromptsService {
         if (promptData && promptData.prompt) {
           console.log(`✅ Loaded prompt "${promptKey}" from Langfuse (${config.langfuse_name})`);
           
+          // Debug: Log raw Langfuse prompt structure
+          console.log(`   📋 Langfuse prompt type: ${typeof promptData.prompt}`);
+          if (typeof promptData.prompt === 'string') {
+            console.log(`   📋 Langfuse prompt (first 500 chars): ${promptData.prompt.substring(0, 500)}`);
+          } else if (Array.isArray(promptData.prompt)) {
+            console.log(`   📋 Langfuse prompt is CHAT ARRAY with ${promptData.prompt.length} messages`);
+            promptData.prompt.forEach((msg: any, i: number) => {
+              console.log(`      Message ${i}: role=${msg.role}, content (first 200)=${String(msg.content).substring(0, 200)}`);
+            });
+          } else {
+            console.log(`   📋 Langfuse prompt object:`, JSON.stringify(promptData.prompt).substring(0, 500));
+          }
+          
           const result = this.parsePromptTemplate(promptData.prompt);
           
           if (result) {
