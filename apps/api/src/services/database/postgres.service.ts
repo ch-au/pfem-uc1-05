@@ -77,8 +77,8 @@ export class PostgresService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN READ ONLY');
-      await client.query('SET LOCAL statement_timeout = 5000');
-      console.log(`   ✓ Transaction started (READ ONLY, 5s timeout)`);
+      await client.query('SET LOCAL statement_timeout = 30000');
+      console.log(`   ✓ Transaction started (READ ONLY, 30s timeout)`);
 
       const start = Date.now();
       console.log(`   ⏳ Executing query...`);
