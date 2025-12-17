@@ -2,11 +2,18 @@
   display: flex;
   gap: 0.75rem;
   align-items: flex-end;
-  background: #FFFFFF;
-  padding: 1rem;
-  border-radius: 1rem;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  background: var(--mainz-white);
+  padding: 1rem 1.25rem;
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-lg);
   width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: all var(--transition-fast);
+}
+
+.container:focus-within {
+  box-shadow: var(--shadow-lg), 0 0 0 3px rgba(195, 20, 31, 0.1);
+  border-color: rgba(195, 20, 31, 0.2);
 }
 
 .input {

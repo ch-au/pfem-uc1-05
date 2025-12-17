@@ -2,13 +2,13 @@
   position: sticky;
   top: 0;
   z-index: 1030;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 
 .utilityBar {
-  background: var(--mainz-black); /* Dark charcoal */
+  background: var(--mainz-black);
   padding: 0.5rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .utilityContent {
@@ -17,7 +17,7 @@
   display: flex;
   gap: 2rem;
   align-items: center;
-  justify-content: flex-end; /* Align to right like official site */
+  justify-content: flex-end;
 }
 
 .utilityItem {
@@ -27,7 +27,7 @@
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  transition: all 0.2s ease-in-out;
+  transition: all var(--transition-fast);
 }
 
 .utilityItem:hover {
@@ -35,14 +35,13 @@
 }
 
 .mainNav {
-  background: var(--mainz-red);
+  background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
   color: var(--mainz-white);
   padding: 0.75rem 1.25rem;
   position: relative;
   overflow: hidden;
 }
 
-/* Add a subtle texture/gradient to the header for depth */
 .mainNav::before {
   content: '';
   position: absolute;
@@ -50,7 +49,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, rgba(0,0,0,0.1) 0%, transparent 100%);
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
   pointer-events: none;
 }
 
@@ -79,7 +80,13 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 0 3px rgba(255, 255, 255, 0.15);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.logoContainer:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(255, 255, 255, 0.2);
 }
 
 .logoImage {
@@ -104,21 +111,26 @@
 
 .appTitle {
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
   margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .profileButton {
   color: var(--mainz-white) !important;
   background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(4px);
+  transition: all var(--transition-fast) !important;
 }
 
 .profileButton:hover {
   background: var(--mainz-white) !important;
   color: var(--mainz-red) !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 @media (min-width: 768px) {

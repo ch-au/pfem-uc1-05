@@ -6,10 +6,9 @@
   font-family: inherit;
   font-weight: 700;
   border: none;
-  /* Swag: Reduced border radius for sportier look */
-  border-radius: 4px; 
+  border-radius: 8px; 
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-fast);
   white-space: nowrap;
   position: relative;
   text-transform: uppercase;
@@ -18,30 +17,28 @@
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
-  filter: grayscale(1);
+  filter: grayscale(0.5);
 }
 
 .button--primary {
-  background: var(--mainz-red);
+  background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
   color: var(--mainz-white);
-  box-shadow: 0 4px 6px rgba(195, 20, 31, 0.2);
-  /* Add a subtle shine effect */
+  box-shadow: var(--shadow-red);
 }
 
 .button--primary:hover:not(:disabled) {
-  background: var(--mainz-red-dark);
-  box-shadow: 0 6px 12px rgba(195, 20, 31, 0.3);
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, var(--mainz-red-light) 0%, var(--mainz-red) 100%);
+  box-shadow: 0 8px 20px rgba(195, 20, 31, 0.4);
+  transform: translateY(-3px);
 }
 
 .button--primary:active:not(:disabled) {
-  transform: translateY(0);
-  background: var(--mainz-red-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-red);
 }
 
-/* Add a pseudo-element for a diagonal shine animation on hover */
 .button--primary::after {
   content: '';
   position: absolute;
@@ -52,10 +49,10 @@
   background: linear-gradient(
     120deg,
     transparent,
-    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.25),
     transparent
   );
-  transition: 0.5s;
+  transition: 0.6s;
 }
 
 .button--primary:hover::after {
@@ -66,13 +63,14 @@
   background: var(--mainz-white);
   color: var(--mainz-red);
   border: 2px solid var(--mainz-red);
+  box-shadow: var(--shadow-sm);
 }
 
 .button--secondary:hover:not(:disabled) {
   background: var(--mainz-red);
   color: var(--mainz-white);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-red);
 }
 
 .button--ghost {
@@ -81,7 +79,7 @@
 }
 
 .button--ghost:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(195, 20, 31, 0.06);
   color: var(--mainz-red);
 }
 

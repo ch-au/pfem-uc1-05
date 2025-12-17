@@ -1,16 +1,16 @@
 .card {
   background: var(--mainz-white);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;
-  border-top: 3px solid transparent;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all var(--transition-normal);
 }
 
 .card--elevated {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border-top-color: var(--mainz-red);
+  box-shadow: var(--shadow-lg);
+  border-left: 4px solid var(--mainz-red);
 }
 
 .card--default {
@@ -19,13 +19,17 @@
 
 .card--interactive {
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-normal);
 }
 
 .card--interactive:hover {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-  border-top-color: var(--mainz-red);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px);
+  border-color: rgba(195, 20, 31, 0.15);
+}
+
+.card--interactive:active {
+  transform: translateY(-2px);
 }
 
 .card--padding-sm {
@@ -41,6 +45,6 @@
 }
 
 .card--featured {
-  background: var(--mainz-white);
-  border: 1px solid rgba(195, 20, 31, 0.1);
+  background: linear-gradient(135deg, var(--mainz-white) 0%, rgba(195, 20, 31, 0.02) 100%);
+  border: 1px solid rgba(195, 20, 31, 0.12);
 }

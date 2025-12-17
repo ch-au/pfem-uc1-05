@@ -149,14 +149,15 @@
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  padding: 1.25rem;
-  background: #FFFFFF;
-  border: 2px solid #E5E7EB;
+  padding: 1.25rem 1.5rem;
+  background: var(--mainz-white);
+  border: 1px solid var(--gray-border);
   border-radius: 1rem;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal);
   animation: slideInUp 0.5s ease-out backwards;
+  box-shadow: var(--shadow-sm);
 }
 
 @keyframes slideInUp {
@@ -171,10 +172,10 @@
 }
 
 .suggestionCard:hover {
-  border-color: #C8191E;
-  background: linear-gradient(to bottom right, #FFFFFF, #FEF2F2);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(200, 25, 30, 0.15);
+  border-color: var(--mainz-red);
+  background: linear-gradient(135deg, var(--mainz-white) 0%, rgba(195, 20, 31, 0.04) 100%);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(195, 20, 31, 0.1);
 }
 
 .suggestionCard:active {
@@ -185,19 +186,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
-  border-radius: 0.75rem;
-  color: #C8191E;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(195, 20, 31, 0.08) 0%, rgba(195, 20, 31, 0.15) 100%);
+  border-radius: 12px;
+  color: var(--mainz-red);
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: all var(--transition-normal);
 }
 
 .suggestionCard:hover .suggestionIcon {
-  background: linear-gradient(135deg, #C8191E 0%, #A01418 100%);
-  color: #FFFFFF;
-  transform: scale(1.1);
+  background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
+  color: var(--mainz-white);
+  transform: scale(1.1) rotate(3deg);
+  box-shadow: var(--shadow-red);
 }
 
 .suggestionContent {

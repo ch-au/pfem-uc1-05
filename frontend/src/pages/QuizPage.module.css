@@ -10,15 +10,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: var(--mainz-white);
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  margin-bottom: 1.25rem;
+  padding: 0.875rem 1.25rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 1.5rem;
   position: sticky;
   top: 80px;
   z-index: 100;
-  border: 1px solid var(--gray-light);
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .controlButton {
@@ -200,12 +201,16 @@
 }
 
 .startTitle {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 900;
-  color: var(--mainz-red);
+  background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   margin: 0 0 1rem;
   text-transform: uppercase;
   line-height: 1;
+  text-shadow: none;
 }
 
 .startDescription {

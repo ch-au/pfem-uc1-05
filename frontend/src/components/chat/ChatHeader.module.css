@@ -4,16 +4,17 @@
   justify-content: space-between;
   height: 64px;
   padding: 0 1.5rem;
-  background: #FFFFFF;
-  border-bottom: 1px solid #E5E7EB;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--gray-border);
   position: sticky;
   top: 0;
   z-index: 10;
-  transition: box-shadow 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .header:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .branding {
@@ -69,13 +70,13 @@
 
 .toggle {
   position: relative;
-  width: 40px;
-  height: 22px;
+  width: 44px;
+  height: 24px;
   background: #D1D5DB;
   border: none;
-  border-radius: 11px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all var(--transition-fast);
   padding: 0;
 }
 
@@ -84,11 +85,12 @@
 }
 
 .toggleActive {
-  background: #C8191E;
+  background: linear-gradient(135deg, var(--mainz-red) 0%, var(--mainz-red-dark) 100%);
+  box-shadow: 0 2px 8px rgba(195, 20, 31, 0.3);
 }
 
 .toggleActive:hover {
-  background: #A01418;
+  background: linear-gradient(135deg, var(--mainz-red-light) 0%, var(--mainz-red) 100%);
 }
 
 .toggleThumb {
