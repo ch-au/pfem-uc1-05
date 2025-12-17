@@ -83,6 +83,8 @@ export interface GeneratedQuestion {
 }
 
 export interface QuestionGeneratorOutput {
+  rejected: boolean;
+  rejection_reason?: string;
   questions: GeneratedQuestion[];
 }
 

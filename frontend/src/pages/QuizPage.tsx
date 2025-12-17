@@ -70,9 +70,14 @@ export const QuizPage: React.FC = () => {
       await loadGameHistory();
       await loadGlobalLeaderboard();
       setScreen('game');
-    } catch (error) {
-      // Error is already set in the hook, just log it
-      console.error('Failed to create game:', error);
+    } catch (error: any) {
+      // Check if this was a topic rejection
+      if (error?.code === 'TOPIC_REJECTED') {
+        console.log('Topic rejected:', error.message);
+        // Error is already set in the hook with the rejection reason
+      } else {
+        console.error('Failed to create game:', error);
+      }
     }
   };
 
@@ -202,8 +207,8 @@ export const QuizPage: React.FC = () => {
         )}
         {error && (
           <Alert
-            variant="error"
-            title="Quiz Erstellung fehlgeschlagen"
+            variant={error.includes('nicht verarbeitet') || error.includes('nicht erlaubt') || error.includes('historisch') ? 'warning' : 'error'}
+            title={error.includes('nicht verarbeitet') || error.includes('nicht erlaubt') || error.includes('historisch') ? 'Thema nicht erlaubt' : 'Quiz Erstellung fehlgeschlagen'}
             message={error}
             onClose={handleErrorClose}
           />

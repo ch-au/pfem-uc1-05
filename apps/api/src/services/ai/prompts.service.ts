@@ -107,6 +107,23 @@ function normalizeQuestionGeneratorOutput(raw: any): QuestionGeneratorOutput {
     throw new Error(`Invalid question generator response: expected object, got ${typeof raw}`);
   }
 
+  // Check for rejection first (topic was inappropriate)
+  const rejectedAliases = ['rejected', 'abgelehnt', 'Abgelehnt'];
+  const rejectionReasonAliases = ['rejection_reason', 'rejectionReason', 'ablehnungsgrund', 'Ablehnungsgrund', 'grund', 'reason'];
+  
+  const rejected = findValue(raw, rejectedAliases);
+  const rejectionReason = findValue(raw, rejectionReasonAliases);
+  
+  // If rejected, return early with empty questions
+  if (rejected === true) {
+    console.log(`   🚫 Quiz topic rejected by LLM: ${rejectionReason ?? 'No reason provided'}`);
+    return {
+      rejected: true,
+      rejection_reason: rejectionReason ?? 'Dieses Thema kann nicht verarbeitet werden.',
+      questions: [],
+    };
+  }
+
   // Field name aliases for questions array
   const questionsAliases = ['questions', 'Fragen', 'fragen', 'questionList', 'question_list'];
   
@@ -127,7 +144,7 @@ function normalizeQuestionGeneratorOutput(raw: any): QuestionGeneratorOutput {
     }
   });
 
-  return { questions };
+  return { rejected: false, questions };
 }
 
 function normalizeAnswerGeneratorOutput(raw: any): AnswerGeneratorOutput {

@@ -103,6 +103,15 @@ export const useQuizGame = () => {
         
         if (progress.status === 'failed') {
           const errorMsg = progress.progress?.error_message || 'Unknown error';
+          
+          // Check if this was a topic rejection (inappropriate content)
+          if (errorMsg.startsWith('REJECTED:')) {
+            const rejectionReason = errorMsg.replace('REJECTED:', '').trim();
+            const error = new Error(rejectionReason);
+            (error as any).code = 'TOPIC_REJECTED';
+            throw error;
+          }
+          
           throw new Error(`Question generation failed: ${errorMsg}`);
         }
 
@@ -225,14 +234,19 @@ export const useQuizGame = () => {
   };
 
   const nextRound = async () => {
-    if (!gameId) return;
+    if (!gameId || !gameState) return;
 
     try {
       setLoading(true);
       setError(null);
       const result = await quizService.nextRound(gameId);
 
-      setGameState(result);
+      // Merge the response with existing game state
+      setGameState({
+        ...gameState,
+        status: result.status,
+        current_round: result.current_round ?? gameState.current_round,
+      });
       setRoundResults([]);
       setCorrectAnswerForRound('');
       setExplanationForRound(undefined);

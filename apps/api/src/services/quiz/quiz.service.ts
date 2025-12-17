@@ -554,6 +554,25 @@ export class QuizService {
       knowledgeBase: formattedKnowledgeBase,
     });
 
+    // Check if the topic was rejected (inappropriate content)
+    if (questionGeneration.result?.rejected) {
+      const rejectionReason = questionGeneration.result.rejection_reason ?? 'Dieses Thema kann nicht verarbeitet werden.';
+      console.log(`🚫 Quiz topic "${config.category}" was rejected: ${rejectionReason}`);
+      
+      // Mark all jobs as failed with rejection reason
+      await postgresService.query(
+        `UPDATE quiz_generation_jobs 
+         SET status = 'failed', error_message = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE game_id = $2`,
+        [`REJECTED: ${rejectionReason}`, gameId]
+      );
+      
+      // Throw a special error that the API layer can identify
+      const error = new Error(rejectionReason);
+      (error as any).code = 'TOPIC_REJECTED';
+      throw error;
+    }
+
     // Validate that we received a valid questions array
     const questions = questionGeneration.result?.questions;
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
