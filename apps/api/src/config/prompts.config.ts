@@ -7,7 +7,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 
-// Lazy/optional YAML loader (falls back to JSON.parse if js-yaml is unavailable)
 let yamlLoad: (content: string) => any;
 try {
   const jsYaml = require('js-yaml');
@@ -32,21 +31,39 @@ export interface PromptConfig {
   langfuse_name: string;
   langfuse_label?: string;
   fallback_file: string;
-  model?: string;  // Optional: Override default model for this prompt
+  model?: string;
   llm_config: PromptLLMConfig;
+  description: string;
+}
+
+export interface EmbeddingsConfig {
+  model: string;
+  provider: 'openai' | 'cohere';
+  dimensions: number;
   description: string;
 }
 
 export interface PromptsConfiguration {
   prompts: Record<string, PromptConfig>;
+  embeddings?: EmbeddingsConfig;
   defaults: {
-    default_model: string;  // Default model for all prompts
+    default_model: string;
     fallback_dir: string;
     langfuse_enabled: boolean;
     retry_on_error: boolean;
     max_retries: number;
   };
+  available_models?: {
+    openrouter?: string[];
+  };
 }
+
+const DEFAULT_EMBEDDINGS: EmbeddingsConfig = {
+  model: 'text-embedding-3-large',
+  provider: 'openai',
+  dimensions: 3072,
+  description: 'Default embeddings configuration'
+};
 
 class PromptsConfigLoader {
   private config: PromptsConfiguration | null = null;
@@ -56,10 +73,6 @@ class PromptsConfigLoader {
     this.configPath = join(__dirname, '../../config/prompts.yaml');
   }
 
-  /**
-   * Load YAML configuration (with hot-reload support)
-   * Set forceReload=true to reload from disk
-   */
   load(forceReload: boolean = false): PromptsConfiguration {
     if (this.config && !forceReload) {
       return this.config;
@@ -71,6 +84,11 @@ class PromptsConfigLoader {
       
       console.log(`✅ Loaded prompts configuration with ${Object.keys(this.config.prompts).length} prompts`);
       console.log(`📌 Default model: ${this.config.defaults.default_model}`);
+      
+      if (this.config.embeddings) {
+        console.log(`🔢 Embeddings: ${this.config.embeddings.model} (${this.config.embeddings.dimensions}d)`);
+      }
+      
       return this.config;
     } catch (error) {
       console.error('Failed to load prompts.yaml:', error);
@@ -78,9 +96,6 @@ class PromptsConfigLoader {
     }
   }
 
-  /**
-   * Force reload configuration from disk
-   */
   reload(): void {
     this.config = null;
     this.load(true);
@@ -106,15 +121,20 @@ class PromptsConfigLoader {
     return Object.keys(this.load().prompts);
   }
 
-  /**
-   * Get the model to use for a specific prompt
-   * Returns prompt-specific model if defined, otherwise default model
-   */
   getModelForPrompt(promptKey: string): string {
     const promptConfig = this.getPromptConfig(promptKey);
     return promptConfig.model || this.getDefaults().default_model;
   }
+
+  getEmbeddingsConfig(): EmbeddingsConfig {
+    const config = this.load();
+    return config.embeddings || DEFAULT_EMBEDDINGS;
+  }
+
+  getAvailableModels(): string[] {
+    const config = this.load();
+    return config.available_models?.openrouter || [];
+  }
 }
 
-// Singleton instance
 export const promptsConfig = new PromptsConfigLoader();
