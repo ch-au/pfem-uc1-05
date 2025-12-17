@@ -1,10 +1,10 @@
 // FSV Mainz 05 Database Schema Context for AI prompts
-// Updated: 2025-12-17 - Fixed data quality issues, enhanced MV guidance
+// Updated: 2025-12-17 - Performance optimized with trigram indexes, FSV-specific MVs
 
 export const SCHEMA_CONTEXT = `
 FSV Mainz 05 Football Database Schema (PostgreSQL):
 Database: Neon PostgreSQL Cloud
-Status: ✅ Production Ready (4,680 matches, 10,191 players, 9,897 goals)
+Status: Production Ready (4,680 matches, 10,191 players, 9,897 goals)
 
 HAUPTTABELLEN:
 
@@ -88,9 +88,6 @@ KRITISCH - KEINE FAKTEN RATEN!
 - IMMER per ORDER BY + LIMIT abfragen statt WHERE mit geratenen Werten
 - Falsch: WHERE m.matchday = 27 AND m.home_score = 0 AND m.away_score = 6
 - Richtig: ORDER BY tordifferenz DESC LIMIT 1 (findet höchste Niederlage)
-- Bei "höchste Niederlage": Nicht raten "0:6", sondern sortieren nach Tordifferenz
-- Bei "Spiel gegen X": Nicht Spieltag raten, sondern alle Spiele gegen X abfragen
-- Bei "wann war...": Nicht Datum raten, sondern mit ORDER BY finden
 
 SQL ANTI-PATTERNS - NIEMALS SO!
 
@@ -126,13 +123,18 @@ SQL ANTI-PATTERNS - NIEMALS SO!
    RICHTIG:
      SELECT ... FROM matches m WHERE m.home_team_id = 1 OR m.away_team_id = 1
 
-QUERY-STRATEGIE:
-1. Explorative Queries statt exakte Matches
-2. ORDER BY + LIMIT für "größte/erste/letzte" Fragen
-3. Aggregationen (COUNT, MAX, MIN) für Statistik-Fragen
-4. Nur WHERE mit exakten Werten wenn User diese explizit nennt
-5. Minimale JOINs - nur was wirklich gebraucht wird
-6. team_id = 1 statt JOIN auf Mainz-Name
+6. AGGREGATE OHNE GROUP BY VERBOTEN!
+   FALSCH:
+     SELECT name, MIN(match_date) FROM ... ORDER BY ... LIMIT 1
+   RICHTIG für "erster/frühester":
+     SELECT name, match_date FROM ... ORDER BY match_date ASC LIMIT 1
+   HINWEIS: MIN/MAX/COUNT ohne GROUP BY nur wenn EINE Zeile gewünscht ist!
+
+7. FÜR match_coaches IMMER team_id = 1 FILTER!
+   FALSCH:
+     JOIN teams t ON mc.team_id = t.team_id WHERE t.normalized_name = '1. fsv mainz 05'
+   RICHTIG:
+     WHERE mc.team_id = 1
 
 WICHTIGE FILTER:
 - FSV Mainz 05 hat IMMER team_id = 1
@@ -153,69 +155,49 @@ WETTBEWERBS-NAMEN (competitions.name):
 - Aktuelle: 'Bundesliga', '2. Bundesliga', 'DFB-Pokal', 'Europapokal'
 - Freundschaftsspiele: 'Freundschaftsspiele'
 - Historisch: 'Oberliga Südwest', 'Regionalliga Südwest', 'Amateur-Oberliga Südwest'
-- Für "nur Liga-Spiele": c.name IN ('Bundesliga', '2. Bundesliga')
-
-FSV SIEG/UNENTSCHIEDEN/NIEDERLAGE BERECHNUNG:
-- FSV Sieg (Heimspiel): m.home_team_id = 1 AND m.home_score > m.away_score
-- FSV Sieg (Auswärts): m.away_team_id = 1 AND m.away_score > m.home_score
-- Unentschieden: m.home_score = m.away_score
-- FSV Niederlage: Umkehrung der Sieg-Logik
-
-Beispiel für Sieg-Zählung:
-  SELECT
-    SUM(CASE WHEN (m.home_team_id = 1 AND m.home_score > m.away_score)
-               OR (m.away_team_id = 1 AND m.away_score > m.home_score) THEN 1 ELSE 0 END) AS siege,
-    SUM(CASE WHEN m.home_score = m.away_score THEN 1 ELSE 0 END) AS unentschieden,
-    SUM(CASE WHEN (m.home_team_id = 1 AND m.home_score < m.away_score)
-               OR (m.away_team_id = 1 AND m.away_score < m.home_score) THEN 1 ELSE 0 END) AS niederlagen
-  FROM matches m WHERE m.home_team_id = 1 OR m.away_team_id = 1;
 
 NORMALIZED_NAME FORMAT:
 - Alle Tabellen (players, coaches, teams, referees) haben normalized_name
 - Format: Kleinbuchstaben, Umlaute aufgelöst, keine Sonderzeichen
-- Umwandlung: ü→u, ö→o, ä→a, ß→ss, é→e, è→e, ç→c, etc.
 - Beispiele: "Jürgen Klopp"→"jurgen klopp", "1. FSV Mainz 05"→"1. fsv mainz 05"
 
-FUZZY SUCHE FÜR ALLE ENTITÄTEN (WICHTIG!):
-- Benutzer können Namen falsch schreiben! IMMER Fuzzy-Matching verwenden.
-- pg_trgm Extension ist aktiviert für Trigram-Similarity
+FUZZY-SUCHE MIT TRIGRAM-INDEX (PERFORMANCE-OPTIMIERT!):
+pg_trgm Extension ist aktiviert. IMMER den % Operator verwenden (nutzt Index!):
 
-Spieler-Suche (players):
-  SELECT player_id, name, similarity(normalized_name, 'suchbegriff') AS sim
-  FROM players
-  WHERE normalized_name ILIKE '%suchbegriff%'
-     OR similarity(normalized_name, 'suchbegriff') > 0.3
-     OR similarity(SUBSTRING(normalized_name FROM '([^ ]+)$'), 'suchbegriff') > 0.5
-  ORDER BY sim DESC LIMIT 5;
+-- Spieler-Suche (SCHNELL - nutzt idx_players_normalized_trgm)
+SELECT player_id, name, similarity(normalized_name, 'suchbegriff') AS sim
+FROM players
+WHERE normalized_name % 'suchbegriff'
+ORDER BY normalized_name <-> 'suchbegriff'
+LIMIT 5;
 
-Trainer-Suche (coaches):
-  SELECT coach_id, name, similarity(normalized_name, 'suchbegriff') AS sim
-  FROM coaches
-  WHERE normalized_name ILIKE '%suchbegriff%'
-     OR similarity(normalized_name, 'suchbegriff') > 0.3
-     OR similarity(SUBSTRING(normalized_name FROM '([^ ]+)$'), 'suchbegriff') > 0.5
-  ORDER BY sim DESC LIMIT 5;
+-- Trainer-Suche (SCHNELL - nutzt idx_coaches_normalized_trgm)
+SELECT coach_id, name FROM coaches
+WHERE normalized_name % 'suchbegriff'
+ORDER BY normalized_name <-> 'suchbegriff'
+LIMIT 5;
 
-Team-Suche (teams):
-  SELECT team_id, name, similarity(normalized_name, 'suchbegriff') AS sim
-  FROM teams
-  WHERE normalized_name ILIKE '%suchbegriff%'
-     OR similarity(normalized_name, 'suchbegriff') > 0.3
-  ORDER BY sim DESC LIMIT 5;
+-- Team-Suche (SCHNELL - nutzt idx_teams_normalized_trgm)
+SELECT team_id, name FROM teams
+WHERE normalized_name % 'suchbegriff'
+ORDER BY normalized_name <-> 'suchbegriff'
+LIMIT 5;
+
+WICHTIG: similarity() > 0.3 ist LANGSAM (Seq Scan), % Operator ist SCHNELL (Index Scan)!
+Standard-Schwellenwert für %: SET pg_trgm.similarity_threshold = 0.3;
 
 CTE-PATTERN FÜR ENTITY-AUFLÖSUNG:
 - Bei komplexen Queries: Erst Entity per Fuzzy-Match finden, dann verwenden
-- Beispiel mit Trainer:
-  WITH MatchedCoach AS (
-    SELECT coach_id FROM coaches
-    WHERE normalized_name ILIKE '%klopp%'
-       OR similarity(normalized_name, 'klopp') > 0.3
-    ORDER BY similarity(normalized_name, 'klopp') DESC LIMIT 1
-  )
-  SELECT ... FROM matches m
-  JOIN match_coaches mc ON m.match_id = mc.match_id
-  WHERE mc.coach_id = (SELECT coach_id FROM MatchedCoach)
-    AND mc.team_id = 1;
+
+WITH MatchedCoach AS (
+  SELECT coach_id FROM coaches
+  WHERE normalized_name % 'klopp'
+  ORDER BY normalized_name <-> 'klopp' LIMIT 1
+)
+SELECT ... FROM matches m
+JOIN match_coaches mc ON m.match_id = mc.match_id
+WHERE mc.coach_id = (SELECT coach_id FROM MatchedCoach)
+  AND mc.team_id = 1;
 
 TRAINER-DATEN (match_coaches):
 - match_coaches verknüpft Trainer mit einzelnen Spielen
@@ -223,180 +205,38 @@ TRAINER-DATEN (match_coaches):
 - coach_careers enthält Karriere-Stationen (start_date, end_date, role)
 - mv_coach_record enthält aggregierte Trainer-Bilanzen (schneller!)
 
-SPIELER-EINSÄTZE UND DEBÜTS:
-- match_lineups enthält alle Spielereinsätze pro Spiel
-- Erstes Spiel eines Spielers für FSV: MIN(match_date) WHERE team_id = 1
-- is_starter = true → Startelfeinsatz, false → Einwechslung
-- minute_on/minute_off für Ein-/Auswechselzeiten
-
-KOMPLEXE QUERY-PATTERNS MIT CTEs:
-
--- Pattern 1: Entity per Fuzzy-Match finden und verwenden
-WITH MatchedEntity AS (
-  SELECT entity_id FROM entity_table
-  WHERE similarity(normalized_name, 'suchbegriff') > 0.3
-  ORDER BY similarity(normalized_name, 'suchbegriff') DESC LIMIT 1
-),
--- Pattern 2: Spiele unter bestimmten Bedingungen filtern
-FilteredMatches AS (
-  SELECT m.match_id, m.match_date, m.home_score, m.away_score
-  FROM matches m
-  WHERE /* Bedingungen */
-),
--- Pattern 3: Aggregationen pro Spieler/Team/etc.
-Aggregations AS (
-  SELECT player_id, COUNT(*) AS anzahl, MIN(match_date) AS erstes_spiel
-  FROM match_lineups ml
-  JOIN FilteredMatches fm ON ml.match_id = fm.match_id
-  GROUP BY player_id
-)
-SELECT ... FROM Aggregations ...;
-
--- Spieler-Debüt unter bestimmtem Trainer
-WITH MatchedCoach AS (
-  SELECT coach_id FROM coaches
-  WHERE similarity(normalized_name, 'trainername') > 0.3
-  ORDER BY similarity(normalized_name, 'trainername') DESC LIMIT 1
-),
-TrainerSpiele AS (
-  SELECT m.match_id, m.match_date
-  FROM matches m
-  JOIN match_coaches mc ON m.match_id = mc.match_id
-  WHERE mc.coach_id = (SELECT coach_id FROM MatchedCoach)
-    AND mc.team_id = 1
-),
-SpielerErstesSpielGesamt AS (
-  SELECT player_id, MIN(m.match_date) AS erstes_spiel
-  FROM match_lineups ml
-  JOIN matches m ON ml.match_id = m.match_id
-  WHERE ml.team_id = 1
-  GROUP BY player_id
-)
-SELECT p.name, ts.match_date AS debut_datum
-FROM match_lineups ml
-JOIN TrainerSpiele ts ON ml.match_id = ts.match_id
-JOIN players p ON ml.player_id = p.player_id
-JOIN SpielerErstesSpielGesamt seg ON ml.player_id = seg.player_id
-WHERE ml.team_id = 1 AND ts.match_date = seg.erstes_spiel
-GROUP BY p.player_id, p.name, ts.match_date
-ORDER BY ts.match_date;
-
--- Tore eines Spielers (mit Fuzzy-Match)
-WITH MatchedPlayer AS (
-  SELECT player_id FROM players
-  WHERE similarity(normalized_name, 'spielername') > 0.3
-  ORDER BY similarity(normalized_name, 'spielername') DESC LIMIT 1
-)
-SELECT p.name, COUNT(g.goal_id) AS tore
-FROM goals g
-JOIN players p ON g.player_id = p.player_id
-WHERE g.player_id = (SELECT player_id FROM MatchedPlayer)
-  AND g.team_id = 1 AND (g.event_type IS NULL OR g.event_type != 'own_goal')
-GROUP BY p.player_id, p.name;
-
--- Spiele gegen ein bestimmtes Team (mit Fuzzy-Match)
-WITH MatchedTeam AS (
-  SELECT team_id FROM teams
-  WHERE similarity(normalized_name, 'teamname') > 0.3
-  ORDER BY similarity(normalized_name, 'teamname') DESC LIMIT 1
-)
-SELECT m.match_date, t_home.name AS heim, t_away.name AS auswaerts,
-       m.home_score || ':' || m.away_score AS ergebnis
-FROM matches m
-JOIN teams t_home ON m.home_team_id = t_home.team_id
-JOIN teams t_away ON m.away_team_id = t_away.team_id
-WHERE (m.home_team_id = 1 AND m.away_team_id = (SELECT team_id FROM MatchedTeam))
-   OR (m.away_team_id = 1 AND m.home_team_id = (SELECT team_id FROM MatchedTeam))
-ORDER BY m.match_date DESC;
-
-BEISPIEL-QUERIES (EXPLORATIV - KEINE GERATENEN WERTE!):
-
--- Höchste Niederlage einer Saison (NICHT: WHERE score = '0:6')
-SELECT m.match_date, t_home.name AS heim, t_away.name AS auswaerts,
-       m.home_score || ':' || m.away_score AS ergebnis,
-       CASE WHEN m.home_team_id = 1 THEN m.away_score - m.home_score
-            ELSE m.home_score - m.away_score END AS gegentore_differenz
-FROM matches m
-JOIN teams t_home ON m.home_team_id = t_home.team_id
-JOIN teams t_away ON m.away_team_id = t_away.team_id
-JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id
-JOIN seasons s ON sc.season_id = s.season_id
-WHERE (m.home_team_id = 1 OR m.away_team_id = 1) AND s.label = '2022-23'
-  AND ((m.home_team_id = 1 AND m.home_score < m.away_score)
-       OR (m.away_team_id = 1 AND m.away_score < m.home_score))
-ORDER BY gegentore_differenz DESC LIMIT 3;
-
--- Alle Spiele gegen ein Team (NICHT: WHERE matchday = 27)
-WITH MatchedTeam AS (
-  SELECT team_id FROM teams
-  WHERE similarity(normalized_name, 'bayern') > 0.3
-  ORDER BY similarity(normalized_name, 'bayern') DESC LIMIT 1
-)
-SELECT m.match_date, s.label AS saison, m.matchday AS spieltag,
-       t_home.name AS heim, t_away.name AS auswaerts,
-       m.home_score || ':' || m.away_score AS ergebnis
-FROM matches m
-JOIN teams t_home ON m.home_team_id = t_home.team_id
-JOIN teams t_away ON m.away_team_id = t_away.team_id
-JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id
-JOIN seasons s ON sc.season_id = s.season_id
-WHERE (m.home_team_id = 1 OR m.away_team_id = 1)
-  AND (m.home_team_id = (SELECT team_id FROM MatchedTeam)
-       OR m.away_team_id = (SELECT team_id FROM MatchedTeam))
-ORDER BY m.match_date DESC;
-
--- Top Torschützen (IMMER Materialized View verwenden!)
-SELECT name, goals AS tore FROM mv_player_career_stats ORDER BY goals DESC LIMIT 10;
-
--- Trainer-Bilanz (IMMER Materialized View verwenden!)
-SELECT name, total_matches AS spiele, wins AS siege, draws AS unentschieden, losses AS niederlagen
-FROM mv_coach_record
-WHERE similarity(normalized_name, 'klopp') > 0.3
-ORDER BY similarity(normalized_name, 'klopp') DESC LIMIT 1;
-
--- Erstes/Letztes Spiel eines Spielers (ORDER BY statt WHERE date = 'x')
-WITH MatchedPlayer AS (
-  SELECT player_id FROM players
-  WHERE similarity(normalized_name, 'spielername') > 0.3
-  ORDER BY similarity(normalized_name, 'spielername') DESC LIMIT 1
-)
-SELECT p.name, m.match_date, t_home.name || ' vs ' || t_away.name AS spiel
-FROM match_lineups ml
-JOIN matches m ON ml.match_id = m.match_id
-JOIN players p ON ml.player_id = p.player_id
-JOIN teams t_home ON m.home_team_id = t_home.team_id
-JOIN teams t_away ON m.away_team_id = t_away.team_id
-WHERE ml.player_id = (SELECT player_id FROM MatchedPlayer) AND ml.team_id = 1
-ORDER BY m.match_date ASC LIMIT 1; -- ASC für erstes, DESC für letztes
+-- "Erster/Frühester Trainer" (KEIN MIN(), nur ORDER BY!)
+SELECT c.name, m.match_date AS erstes_spiel
+FROM match_coaches mc
+JOIN coaches c ON mc.coach_id = c.coach_id
+JOIN matches m ON mc.match_id = m.match_id
+WHERE mc.team_id = 1 AND m.match_date IS NOT NULL
+ORDER BY m.match_date ASC LIMIT 1;
 
 MATERIALIZED VIEWS (für schnelle Aggregat-Abfragen):
+WICHTIG: Alle MVs sind auf FSV Mainz 05 gefiltert (team_id = 1)!
 
-mv_player_career_stats - Spieler-Karrierestatistiken
+mv_player_career_stats - Spieler-Karrierestatistiken (NUR FSV-Einsätze!)
   Columns: player_id, name, normalized_name, birth_date, total_matches, wins, draws, losses,
            goals, assists, yellow_cards, red_cards, first_match, last_match
+  HINWEIS: Zeigt nur Statistiken aus FSV-Spielen, nicht aus anderen Vereinen!
 
-mv_team_stats - Statistiken aller Teams gegen FSV
+mv_team_stats - Statistiken aller Gegner-Teams gegen FSV
   Columns: team_id, name, normalized_name, total_matches, wins, draws, losses,
            goals_for, goals_against, first_match, last_match
+  HINWEIS: Perspektive ist AUS SICHT DES GEGNERS! wins = Gegner-Siege gegen FSV
 
 mv_season_summary - Saison-Zusammenfassungen pro Wettbewerb
   Columns: season_id, season, competition, competition_level, matches_played,
            home_wins, away_wins, draws, total_goals, season_start, season_end
 
-mv_coach_record - Trainer-Bilanzen
+mv_coach_record - Trainer-Bilanzen (NUR FSV-Spiele!)
   Columns: coach_id, name, normalized_name, birth_date, total_matches,
            wins, draws, losses, first_match, last_match
-
-PERFORMANCE TIPS:
-1. Nutze Materialized Views für Aggregatstatistiken (100-400x schneller)
-2. Nutze WITH (CTEs) für komplexe Abfragen
-3. Verwende Tabellenaliase: p=players, m=matches, g=goals, t=teams, s=seasons, c=competitions
-4. JOIN-Reihenfolge: Von kleinsten zu größten Tabellen
-5. LIMIT wird automatisch hinzugefügt (max 200 Zeilen)
-6. Nutze WHERE-Filter vor JOINs wenn möglich
+  HINWEIS: Zeigt nur Spiele als FSV-Trainer, nicht bei anderen Vereinen!
 
 PFLICHT: MATERIALIZED VIEWS FÜR AGGREGAT-STATISTIKEN!
-Bei diesen Fragen IMMER die Materialized Views verwenden (konsistente, schnelle Ergebnisse):
+Bei diesen Fragen IMMER die Materialized Views verwenden:
 
 -- "Wer hat die meisten Tore geschossen?" / "Top Torschützen"
 SELECT name, goals FROM mv_player_career_stats ORDER BY goals DESC LIMIT 10;
@@ -404,46 +244,15 @@ SELECT name, goals FROM mv_player_career_stats ORDER BY goals DESC LIMIT 10;
 -- "Spieler mit den meisten Einsätzen"
 SELECT name, total_matches FROM mv_player_career_stats ORDER BY total_matches DESC LIMIT 10;
 
--- "Spieler mit den meisten Gelben Karten"
-SELECT name, yellow_cards FROM mv_player_career_stats ORDER BY yellow_cards DESC LIMIT 10;
-
 -- "Trainer-Bilanz" / "Erfolgreichster Trainer"
 SELECT name, total_matches, wins, draws, losses FROM mv_coach_record ORDER BY wins DESC LIMIT 10;
 
--- "Gegen welches Team hat Mainz am häufigsten gespielt?"
-SELECT name, total_matches FROM mv_team_stats ORDER BY total_matches DESC LIMIT 10;
-
 -- "Bilanz gegen Bayern" (mit Fuzzy-Match)
 -- WICHTIG: mv_team_stats zeigt Bilanz AUS SICHT DES GEGNERS!
--- wins = Siege des Gegners gegen FSV, losses = Niederlagen des Gegners gegen FSV
 SELECT name, total_matches, wins AS gegner_siege, draws, losses AS gegner_niederlagen,
        goals_for AS gegner_tore, goals_against AS fsv_tore
-FROM mv_team_stats WHERE similarity(normalized_name, 'bayern') > 0.3
-ORDER BY similarity(normalized_name, 'bayern') DESC LIMIT 1;
-
--- "Top Vorlagengeber / Meiste Assists"
-SELECT name, assists FROM mv_player_career_stats ORDER BY assists DESC LIMIT 10;
-
--- "Meiste Rote Karten"
-SELECT name, red_cards FROM mv_player_career_stats ORDER BY red_cards DESC LIMIT 10;
-
--- "Spieler mit meisten Siegen"
-SELECT name, wins, total_matches FROM mv_player_career_stats ORDER BY wins DESC LIMIT 10;
-
--- "Saison-Übersicht / Wie lief die Saison?"
-SELECT season, competition, matches_played, home_wins, away_wins, draws, total_goals
-FROM mv_season_summary WHERE season = '2023-24' ORDER BY competition;
-
--- NUR BUNDESLIGA-SPIELE (ohne Pokal, Freundschaftsspiele etc.)
-SELECT m.match_date, m.home_score, m.away_score
-FROM matches m
-JOIN season_competitions sc ON m.season_competition_id = sc.season_competition_id
-JOIN competitions c ON sc.competition_id = c.competition_id
-WHERE (m.home_team_id = 1 OR m.away_team_id = 1)
-  AND c.name = 'Bundesliga'
-ORDER BY m.match_date DESC LIMIT 10;
-
-NIEMALS für diese Aggregat-Fragen direkt aus goals/cards/match_lineups aggregieren!
+FROM mv_team_stats WHERE normalized_name % 'bayern'
+ORDER BY normalized_name <-> 'bayern' LIMIT 1;
 
 SPIELER-KARRIEREN (player_careers):
 Enthält Karriere-Stationen von Spielern bei ANDEREN Vereinen (vor/nach Mainz).
@@ -457,38 +266,14 @@ JOIN player_careers pc ON p.player_id = pc.player_id
 WHERE pc.team_name ILIKE '%bayern m%'
 ORDER BY p.name;
 
--- "Spieler die auch bei [Team] gespielt haben" (allgemein)
-SELECT DISTINCT p.name, pc.team_name, pc.start_year, pc.end_year
-FROM players p
-JOIN player_careers pc_mainz ON p.player_id = pc_mainz.player_id
-JOIN player_careers pc_other ON p.player_id = pc_other.player_id
-WHERE pc_mainz.team_name ILIKE '%mainz%'
-  AND pc_other.team_name ILIKE '%[team-suche]%'
-ORDER BY p.name;
-
--- "Verstorbene Spieler"
-SELECT name, birth_date, death_date, birth_place
-FROM players
-WHERE death_date IS NOT NULL
-ORDER BY death_date DESC LIMIT 20;
-
-DATEN-LIMITIERUNGEN:
-- Datenbank enthält NUR FSV Mainz 05 Spiele und Statistiken
-- player_careers enthält Karriere-Stationen bei anderen Vereinen (7.527 Einträge)
-- Keine Nationalmannschafts-Daten
-- Bei Fragen nach "erfolgreicher Karriere" → player_careers abfragen
-
 HISTORISCHE DATENLÜCKEN (WICHTIG!):
 - TRAINER-DATEN erst ab 1926-27 Saison verfügbar!
   - Erster dokumentierter Trainer: Tibor Hesser (ab 19.12.1926)
   - Vor 1926: Keine Trainer-Informationen in den Archiv-Quellen
-  - 1.797 Spiele haben keinen Trainer-Eintrag
-  - Bei Fragen nach "erstem Trainer" → Hinweis geben, dass Daten erst ab 1926 vorliegen
+  - Bei Fragen nach "erstem Trainer" -> Hinweis geben, dass Daten erst ab 1926 vorliegen
 - SPIEL-DATEN ab 1906 verfügbar (frühestes Spiel: 07.10.1906)
   - Verein gegründet 1905, aber erste dokumentierte Spiele ab 1906
-- Frühe Statistiken (1905-1950) oft unvollständig:
-  - Fehlende Aufstellungen, Torschützen, Minuten
-  - Teilweise nur Ergebnisse dokumentiert
+- Frühe Statistiken (1905-1950) oft unvollständig
 
 KEY STATISTICS:
 - 121 Saisonen (1905-2026)
@@ -500,6 +285,13 @@ KEY STATISTICS:
 - 7,527 Karriere-Stationen (player_careers)
 - 828 Teams
 - 615 Trainer
+
+PERFORMANCE TIPS:
+1. Nutze Materialized Views für Aggregatstatistiken (100-400x schneller)
+2. Nutze % Operator statt similarity() > 0.3 für Fuzzy-Suche
+3. Nutze <-> Operator für ORDER BY bei Fuzzy-Suche
+4. team_id = 1 statt JOIN auf Mainz-Name (Index verfügbar)
+5. LIMIT wird automatisch hinzugefügt (max 200 Zeilen)
 `;
 
 export const getSchemaContext = (): string => SCHEMA_CONTEXT;
