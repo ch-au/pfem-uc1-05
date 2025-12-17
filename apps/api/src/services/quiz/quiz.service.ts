@@ -1063,6 +1063,44 @@ export class QuizService {
   }
 
   /**
+   * Restart a game - reset to round 1, clear all answers but keep questions
+   */
+  async restartGame(gameId: string): Promise<QuizGameResponse> {
+    const game = await postgresService.queryOne<QuizGame>(
+      `SELECT * FROM public.quiz_games WHERE game_id = $1`,
+      [gameId]
+    );
+
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    // Delete all player answers
+    await postgresService.query(
+      `DELETE FROM public.quiz_answers WHERE round_id IN (SELECT round_id FROM public.quiz_rounds WHERE game_id = $1)`,
+      [gameId]
+    );
+
+    // Reset player scores
+    await postgresService.query(
+      `UPDATE public.quiz_players SET score = 0 WHERE game_id = $1`,
+      [gameId]
+    );
+
+    // Reset game state
+    await postgresService.query(
+      `UPDATE public.quiz_games 
+       SET status = 'in_progress', current_round = 1, completed_at = NULL 
+       WHERE game_id = $1`,
+      [gameId]
+    );
+
+    console.log(`🔄 Game ${gameId} restarted`);
+
+    return this.getGame(gameId);
+  }
+
+  /**
    * Recover pending quiz generation jobs after server restart
    * Re-enqueues any games that were in the middle of generation
    */

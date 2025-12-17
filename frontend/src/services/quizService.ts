@@ -147,6 +147,14 @@ export const quizService = {
   async deleteGame(gameId: string): Promise<void> {
     await api.delete(`/quiz/game/${gameId}`);
   },
+
+  /**
+   * Restart a quiz game (reset scores and answers, keep questions)
+   */
+  async restartGame(gameId: string): Promise<QuizGameState> {
+    const response = await api.post<QuizGameState>(`/quiz/game/${gameId}/restart`);
+    return response.data;
+  },
 };
 
 

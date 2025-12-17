@@ -52,6 +52,7 @@ export const QuizPage: React.FC = () => {
     correctAnswerForRound,
     explanationForRound,
     confirmHandoff,
+    restartGame,
   } = useQuizGame();
 
   const handleSetupSubmit = async (data: {
@@ -243,17 +244,27 @@ export const QuizPage: React.FC = () => {
                   <p className={styles.startDescription}>
                     {gameState.topic || 'Dein Quiz'} ist beendet. Hier sind die Ergebnisse.
                   </p>
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={() => {
-                      setScreen('start');
-                      reset();
-                    }}
-                    className={styles.startButton}
-                  >
-                    Neues Quiz starten
-                  </Button>
+                  <div className={styles.buttonGroup}>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={() => restartGame()}
+                      className={styles.startButton}
+                    >
+                      Nochmal spielen
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      onClick={() => {
+                        setScreen('start');
+                        reset();
+                      }}
+                      className={styles.startButton}
+                    >
+                      Neues Quiz starten
+                    </Button>
+                  </div>
                 </div>
               </Card>
 

@@ -251,6 +251,26 @@ export async function quizRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Restart a game
+  fastify.post<{
+    Params: { gameId: string };
+  }>('/quiz/game/:gameId/restart', async (request, reply) => {
+    try {
+      const { gameId } = request.params;
+
+      const game = await quizService.restartGame(gameId);
+      fastify.log.info({ gameId }, 'quiz game restarted');
+
+      return reply.send(game);
+    } catch (error: any) {
+      fastify.log.error(error);
+      if (error.message === 'Game not found') {
+        return reply.code(404).send({ error: 'Game not found' });
+      }
+      return reply.code(500).send({ error: 'Failed to restart game' });
+    }
+  });
+
   // Delete a game
   fastify.delete<{
     Params: { gameId: string };

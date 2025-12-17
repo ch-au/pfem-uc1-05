@@ -337,6 +337,41 @@ export const useQuizGame = () => {
     setAnswerResult(null);
   };
 
+  const restartGame = async () => {
+    if (!gameId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      setStatusMessage('Quiz wird neugestartet...');
+
+      const state = await quizService.restartGame(gameId);
+      setGameState(state);
+
+      // Load first question
+      const question = await quizService.getCurrentQuestion(gameId);
+      setCurrentQuestion(question);
+
+      // Reset all game state
+      setLeaderboard([]);
+      setCurrentPlayerIndex(0);
+      setSelectedAnswer(null);
+      setAnswerResult(null);
+      setRoundResults([]);
+      setCorrectAnswerForRound('');
+      setExplanationForRound(undefined);
+      setGamePhase('question');
+      setStatusMessage(null);
+
+      return state;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to restart game');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     gameId,
     gameState,
@@ -363,5 +398,6 @@ export const useQuizGame = () => {
     reset,
     passToNextPlayer,
     confirmHandoff,
+    restartGame,
   };
 };
