@@ -330,11 +330,22 @@ export class PromptsService {
 
   /**
    * Compile prompt template with variables
+   * Supports multiple variable formats:
+   * - {{Frage}} (double curly braces - fallback files)
+   * - {{{Frage}}} (triple curly braces - Langfuse/Mustache)
+   * - {Frage} (single curly braces - simple format)
    */
   private compileTemplate(template: string, variables: Record<string, string>): string {
     let compiled = template;
     for (const [key, value] of Object.entries(variables)) {
+      // Replace triple curly braces first (Langfuse/Mustache unescaped)
+      compiled = compiled.replaceAll(`{{{${key}}}}`, value);
+      // Then double curly braces (common template format)
       compiled = compiled.replaceAll(`{{${key}}}`, value);
+      // Finally single curly braces (simple format) - be careful not to break JSON
+      // Only replace if it's clearly a variable (not part of JSON structure)
+      const singleBracePattern = new RegExp(`\\{${key}\\}(?![\\s]*[:\\[\\{])`, 'g');
+      compiled = compiled.replace(singleBracePattern, value);
     }
     return compiled;
   }
@@ -366,22 +377,30 @@ export class PromptsService {
     console.log(`   📝 Conversation history (${input.conversationHistory?.length || 0} messages):`);
     console.log(`   ${formattedHistory.substring(0, 500)}...`);
 
-    // Compile system prompt with Kontext and conversation history variables
-    // Note: Langfuse prompt uses VORHERIGE_KONVERSATION (singular), fallback uses VORHERIGE_KONVERSATIONEN (plural)
-    const systemPrompt = this.compileTemplate(systemTemplate, {
+    // Define all variables that might be used in templates
+    const allVariables = {
       Kontext: input.schemaContext,
+      Frage: input.userQuestion,
+      FRAGE: input.userQuestion,
+      frage: input.userQuestion,
       VORHERIGE_KONVERSATION: formattedHistory,
       VORHERIGE_KONVERSATIONEN: formattedHistory,
-    });
+    };
 
-    // Compile user prompt with Frage variable
+    // Compile system prompt with all variables (Frage might be in system prompt too)
+    const systemPrompt = this.compileTemplate(systemTemplate, allVariables);
+
+    // Compile user prompt with all variables
     let userPrompt = userTemplate
-      ? this.compileTemplate(userTemplate, {
-          Frage: input.userQuestion,
-          VORHERIGE_KONVERSATION: formattedHistory,
-          VORHERIGE_KONVERSATIONEN: formattedHistory,
-        })
+      ? this.compileTemplate(userTemplate, allVariables)
       : `AKTUELLE FRAGE:\n${input.userQuestion}`;
+
+    // Debug: Check if Frage variable was substituted
+    const frageInUserPrompt = userPrompt.includes(input.userQuestion);
+    console.log(`   📋 Variable injection check:`);
+    console.log(`      - User question in prompt: ${frageInUserPrompt}`);
+    console.log(`      - User template length: ${userTemplate?.length ?? 0}`);
+    console.log(`      - Compiled user prompt (first 200): ${userPrompt.substring(0, 200)}...`);
     
     // Check if variable was substituted - if not, always prepend the conversation history
     const historyInSystem = systemPrompt.includes('Keine vorherige Konversation') || systemPrompt.includes('Nutzer:');
