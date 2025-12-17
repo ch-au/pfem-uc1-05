@@ -133,6 +133,9 @@ class PromptsConfigLoader {
 
   getAvailableModels(): string[] {
     const config = this.load();
+    if (!config.available_models?.openrouter) {
+      console.warn('⚠️ available_models.openrouter not defined in prompts.yaml');
+    }
     return config.available_models?.openrouter || [];
   }
 }
