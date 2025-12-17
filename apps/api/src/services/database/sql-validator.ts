@@ -46,7 +46,12 @@ const ALLOWED_TABLES = new Set(
     'player_careers',
     'player_aliases',
     'referees',
-    // Materialized views (if any)
+    // Materialized views (mv_ prefix)
+    'mv_mainz_match_results',
+    'mv_player_career_stats',
+    'mv_season_performance',
+    'mv_competition_statistics',
+    // Legacy names without prefix (for backwards compatibility)
     'mainz_match_results',
     'player_career_stats',
     'season_performance',

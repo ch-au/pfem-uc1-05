@@ -9,9 +9,9 @@ prompts:
     langfuse_name: 'uc1/production/knowledge_base'
     langfuse_label: 'production'
     fallback_file: 'knowledge-base.txt'
-    model: 'google/gemini-2.5-flash-preview-09-2025'
+    model: 'anthropic/claude-opus-4.5'
     llm_config:
-      temperature: 0.3
+      temperature: 0
       max_tokens: 15000
       response_format: 'json'
     description: 'Generates SQL queries for a given quiz topic to build knowledge base'
@@ -47,7 +47,7 @@ prompts:
     langfuse_name: 'uc1/production/SQL_Interface'
     langfuse_label: 'production'
     fallback_file: 'chat-sql-generator.txt'
-    model: 'google/gemini-2.5-flash-preview-09-2025'
+    model: 'anthropic/claude-opus-4.5'
     llm_config:
       temperature: 0.1
       max_tokens: 20000
