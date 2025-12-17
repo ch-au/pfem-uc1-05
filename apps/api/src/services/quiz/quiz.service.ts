@@ -1075,15 +1075,9 @@ export class QuizService {
       throw new Error('Game not found');
     }
 
-    // Delete all player answers
+    // Delete all player answers (this also resets scores since they're stored per-answer)
     await postgresService.query(
       `DELETE FROM public.quiz_answers WHERE round_id IN (SELECT round_id FROM public.quiz_rounds WHERE game_id = $1)`,
-      [gameId]
-    );
-
-    // Reset player scores
-    await postgresService.query(
-      `UPDATE public.quiz_players SET score = 0 WHERE game_id = $1`,
       [gameId]
     );
 
