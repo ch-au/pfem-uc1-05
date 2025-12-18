@@ -56,13 +56,15 @@ HAUPTTABELLEN:
     Columns: competition_id (INT PK), name (TEXT: 'Bundesliga', 'DFB-Pokal', etc.),
              normalized_name (TEXT), level (TEXT), gender (TEXT)
 
-11. coaches (615 Zeilen)
+11. coaches (619 Zeilen)
     Columns: coach_id (INT PK), name (TEXT), normalized_name (TEXT), birth_date (TEXT),
-             birth_place (TEXT), nationality (TEXT), profile_url (TEXT)
+             birth_place (TEXT), death_date (TEXT), nationality (TEXT), profile_url (TEXT)
+    NOTE: 102 mit Geburtsdatum, 22 mit Sterbedatum, 92 mit Geburtsort
 
-12. coach_careers
+12. coach_careers (832 Zeilen)
     Columns: career_id (INT PK), coach_id (INT FK), team_name (TEXT), start_date (TEXT),
              end_date (TEXT), role (TEXT)
+    HINWEIS: Enthält Trainer-Stationen bei ALLEN Vereinen (inkl. vor/nach Mainz)
 
 13. match_coaches
     Columns: match_coach_id (INT PK), match_id (INT FK), team_id (INT FK), coach_id (INT FK), role (TEXT)
@@ -267,10 +269,10 @@ WHERE pc.team_name ILIKE '%bayern m%'
 ORDER BY p.name;
 
 HISTORISCHE DATENLÜCKEN (WICHTIG!):
-- TRAINER-DATEN erst ab 1926-27 Saison verfügbar!
-  - Erster dokumentierter Trainer: Tibor Hesser (ab 19.12.1926)
-  - Vor 1926: Keine Trainer-Informationen in den Archiv-Quellen
-  - Bei Fragen nach "erstem Trainer" -> Hinweis geben, dass Daten erst ab 1926 vorliegen
+- TRAINER-MATCH-DATEN erst ab 1926-27 Saison verfügbar!
+  - Erster dokumentierter Trainer: Heinrich Körner (Saison 1924/25) - OHNE Match-Daten
+  - Erster Trainer MIT Match-Daten: Tibor Hesser (ab 19.12.1926)
+  - Bei Fragen nach "erstem Trainer" -> Heinrich Körner nennen, aber auf fehlende Spieldaten hinweisen
 - SPIEL-DATEN ab 1906 verfügbar (frühestes Spiel: 07.10.1906)
   - Verein gegründet 1905, aber erste dokumentierte Spiele ab 1906
 - Frühe Statistiken (1905-1950) oft unvollständig
@@ -282,9 +284,10 @@ KEY STATISTICS:
 - 9,897 Tore
 - 5,765 Karten
 - 100,373 Lineup-Einträge
-- 7,527 Karriere-Stationen (player_careers)
+- 7,527 Spieler-Karrieren (player_careers)
+- 832 Trainer-Karrieren (coach_careers)
 - 828 Teams
-- 615 Trainer
+- 619 Trainer (102 mit Geburtsdatum, 22 mit Sterbedatum)
 
 PERFORMANCE TIPS:
 1. Nutze Materialized Views für Aggregatstatistiken (100-400x schneller)
