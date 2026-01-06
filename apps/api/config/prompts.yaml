@@ -35,7 +35,7 @@ prompts:
     langfuse_name: 'uc1/production/Quiz_Antworten'
     langfuse_label: 'production'
     fallback_file: 'quiz-answer-generator.txt'
-    model: 'google/gemini-2.5-flash-preview-09-2025'
+    model: 'google/gemini-3-flash-preview'
     llm_config:
       temperature: 0.7
       max_tokens: 10000
@@ -59,7 +59,7 @@ prompts:
     langfuse_name: 'uc1/production/Chatbot_Antwort'
     langfuse_label: 'production'
     fallback_file: 'chat-answer-formatter.txt'
-    model: 'google/gemini-2.5-flash-preview-09-2025'
+    model: 'google/gemini-3-flash-preview'
     llm_config:
       temperature: 0.7
       max_tokens: 10000
@@ -75,7 +75,7 @@ embeddings:
 
 # Global defaults
 defaults:
-  default_model: 'google/gemini-2.5-flash-preview-09-2025'
+  default_model: 'google/gemini-3-flash-preview'
   fallback_dir: '../../../../../prompts/fallback'
   langfuse_enabled: true
   retry_on_error: true
@@ -86,6 +86,7 @@ available_models:
   openrouter:
     - 'google/gemini-2.5-flash-preview-09-2025'
     - 'google/gemini-2.0-flash-001'
+    - 'google/gemini-3-flash-preview'
     - 'anthropic/claude-3.5-sonnet'
     - 'anthropic/claude-3-opus'
     - 'openai/gpt-4o'
