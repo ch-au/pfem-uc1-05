@@ -534,6 +534,25 @@ export class QuizService {
       schemaContext,
     });
     
+    // Check if the topic was rejected at knowledge base level
+    if (kbGeneration.result?.rejection_reason) {
+      const rejectionReason = kbGeneration.result.rejection_reason;
+      console.log(`🚫 Quiz topic "${config.category}" was rejected at KB level: ${rejectionReason}`);
+      
+      // Mark all jobs as failed with rejection reason
+      await postgresService.query(
+        `UPDATE quiz_generation_jobs 
+         SET status = 'failed', error_message = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE game_id = $2`,
+        [`REJECTED: ${rejectionReason}`, gameId]
+      );
+      
+      // Throw a special error that the API layer can identify
+      const error = new Error(rejectionReason);
+      (error as any).code = 'TOPIC_REJECTED';
+      throw error;
+    }
+    
     // Step 2: Execute KB SQL queries and format results
     console.log(`\n📊 Step 2: Executing Knowledge Base SQL queries...`);
     const { formattedKnowledgeBase } = await this.executeKnowledgeBaseQueries(kbGeneration.result);

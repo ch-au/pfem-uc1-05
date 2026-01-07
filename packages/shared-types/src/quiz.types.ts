@@ -119,6 +119,7 @@ export interface KnowledgeBaseQuery {
 export interface KnowledgeBaseOutput {
   thema: string;
   schwierigkeitsgrad: string;
+  rejection_reason?: string | null;
   queries: KnowledgeBaseQuery[];
 }
 

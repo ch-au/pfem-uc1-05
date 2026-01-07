@@ -1275,6 +1275,11 @@ export class PromptsService {
               type: "string",
               description: "Difficulty level: leicht, mittel, or schwer",
             },
+            rejection_reason: {
+              type: ["string", "null"] as const,
+              description:
+                "If the topic is inappropriate or cannot be processed, provide a reason. Otherwise null.",
+            },
             queries: {
               type: "array",
               items: {
@@ -1297,7 +1302,7 @@ export class PromptsService {
               description: "Array of SQL queries with reasoning",
             },
           },
-          required: ["thema", "schwierigkeitsgrad", "queries"],
+          required: ["thema", "schwierigkeitsgrad", "rejection_reason", "queries"],
           additionalProperties: false,
         },
       };
