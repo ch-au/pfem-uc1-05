@@ -251,6 +251,7 @@ export const useQuizGame = () => {
       setCorrectAnswerForRound('');
       setExplanationForRound(undefined);
       setSelectedAnswer(null);
+      setCurrentPlayerIndex(0); // Reset to first player for new round
 
       if (result.status === 'completed') {
         const leaderboardData = await quizService.getLeaderboard(gameId);
