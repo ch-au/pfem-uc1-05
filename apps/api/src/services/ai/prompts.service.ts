@@ -1018,8 +1018,10 @@ export class PromptsService {
       } = await this.loadPromptTemplate(promptKey);
       console.log(`   ✓ Loaded prompt template`);
 
-      // Compile system prompt
-      const systemPrompt = systemTemplate;
+      // Compile system prompt with KNOWLEDGE_BASE variable
+      const systemPrompt = this.compileTemplate(systemTemplate, {
+        KNOWLEDGE_BASE: input.knowledgeBaseContext ?? "",
+      });
 
       // Compile user prompt from template (or construct if template is empty)
       const userPrompt = userTemplate
