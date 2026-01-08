@@ -962,27 +962,41 @@ export class QuizService {
   }): Promise<{ games: QuizGameResponse[]; total: number }> {
     const { status, limit = 50, offset = 0 } = options ?? {};
 
-    // Build query
-    let whereClause = '';
+    // Build query - exclude rejected games (all jobs failed with REJECTED: prefix)
+    const rejectedSubquery = `
+      NOT EXISTS (
+        SELECT 1 FROM quiz_generation_jobs j 
+        WHERE j.game_id = g.game_id 
+        AND j.status = 'failed' 
+        AND j.error_message LIKE 'REJECTED:%'
+        AND NOT EXISTS (
+          SELECT 1 FROM quiz_generation_jobs j2 
+          WHERE j2.game_id = g.game_id 
+          AND j2.status != 'failed'
+        )
+      )
+    `;
+    
+    let whereClause = `WHERE ${rejectedSubquery}`;
     const params: any[] = [];
 
     if (status) {
-      whereClause = 'WHERE status = $1';
+      whereClause += ` AND g.status = $1`;
       params.push(status);
     }
 
     // Get total count
     const countResult = await postgresService.queryOne<{ count: string }>(
-      `SELECT COUNT(*) as count FROM public.quiz_games ${whereClause}`,
+      `SELECT COUNT(*) as count FROM public.quiz_games g ${whereClause}`,
       params
     );
     const total = parseInt(countResult?.count ?? '0');
 
     // Get games with pagination
     const games = await postgresService.queryMany<QuizGame>(
-      `SELECT * FROM public.quiz_games
+      `SELECT g.* FROM public.quiz_games g
        ${whereClause}
-       ORDER BY created_at DESC
+       ORDER BY g.created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, offset]
     );
