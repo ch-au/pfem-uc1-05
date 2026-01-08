@@ -16,6 +16,23 @@ import styles from './QuizPage.module.css';
 
 type QuizScreen = 'start' | 'setup' | 'game';
 
+const isTopicRejection = (error: string): boolean => {
+  const rejectionKeywords = [
+    'nicht verarbeitet',
+    'nicht erlaubt',
+    'historisch',
+    'rassistisch',
+    'diskriminierend',
+    'verstößt gegen',
+    'Toleranz und Menschlichkeit',
+    'Thema',
+    'ablehnen',
+    'lehnen ab',
+    'Trauma',
+  ];
+  return rejectionKeywords.some(keyword => error.toLowerCase().includes(keyword.toLowerCase()));
+};
+
 export const QuizPage: React.FC = () => {
   const [screen, setScreen] = useState<QuizScreen>('start');
   const [gameHistory, setGameHistory] = useState<QuizGameState[]>([]);
@@ -208,8 +225,8 @@ export const QuizPage: React.FC = () => {
         )}
         {error && (
           <Alert
-            variant={error.includes('nicht verarbeitet') || error.includes('nicht erlaubt') || error.includes('historisch') ? 'warning' : 'error'}
-            title={error.includes('nicht verarbeitet') || error.includes('nicht erlaubt') || error.includes('historisch') ? 'Thema nicht erlaubt' : 'Quiz Erstellung fehlgeschlagen'}
+            variant={isTopicRejection(error) ? 'warning' : 'error'}
+            title={isTopicRejection(error) ? 'Thema nicht erlaubt' : 'Quiz Erstellung fehlgeschlagen'}
             message={error}
             onClose={handleErrorClose}
           />

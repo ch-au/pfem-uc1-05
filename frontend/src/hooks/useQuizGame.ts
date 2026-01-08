@@ -76,6 +76,9 @@ export const useQuizGame = () => {
       setCurrentPlayerIndex(0);
       return newGameId;
     } catch (err) {
+      // Clear loading states so error is visible
+      setGenerationProgress(null);
+      setStatusMessage(null);
       setError(err instanceof Error ? err.message : 'Failed to create game');
       throw err;
     } finally {
