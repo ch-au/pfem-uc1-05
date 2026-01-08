@@ -54,6 +54,58 @@ export class OpenRouterService {
   }
 
   /**
+   * Extract only the JSON object from a string that may contain trailing text.
+   * LLMs sometimes add explanatory text after the JSON.
+   */
+  private extractJsonObject(content: string): string {
+    const trimmed = content.trim();
+    
+    // If it doesn't start with {, return as-is
+    if (!trimmed.startsWith('{')) {
+      return trimmed;
+    }
+    
+    // Find matching closing brace using bracket counting
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    
+    for (let i = 0; i < trimmed.length; i++) {
+      const char = trimmed[i];
+      
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      
+      if (char === '\\' && inString) {
+        escape = true;
+        continue;
+      }
+      
+      if (char === '"' && !escape) {
+        inString = !inString;
+        continue;
+      }
+      
+      if (!inString) {
+        if (char === '{') {
+          depth++;
+        } else if (char === '}') {
+          depth--;
+          if (depth === 0) {
+            // Found the closing brace, return only the JSON part
+            return trimmed.substring(0, i + 1);
+          }
+        }
+      }
+    }
+    
+    // No matching brace found, return original
+    return trimmed;
+  }
+
+  /**
    * Generate JSON content from OpenRouter API
    */
   async generateJSON<T = any>(
@@ -113,6 +165,9 @@ export class OpenRouterService {
     } else if (contentStr.startsWith('```')) {
       contentStr = contentStr.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
     }
+
+    // Extract only the JSON object (LLM sometimes adds text after valid JSON)
+    contentStr = this.extractJsonObject(contentStr);
 
     // Parse JSON response
     let data: T;
