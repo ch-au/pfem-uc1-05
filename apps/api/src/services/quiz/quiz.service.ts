@@ -539,6 +539,12 @@ export class QuizService {
       const rejectionReason = kbGeneration.result.rejection_reason;
       console.log(`🚫 Quiz topic "${config.category}" was rejected at KB level: ${rejectionReason}`);
       
+      // Mark game as abandoned so it won't be re-queued
+      await postgresService.query(
+        `UPDATE quiz_games SET status = 'abandoned' WHERE game_id = $1`,
+        [gameId]
+      );
+      
       // Mark all jobs as failed with rejection reason
       await postgresService.query(
         `UPDATE quiz_generation_jobs 
@@ -577,6 +583,12 @@ export class QuizService {
     if (questionGeneration.result?.rejected) {
       const rejectionReason = questionGeneration.result.rejection_reason ?? 'Dieses Thema kann nicht verarbeitet werden.';
       console.log(`🚫 Quiz topic "${config.category}" was rejected: ${rejectionReason}`);
+      
+      // Mark game as abandoned so it won't be re-queued
+      await postgresService.query(
+        `UPDATE quiz_games SET status = 'abandoned' WHERE game_id = $1`,
+        [gameId]
+      );
       
       // Mark all jobs as failed with rejection reason
       await postgresService.query(
