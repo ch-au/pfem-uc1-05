@@ -9,7 +9,7 @@ prompts:
     langfuse_name: 'uc1/production/knowledge_base'
     langfuse_label: 'production'
     fallback_file: 'knowledge-base.txt'
-    model: 'anthropic/claude-haiku-4.5'
+    model: 'anthropic/claude-sonnet-4.5'
     llm_config:
       temperature: 0.1
       max_tokens: 30000
