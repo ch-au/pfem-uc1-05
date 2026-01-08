@@ -1163,10 +1163,25 @@ export class QuizService {
        FROM public.quiz_games g
        LEFT JOIN public.quiz_categories c ON g.category_id = c.category_id
        WHERE g.status = 'pending'
+         -- Has incomplete jobs (not all round_created)
          AND EXISTS (
            SELECT 1 FROM quiz_generation_jobs j
            WHERE j.game_id = g.game_id
              AND j.status NOT IN ('round_created')
+         )
+         -- Exclude games where ALL jobs failed with REJECTED: prefix (topic was rejected)
+         AND NOT (
+           NOT EXISTS (
+             SELECT 1 FROM quiz_generation_jobs j2
+             WHERE j2.game_id = g.game_id
+               AND j2.status != 'failed'
+           )
+           AND EXISTS (
+             SELECT 1 FROM quiz_generation_jobs j3
+             WHERE j3.game_id = g.game_id
+               AND j3.status = 'failed'
+               AND j3.error_message LIKE 'REJECTED:%'
+           )
          )
        ORDER BY g.created_at ASC
        LIMIT 10`
