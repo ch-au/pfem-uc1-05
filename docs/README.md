@@ -1,124 +1,57 @@
-# FSV Mainz 05 Archive - Documentation
+# Documentation Index
 
-**Last Updated:** 2025-11-26
+This folder is the canonical home for current, reusable project documentation.
 
----
+## Start Here
 
-## Quick Links
+- `../README.md` - project overview and active repo layout
+- `../fsv_data_pipeline/README.md` - maintained parser and sync workflow
+- `DATABASE_SCHEMA.md` - PostgreSQL schema reference
+- `CHATBOT_DESIGN.md` - app and chat architecture
+- `BACKEND_IMPLEMENTATION.md` - API/backend notes
 
-| Document | Description |
-|----------|-------------|
-| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Complete PostgreSQL schema reference |
-| [DATA_QUALITY_REPORT.md](DATA_QUALITY_REPORT.md) | Data quality analysis |
-| [CHATBOT_DESIGN.md](CHATBOT_DESIGN.md) | Chat system architecture |
-| [BACKEND_IMPLEMENTATION.md](BACKEND_IMPLEMENTATION.md) | Backend API documentation |
+## Active Reference Docs
 
----
+- `DATABASE_SCHEMA.md` - database schema and entities
+- `MATERIALIZED_VIEWS_REFERENCE.md` - performance-oriented read models
+- `SCHEMA_DOCUMENTATION_2025.md` - current schema-focused reference
+- `SYNC_TO_POSTGRES.md` - SQLite -> PostgreSQL sync workflow
+- `DATABASE_QUALITY_FINAL_REPORT.md` - latest durable quality summary
+- `DATA_QUALITY_REPORT.md` - broader data-quality findings
+- `DATA_QUALITY_BY_SEASON.md` - seasonal quality breakdown
+- `DATA_QUALITY_FIX_PLAN.md` - current remediation plan
+- `CHATBOT_DESIGN.md` - product and system design
+- `BACKEND_IMPLEMENTATION.md` - backend implementation details
+- `LLM_SQL_SCHEMA_REFERENCE.md` - schema guide for LLM/SQL work
+- `CHANGELOG.md` - notable project changes
 
-## Database Status
+## Historical Material
 
-**PostgreSQL (Neon):** Production Ready
+Historical reports, one-off cleanup notes, experiments, and superseded snapshots belong in `../archive/`.
 
-| Metric | Count |
-|--------|-------|
-| Matches | 3,956 |
-| Players | 9,916 |
-| Coaches | 566 |
-| Teams | 585 |
-| Goals | 8,312 |
-| Cards | 5,768 |
-| Embeddings | 11,067 |
-| Materialized Views | 4 |
+The older folders `../archive/old_docs/` and `../archive/old_docs_2025/` are kept for reference, but they are deprecated as active documentation targets. New historical snapshots should be placed under a clearly labeled archive location instead of back in `docs/`.
 
-**Features:**
-- Cohere embeddings for semantic search (1536 dimensions)
-- HNSW vector indexes for fast similarity queries
-- Trigram indexes for fuzzy text search
-- Materialized views for pre-computed statistics
-- Chat session/message tables for app
+Examples of archived material:
 
----
+- one-off parser fix reports
+- competition-specific data correction notes
+- historical optimization plans and quick-start guides
+- superseded schema comparisons and embeddings writeups
 
-## Scripts
+## Documentation Policy
 
-| Script | Purpose |
-|--------|---------|
-| `database/001_create_schema.sql` | Create PostgreSQL schema |
-| `database/002_materialized_views.sql` | Create materialized views |
-| `database/sync_sqlite_to_postgres.py` | Sync SQLite → PostgreSQL |
-| `database/generate_embeddings.py` | Generate Cohere embeddings |
-| `parsing/comprehensive_fsv_parser.py` | Parse HTML archive to SQLite |
+- Keep evergreen reference docs in `docs/`.
+- Move dated reports, migration summaries, cleanup reports, and status snapshots to `archive/`.
+- Do not use the repo root for one-off markdown reports.
+- Prefer one canonical document per topic and link to it from here.
 
----
+## Local-Only Artifacts
 
-## Quick Commands
+The following paths are treated as local/generated working data rather than project documentation:
 
-### Check Database Status
-```bash
-psql $DATABASE_URL -c "SELECT COUNT(*) FROM matches;"
-```
+- `../backups/`
+- `../parsing/indices/`
+- `../parsing/reports/`
+- `../attached_assets/`
 
-### Test Klopp Query
-```sql
-SELECT name, total_matches, wins, losses, goals
-FROM mv_player_career_stats
-WHERE normalized_name LIKE '%klopp%';
-```
-
-### Semantic Search
-```sql
-SELECT name, 1 - (name_embedding <=> ref.embedding) as similarity
-FROM players,
-     (SELECT name_embedding FROM players WHERE name = 'JÜRGEN KLOPP') ref
-ORDER BY name_embedding <=> ref.embedding
-LIMIT 5;
-```
-
-### Refresh Materialized Views
-```sql
-SELECT refresh_all_materialized_views();
-```
-
----
-
-## File Structure
-
-```
-docs/
-├── README.md              ← This file
-├── DATABASE_SCHEMA.md     ← PostgreSQL schema reference
-├── DATA_QUALITY_REPORT.md ← Data quality analysis
-├── CHATBOT_DESIGN.md      ← Chat system design
-├── BACKEND_IMPLEMENTATION.md
-├── CHANGELOG.md
-└── VALIDATION_QUERIES.sql
-
-database/
-├── 001_create_schema.sql
-├── 002_materialized_views.sql
-├── sync_sqlite_to_postgres.py
-├── generate_embeddings.py
-└── backups/
-
-parsing/
-└── comprehensive_fsv_parser.py
-
-archive/
-└── old_docs_2025/         ← Archived documentation
-```
-
----
-
-## Recent Changes (2025-11-26)
-
-- Created complete PostgreSQL schema with all 22 tables
-- Synced 146,278 rows from SQLite to PostgreSQL
-- Generated 11,067 Cohere embeddings (players, teams, coaches)
-- Created 4 materialized views for performance
-- Added chat session/message tables
-- Cleaned up outdated documentation
-
----
-
-**Database Version:** Complete (3,956 matches, 1905-2025)
-**Documentation Version:** 2025-11-26
+If an artifact matters long-term, extract the durable findings into a doc here instead of committing the raw output.

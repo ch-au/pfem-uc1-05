@@ -29,6 +29,8 @@ pnpm build
 pnpm run typecheck
 ```
 
+Verwende fuer die App bewusst nur diese `pnpm`-Workflows. Veraltete Root-Startskripte und Replit-spezifische Wrapper gehoeren nicht mehr zum unterstuetzten Setup.
+
 ## Datenpipeline
 
 Fuer den gepflegten Parser-/Sync-Workflow ist `fsv_data_pipeline/` der relevante Einstiegspunkt:

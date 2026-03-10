@@ -1,60 +1,26 @@
-# Archiv - FSV Mainz 05 Projekt
+# Archive
 
-**Erstellt:** 29. Oktober 2025  
-**Zweck:** Sicherung alter/temporärer Dateien aus dem Entwicklungsprozess
+Historical material that is intentionally kept out of the active workflow lives here.
 
-## Verzeichnisstruktur
+## What Belongs Here
 
-### migration/
-Einmalig genutzte Migrations- und Sync-Scripts:
-- Migration zur Neon Postgres Cloud
-- Euro-Daten Synchronisation
-- Duplikat-Entfernung
-- Team-Konsolidierung
+- one-off migration and repair scripts
+- superseded documentation and dated status reports
+- legacy pipeline code kept for reference
+- old databases, dumps, and debug artifacts that are still worth retaining
 
-### debug/
-Debug- und Test-Scripts aus der Entwicklung:
-- Test-Scripts für Parser
-- Debug-Ausgaben
-- Datenbereinigung
+## Current Layout
 
-### old_agents/
-Alte Versionen der SQL-Agenten:
-- simple_agent.py, improved_agent.py, enhanced_agent.py, sql_agent.py
-- Ersetzt durch final_agent.py
+- `debug/` - ad hoc troubleshooting and cleanup scripts
+- `migration/` - one-time migration and sync scripts
+- `optimization/` - historical optimization helpers
+- `old_agents/` - superseded agent implementations
+- `old_docs/` - deprecated historical docs
+- `old_docs_2025/` - deprecated 2025 snapshot docs
+- `fsv_data_pipeline_legacy/` - preserved legacy pipeline subtree
 
-### old_docs/
-Überholte/Temporäre Dokumentation:
-- Migrations-Reports
-- Vergleichs-Dokumentationen
-- Session-Summaries
+## Rules
 
-### old_databases/
-Alte SQLite-Datenbanken:
-- Backup-Versionen
-- Test-Datenbanken
-
-### optimization/
-Einmalig genutzte Optimierungs-Scripts:
-- Performance-Analysen
-- Schema-Upgrades
-
-### temp_files/
-Temporäre Dateien:
-- SQL-Query-Fragmente
-- Log-Dateien
-- Cache-Dateien (66MB!)
-
-## Wiederherstellen
-
-Falls eine Datei benötigt wird:
-```bash
-cp archive/kategorie/datei.py .
-```
-
-## Löschen
-
-Wenn sicher, dass Archiv nicht mehr benötigt wird:
-```bash
-rm -rf archive/
-```
+- `docs/` is the canonical home for active documentation.
+- `archive/` is read-mostly; do not treat it as part of the supported day-one workflow.
+- If you need something from here, promote the useful parts back into active docs or code instead of linking future work to archived files.
