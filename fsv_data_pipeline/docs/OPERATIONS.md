@@ -81,4 +81,4 @@ Ausgaben:
 
 - `fsv-pipeline-parse` ist destruktiv fuer die lokale SQLite-Datenbank, weil sie dabei neu aufgebaut wird.
 - `fsv-pipeline-sync --dry-run` ist der empfohlene Preflight-Check.
-- Historische Cleanup-, Wartungs- und Migrationsskripte wurden bewusst aus dem Paket ausgelagert. `../archive/fsv_data_pipeline_legacy/` sollte nur noch fuer forensischen Kontext verwendet werden.
+- Historische Cleanup-, Wartungs- und Migrationsskripte gehoeren nicht zum unterstuetzten Betriebsmodell und sollten nicht als Standardpfad fuer aktuelle Arbeiten verwendet werden.

@@ -32,18 +32,7 @@
 
 ## Historisches Material
 
-Alles im Schwesterarchiv `../archive/fsv_data_pipeline_legacy/` gehoert nicht zur First-Line-Wartung.
-
-### Ablosungs-Matrix
-
-| Bereich | Status | Ersatz |
-|---------|--------|--------|
-| `../archive/fsv_data_pipeline_legacy/package_archive/internal_archive/legacy_sync/` | abgeloest | `database/sync_sqlite_to_postgres.py` |
-| `../archive/fsv_data_pipeline_legacy/package_archive/internal_archive/migration_history/` | nur historisch | kanonischer Parse-then-Sync-Workflow |
-| `../archive/fsv_data_pipeline_legacy/maintenance/` | nur historische Wartung | dokumentierte Befehle in diesem Paket |
-| `../archive/fsv_data_pipeline_legacy/package_archive/internal_archive/debug/` | nur historisch | `tests/` plus gezielte Parser-/Report-Helfer |
-| `../archive/fsv_data_pipeline_legacy/package_archive/internal_archive/legacy_tests/` | ersetzt | `tests/test_smoke.py` und `tests/test_profile_entity_linking.py` |
-| `../archive/fsv_data_pipeline_legacy/package_archive/internal_archive/docs_history/` | ueberholt | `docs/` |
+Historische Einmal-Skripte, ueberholte Dokus und Debug-Helfer gehoeren nicht zum unterstuetzten Betriebsmodell dieses Pakets.
 
 ## Hauefige Fehlerbilder
 
@@ -54,4 +43,4 @@ Alles im Schwesterarchiv `../archive/fsv_data_pipeline_legacy/` gehoert nicht zu
 
 ## Eskalationsregel
 
-Wenn eine Aufgabe Material unter `../archive/fsv_data_pipeline_legacy/` benoetigt, behandle sie als Migrations- oder Archiv-Archaeologie und dokumentiere diese Entscheidung vor dem Weiterarbeiten.
+Wenn eine Aufgabe auf entfernte Altpfade oder historische Einmal-Skripte verweist, behandle sie als Migrations- oder Bereinigungsfall und dokumentiere die Entscheidung vor dem Weiterarbeiten.

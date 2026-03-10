@@ -8,7 +8,6 @@ Monorepo fuer die Abfrage von 120 Jahren FSV-Mainz-05-Geschichte mit React-Front
 - `frontend/` - React-19-Frontend mit Vite
 - `fsv_data_pipeline/` - gepflegte Python-Pipeline fuer `HTML -> SQLite -> PostgreSQL`
 - `docs/` - aktuelle Projektdokumentation
-- `archive/` - bewusst ausgelagertes historisches Material ausserhalb des aktiven Workflows
 
 Das alte Python-Backend in `backend/` bleibt nur als Referenz erhalten und ist nicht der primaere App-Backend-Pfad.
 
@@ -61,5 +60,5 @@ Empfohlene Einstiegspunkte:
 ## Repo-Konventionen
 
 - Dauerhaft relevante Referenzdokumente gehoeren nach `docs/`.
-- Historische Reports und Einmal-Snapshots gehoeren nach `archive/`.
+- Historische Reports und Einmal-Snapshots sollten nicht im aktiven Repo-Root oder in den aktiven Doku-Pfaden liegen.
 - Lokale Dumps, generierte Reports, Indizes und Capture-Artefakte bleiben aus Git heraus, sofern sie keine bewussten Projekt-Assets sind.

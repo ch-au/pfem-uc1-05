@@ -25,23 +25,10 @@ This folder is the canonical home for current, reusable project documentation.
 - `LLM_SQL_SCHEMA_REFERENCE.md` - schema guide for LLM/SQL work
 - `CHANGELOG.md` - notable project changes
 
-## Historical Material
-
-Historical reports, one-off cleanup notes, experiments, and superseded snapshots belong in `../archive/`.
-
-The older folders `../archive/old_docs/` and `../archive/old_docs_2025/` are kept for reference, but they are deprecated as active documentation targets. New historical snapshots should be placed under a clearly labeled archive location instead of back in `docs/`.
-
-Examples of archived material:
-
-- one-off parser fix reports
-- competition-specific data correction notes
-- historical optimization plans and quick-start guides
-- superseded schema comparisons and embeddings writeups
-
 ## Documentation Policy
 
 - Keep evergreen reference docs in `docs/`.
-- Move dated reports, migration summaries, cleanup reports, and status snapshots to `archive/`.
+- Remove or externalize dated reports, migration summaries, cleanup reports, and status snapshots instead of keeping them in active docs.
 - Do not use the repo root for one-off markdown reports.
 - Prefer one canonical document per topic and link to it from here.
 

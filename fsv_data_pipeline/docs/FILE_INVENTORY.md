@@ -9,7 +9,7 @@ Legende:
 - `test`: reproduzierbare Verifikation
 - `reference`: verbindliche Dokumentation oder Konfiguration
 
-Historisches Material liegt nicht mehr innerhalb dieses Pakets. Es wurde in das Schwesterarchiv `../archive/fsv_data_pipeline_legacy/` verschoben.
+Historisches Material gehoert nicht zur aktiven Paketoberflaeche.
 
 ## Root-Dateien
 
@@ -35,7 +35,7 @@ Nicht Teil der aktiven Oberflaeche:
 |------|--------|---------|
 | `docs/ARCHITECTURE.md` | `reference` | Datenfluss und Paketverantwortung |
 | `docs/DATABASE_SCHEMA.md` | `reference` | Aktuelle Schema-Fakten |
-| `docs/FILE_INVENTORY.md` | `reference` | Keep-/Archive-Klassifikation |
+| `docs/FILE_INVENTORY.md` | `reference` | Keep-/Surface-Klassifikation |
 | `docs/HANDOVER.md` | `reference` | Onboarding-Runbook fuer neue Maintainer |
 | `docs/OPERATIONS.md` | `reference` | Wiederholbare Betriebsbefehle |
 
@@ -88,21 +88,6 @@ Nicht Teil der aktiven Oberflaeche:
 | `tests/test_profile_entity_linking.py` | `test` | Unit- und optionale Integrationsabdeckung fuer Profil-Linking |
 | `tests/test_smoke.py` | `test` | Reproduzierbare Smoke-Tests fuer Parser, Sync-CLI und Statusverhalten |
 | `tests/fixtures/fsvarchiv/2010-11/profiliga.html` | `test` | Kleines Parser-Fixture-Archiv |
-
-## Externes Archiv
-
-Das ausgelagerte Material liegt ausserhalb des Pakets unter:
-
-- `../archive/fsv_data_pipeline_legacy/package_archive/internal_archive/`
-- `../archive/fsv_data_pipeline_legacy/maintenance/`
-
-Dieses Schwesterarchiv enthaelt:
-
-- das fruehere historische In-Package-Archiv
-- alte Sync- und Migrationspfade
-- groessere Wartungs- und Repair-Skripte
-- das fruehere Data-Cleansing-Modul
-- ueberholte Dokumentation und skriptartige Tests
 
 ## Richtlinie fuer generierte Ausgaben
 

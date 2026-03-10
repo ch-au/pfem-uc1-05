@@ -192,9 +192,8 @@ If materialized views are too large, consider:
 
 ## Related Documentation
 
-- `docs/PERFORMANCE_OPTIMIZATION.md` - Previous optimization work
-- `docs/SCHEMA_DOCUMENTATION.md` - Database schema details
-- `archive/scripts/create_materialized_views.py` - Original materialized view creation
+- `docs/MATERIALIZED_VIEWS_REFERENCE.md` - Current materialized-view reference
+- `docs/SCHEMA_DOCUMENTATION_2025.md` - Current schema-focused documentation
 
 
 

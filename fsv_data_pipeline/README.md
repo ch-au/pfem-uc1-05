@@ -8,7 +8,7 @@ Der Handover-Workflow ist bewusst schlank:
 2. SQLite nach PostgreSQL synchronisieren.
 3. Optional Profilindizes und Entity-Linking-Reports erzeugen.
 
-Alles ausserhalb dieses Workflows wurde in das Schwesterarchiv `../archive/fsv_data_pipeline_legacy/` verschoben und gehoert nicht zur Day-One-Wartung.
+Alles ausserhalb dieses Workflows gehoert nicht zur Day-One-Wartung.
 
 ## Unterstuetzter Workflow
 

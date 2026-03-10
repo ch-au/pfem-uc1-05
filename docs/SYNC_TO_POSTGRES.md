@@ -29,16 +29,7 @@ The FSV Mainz 05 archive is parsed into a local SQLite database (`fsv_archive_co
 
 ## Manual Sync Process
 
-### Option 1: Using existing migration scripts
-
-Check the `archive/migration/` directory for existing sync scripts:
-```bash
-ls archive/migration/*.py
-```
-
-These scripts were used for previous Euro match syncs and can be adapted.
-
-### Option 2: Export/Import via CSV
+### Option 1: Export/Import via CSV
 
 ```bash
 # Export from SQLite
@@ -55,7 +46,7 @@ export DATABASE_URL="postgresql://neondb_owner:***@ep-steep-voice-a9u47j2b-poole
 psql $DATABASE_URL -c "\COPY matches FROM 'matches.csv' CSV HEADER"
 ```
 
-### Option 3: Direct SQL dump
+### Option 2: Direct SQL dump
 
 ```bash
 # Create SQL dump of new data

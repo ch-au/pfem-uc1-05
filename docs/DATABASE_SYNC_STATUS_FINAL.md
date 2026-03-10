@@ -122,9 +122,9 @@ This script is already available and uses `normalized_name` for safe matching.
    - Doesn't mention sync status
    - Should add "Last Synced" timestamp
 
-2. **`docs/SCHEMA_DOCUMENTATION.md`** ⚠️
-   - Shows 3,231 matches ❌ (Outdated - pre-profirest)
-   - Should be archived or updated
+2. **Archived pre-profirest schema snapshot** ⚠️
+   - The old `docs/SCHEMA_DOCUMENTATION.md` snapshot showed 3,231 matches ❌
+   - It belongs in the archive, not in active docs
 
 3. **`docs/SYNC_TO_POSTGRES.md`** ⚠️
    - Says sync "Not yet implemented" ❌ (Incorrect!)
@@ -137,10 +137,8 @@ This script is already available and uses `normalized_name` for safe matching.
 
 ### Recommended Actions
 
-1. **Archive old docs**
-   ```bash
-   mv docs/SCHEMA_DOCUMENTATION.md archive/old_docs/SCHEMA_DOCUMENTATION_OCT2025.md
-   ```
+1. **Remove old schema snapshots from active docs**
+   - Preserve only one current schema writeup in the maintained documentation set
 
 2. **Update SYNC_TO_POSTGRES.md** with actual status
 

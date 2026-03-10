@@ -48,15 +48,11 @@ Kleine, verbindliche Dokumentationsmenge fuer Onboarding, Betrieb, Schema-Fakten
 
 Reproduzierbare Smoke- und Unit-Tests. Das Fixture-Archiv unter `tests/fixtures/` ist bewusst so klein gehalten, dass ein neuer Maintainer Parser-Checks auch ohne das komplette echte Archiv ausfuehren kann.
 
-### `../archive/fsv_data_pipeline_legacy/`
-
-Historische Skripte, Dokus und Wartungshelfer, die nur noch ausserhalb des Pakets als Referenz aufbewahrt werden. Nichts in diesem Schwesterarchiv gehoert zum unterstuetzten Betriebsmodell.
-
 ## Design-Regeln
 
 - Bevorzuge `HTML -> SQLite -> PostgreSQL` statt direkter HTML-nach-Postgres-Ingestion.
 - SQLite ist die fachliche Quelle der Parsing-Ergebnisse.
 - Generierte Artefakte gehoeren nach `generated/`, nicht neben den Quellcode.
 - Bevorzuge paketierte CLI-Befehle statt `PYTHONPATH`- oder `sys.path`-Workarounds.
-- Halte die aktive Paketoberflaeche klein; Einmal-Wartung gehoert ins Schwesterarchiv.
+- Halte die aktive Paketoberflaeche klein; Einmal-Wartung und historische Altpfade gehoeren nicht in den Standard-Workflow.
 - Betriebsdoku soll den aktuellen Ist-Zustand beschreiben, nicht historische Zwischenstaende.
