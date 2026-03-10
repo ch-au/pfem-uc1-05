@@ -19,8 +19,8 @@
   - `get_or_create_team()`: Erweiterte Pattern-Erkennung (Zeile 487-510)
 
 ### Dokumentation
-- `docs/PARSER_FIX_ASSIST_TEXTE.md`: Dokumentation der Assist-Text-Filterung
-- `docs/REPARSE_RESULTS_FINAL.md`: Finale Auswertung des Re-Parses
+- Historische Parser-Fix-Dokumentation wurde archiviert
+- Finale Re-Parse-Auswertungen liegen im Archivbereich
 
 ## [2025-11] Data Cleansing & Parser Validation
 
@@ -67,8 +67,8 @@
 - `prompts.yaml`: SQL-Prompts für neues Datenmodell aktualisiert
 
 ### Dokumentation
-- `docs/PARSER_IMPROVEMENTS.md`: Vollständige Dokumentation der Parser-Verbesserungen
-- `docs/PARSER_FIX_SUMMARY.md`: Zusammenfassung aller Fixes
+- Parser-Verbesserungsberichte wurden in den Archivbereich verschoben
+- Laufende Referenzdoku bleibt in `docs/`
 
 ## [2024-12] Performance Optimierungen
 
@@ -78,7 +78,7 @@
 - Performance Indexes
 
 ### Dokumentation
-- `docs/PERFORMANCE_OPTIMIZATION.md`: Performance-Verbesserungen dokumentiert
+- Historische Performance-Berichte wurden archiviert
 
 ## [2024-11] UI/UX Verbesserungen
 
@@ -86,7 +86,4 @@
 - Modernes Mainz 05 Branding
 - Responsive Design
 - Verbesserte Chat- und Quiz-Interfaces
-
-### Geänderte Dateien
-- `templates/index.html`: Komplett neues UI-Design
 

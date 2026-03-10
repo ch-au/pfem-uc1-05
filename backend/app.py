@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import os
 from pathlib import Path
@@ -51,8 +50,6 @@ if static_dir.exists():
 else:
     logger.warning("Static directory '%s' not found; skipping static mount", static_dir)
 
-templates = Jinja2Templates(directory=str(project_root / "templates"))
-
 # Serve React build if available (production)
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
@@ -94,11 +91,15 @@ async def startup_event():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    # Serve React build if available (production), otherwise fallback to old template
+    # Serve the active frontend build when available.
     react_index = frontend_dist / "index.html"
     if react_index.exists():
         return FileResponse(react_index)
-    return templates.TemplateResponse("index.html", {"request": request})
+    return HTMLResponse(
+        "<html><body><h1>Frontend build not found</h1>"
+        "<p>Use the React frontend in <code>frontend/</code> via <code>pnpm dev</code> "
+        "or build it before using this legacy backend fallback.</p></body></html>"
+    )
 
 @app.post("/query")
 async def query_data(request: QueryRequest):

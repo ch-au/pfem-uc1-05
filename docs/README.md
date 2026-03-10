@@ -37,8 +37,8 @@ This folder is the canonical home for current, reusable project documentation.
 The following paths are treated as local/generated working data rather than project documentation:
 
 - `../backups/`
-- `../parsing/indices/`
-- `../parsing/reports/`
+- `../fsv_data_pipeline/generated/indices/`
+- `../fsv_data_pipeline/generated/reports/`
 - `../attached_assets/`
 
 If an artifact matters long-term, extract the durable findings into a doc here instead of committing the raw output.
