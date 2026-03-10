@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fsv-data-pipeline"
+version = "0.1.0"
+description = "FSV Mainz 05 archive parser and database sync pipeline."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "beautifulsoup4>=4.12.0",
+  "lxml>=5.0.0",
+  "psycopg2-binary>=2.9.0",
+  "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+fsv-pipeline-parse = "parsing.comprehensive_fsv_parser:main"
+fsv-pipeline-sync = "database.sync_sqlite_to_postgres:main"
+fsv-pipeline-status = "check_pg_status:main"
+fsv-pipeline-build-indices = "parsing.profile_index_builder:main"
+fsv-pipeline-entity-report = "parsing.entity_linking_report:main"
+
+[tool.setuptools]
+packages = ["parsing", "database"]
+py-modules = ["config", "check_pg_status"]
